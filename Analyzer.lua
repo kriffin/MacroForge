@@ -749,7 +749,11 @@ function A:ShortenMacro(body)
             -- 2) Compress spaces inside [...] conditions
             line = compressBrackets(line)
 
-            -- 3) Remove spaces around semicolons (clause separators)
+            -- 3) Remove space between "]" and spell/item name
+            -- e.g. "] Heal" → "]Heal" — confirmed working in-game
+            line = line:gsub("]%s+", "]")
+
+            -- 4) Remove spaces around semicolons (clause separators)
             line = line:gsub("%s*;%s*", ";")
         end
 
