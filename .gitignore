@@ -1,2 +1,11 @@
+# Dev tools
 *.ps1
 .luaurc
+
+# IDE / OS
+.vscode/
+*.swp
+*.swo
+*~
+Thumbs.db
+.DS_Store
