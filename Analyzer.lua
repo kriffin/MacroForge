@@ -743,13 +743,13 @@ function A:ShortenMacro(body)
 
         -- Condition-aware optimizations ONLY for secure commands and metacommands
         if isSecure or isMeta then
-            -- 2) Remove space between command and opening bracket
-            line = line:gsub("^([#/][%a]+)%s+%[", "%1[")
+            -- NOTE: Do NOT remove the space between command and "["
+            -- e.g. "/use [mod]" must keep the space — "/use[mod]" breaks in-game.
 
-            -- 3) Compress spaces inside [...] conditions
+            -- 2) Compress spaces inside [...] conditions
             line = compressBrackets(line)
 
-            -- 4) Remove spaces around semicolons (clause separators)
+            -- 3) Remove spaces around semicolons (clause separators)
             line = line:gsub("%s*;%s*", ";")
         end
 

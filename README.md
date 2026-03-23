@@ -143,8 +143,8 @@ Hitting the **255-character limit**? One click to compress:
 
 ```diff
 - /castsequence [mod:shift] reset=target Spell One, Spell Two, Spell Three
-+ /castse[mod:shift]reset=target Spell One,Spell Two,Spell Three
-  ↳ Saved 14 characters
++ /castse [mod:shift]reset=target Spell One,Spell Two,Spell Three
+  ↳ Saved 13 characters
 ```
 
 Uses shortest command aliases, strips whitespace inside conditions, removes redundant spaces — all while respecting WoW's syntax specification. **Only safe transformations are applied.**

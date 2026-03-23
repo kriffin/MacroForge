@@ -46,7 +46,6 @@ target           = <a target pattern: player, focus, mouseover, party1, etc.>
 | Rule | Before | After | Why Safe |
 |------|--------|-------|----------|
 | Spaces **inside** `[...]` | `[ mod:shift , @player ]` | `[mod:shift,@player]` | The WoW parser ignores whitespace within brackets |
-| Space between command and `[` | `/cast [mod:shift]` | `/cast[mod:shift]` | Parser accepts command directly followed by bracket |
 | Spaces around `;` | `Heal ; Flash Heal` | `Heal;Flash Heal` | Semicolons are unambiguous clause delimiters |
 | Multiple spaces → single | `spell1  spell2` | `spell1 spell2` | Redundant whitespace |
 | Trailing whitespace | `line   ` | `line` | Never meaningful |
@@ -55,6 +54,7 @@ target           = <a target pattern: player, focus, mouseover, party1, etc.>
 
 | Rule | Example | Risk |
 |------|---------|------|
+| Space between command and `[` | `/use [mod:shift]` → `/use[mod:shift]` | **Breaks in-game** — the command parser requires a space before `[` |
 | Spaces around `:` globally | `Mot de l'ombre : Douleur` → broken | Colons appear in spell names (e.g. "Shadow Word: Pain") |
 | Spaces around `,` globally | `/say Hello, World` → broken | Commas appear in chat text and `/castsequence` spell lists |
 | Spaces around `=` globally | `/run x = 5` → broken | Equals signs appear in `/run`, `/script` commands, and `reset=target` |
@@ -153,15 +153,15 @@ Based on the above, our `ShortenMacro` function applies these optimizations:
 3. **Strip trailing whitespace** per line and end of macro
 
 ### Applied ONLY to Secure Commands + `#show`/`#showtooltip`
-4. **Remove space between command and `[`** — `/cast [mod]` → `/cast[mod]`
-5. **Compress all whitespace inside `[...]`** — colons, commas, equals, slashes, spaces
-6. **Remove spaces around `;`** — clause separators
+4. **Compress all whitespace inside `[...]`** — colons, commas, equals, slashes, spaces
+5. **Remove spaces around `;`** — clause separators
 
 > [!IMPORTANT]
 > Insecure commands (`/say`, `/emote`, `/whisper`, `/guild`, etc.) are **never** processed
 > for condition-specific rules. This prevents breaking literal `;` `,` `:` in chat text.
 
 ### NOT Applied (Unsafe)
+- **Removing space between command and `[`** — `/cast [mod]` → `/cast[mod]` — **breaks in-game**
 - Removing `:` `,` `=` `/` spaces **outside** brackets
 - Removing space between `]` and spell name
 - Any modification to non-command text (`/say`, `/emote`, `/script` body)
