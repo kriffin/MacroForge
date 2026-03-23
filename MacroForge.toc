@@ -1,0 +1,62 @@
+## Interface: 120001, 120005
+## Title: |cff00ccffMacro|r|cffffd700Forge|r
+## Notes: Editeur de macros intelligent - Creer, editer, analyser, templates multi-classe, auto-completion, condition builder, palette de sorts, partage, historique, doublons, undo/redo, auto-save, keybindings.
+## Author: Antigravity
+## Version: 7.0.0
+## SavedVariables: MacroForgeDB
+## IconTexture: Interface\Icons\Trade_Engineering
+
+# Libraries — Core
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceHook-3.0\AceHook-3.0.xml
+Libs\AceTimer-3.0\AceTimer-3.0.xml
+Libs\AceComm-3.0\AceComm-3.0.xml
+Libs\AceSerializer-3.0\AceSerializer-3.0.xml
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+
+# Libraries — UI
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+
+# Libraries — Data / Media
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+Libs\LibDeflate\LibDeflate.lua
+Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
+# Locales
+Locales\enUS.lua
+Locales\frFR.lua
+
+# Core
+Core.lua
+Helpers.lua
+Templates.lua
+Profiles.lua
+SlashDB.lua
+Analyzer.lua
+AnalyzerExplain.lua
+Settings.lua
+
+# New modules
+Builder.lua
+CommandPalette.lua
+IconPicker.lua
+Share.lua
+History.lua
+DuplicateDetector.lua
+Autocomplete.lua
+
+# Keybindings
+Bindings.lua
+
+# UI (AceGUI)
+MinimapButton.lua
+UI.lua
+Editor.lua

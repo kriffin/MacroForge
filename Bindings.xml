@@ -1,0 +1,11 @@
+<Bindings>
+    <Binding name="MACROFORGE_TOGGLE" header="MACROFORGE" category="ADDONS">
+        MacroForge_Toggle()
+    </Binding>
+    <Binding name="MACROFORGE_BUILDER" category="ADDONS">
+        MacroForge_Builder()
+    </Binding>
+    <Binding name="MACROFORGE_COMMANDS" category="ADDONS">
+        MacroForge_Commands()
+    </Binding>
+</Bindings>
