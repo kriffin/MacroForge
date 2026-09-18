@@ -104,7 +104,7 @@ function MF:OnInitialize()
     local Settings = self:GetModule("Settings")
     if Settings and Settings.GetOptionsTable then
         LibStub("AceConfig-3.0"):RegisterOptionsTable("MacroForge", Settings:GetOptionsTable())
-        self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("MacroForge", "|cff00ccffMacro|r|cffffd700Forge|r")
+        self.optionsFrame, self.optionsCategoryID = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("MacroForge", "|cff00ccffMacro|r|cffffd700Forge|r")
     end
 
     -- Register slash commands via AceConsole
@@ -224,16 +224,8 @@ function MF:HandleSlash(msg)
         if D then D:OpenBrowser() end
     elseif cmd == "settings" or cmd == "options" then
         -- Open Blizzard options or custom panel
-        if self.optionsFrame then
-            if InterfaceOptionsFrame_OpenToCategory then
-                InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)
-            elseif _G.Settings and _G.Settings.OpenToCategory then
-                _G.Settings.OpenToCategory(self.optionsFrame)
-            end
-        else
-            local S = self:GetModule("Settings")
-            if S then S:Toggle() end
-        end
+        local S = self:GetModule("Settings")
+        if S then S:Toggle() end
     elseif cmd == "history" then
         local H = self:GetModule("History")
         local E = self:GetModule("Editor")

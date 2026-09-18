@@ -213,7 +213,8 @@ function Settings:Toggle()
             InterfaceOptionsFrame_OpenToCategory(MF.optionsFrame)
             InterfaceOptionsFrame_OpenToCategory(MF.optionsFrame) -- twice needed for subcategories
         elseif _G.Settings and _G.Settings.OpenToCategory then
-            _G.Settings.OpenToCategory(MF.optionsFrame)
+            -- The 10.x+ Settings panel opens by category ID, not by frame
+            _G.Settings.OpenToCategory(MF.optionsCategoryID)
         end
     else
         -- Fallback: open via AceConfigDialog

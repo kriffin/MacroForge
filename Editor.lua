@@ -21,6 +21,10 @@ local syntaxOverlay    -- FontString overlay for inline syntax highlighting
 local lineNumOverlay   -- FontString for line numbers
 local spellIconGroup   -- Container for spell/item icons with native tooltips
 local currentFontSize = 13  -- default font size
+local insertLinkHooked = false  -- Shift+Click link insertion hook installed
+
+-- Global GetItemInfo was removed in 12.x (retail, WoW Forever)
+local GetItemInfoCompat = C_Item and C_Item.GetItemInfo or GetItemInfo
 
 ---------------------------------------------------
 -- Undo/Redo stacks
@@ -331,18 +335,24 @@ local function CreateEditor()
                 AC:HookEditBox(eb)
             end
 
-            -- Hook ChatEdit_InsertLink so Shift+Click on spells/items
-            -- inserts the spell name into our EditBox when it has focus
-            if not MF:IsHooked("ChatEdit_InsertLink") then
-                MF:RawHook("ChatEdit_InsertLink", function(text, ...)
-                    if text and eb and eb:IsVisible() and eb:HasFocus() then
+            -- Shift+Click on spells/items inserts the name into our EditBox
+            -- when it has focus. 12.x routes every link through
+            -- ChatFrameUtil.InsertLink (ChatEdit_InsertLink is only a
+            -- deprecated alias nobody calls); a secure post-hook keeps
+            -- that path untainted.
+            if not insertLinkHooked then
+                insertLinkHooked = true
+                local function OnInsertLink(text)
+                    if text and eb:IsVisible() and eb:HasFocus() then
                         -- Extract spell/item name from link: [Name] or |h[Name]|h
-                        local name = text:match("%[(.-)%]") or text
-                        eb:Insert(name)
-                        return true
+                        eb:Insert(text:match("%[(.-)%]") or text)
                     end
-                    return MF.hooks.ChatEdit_InsertLink(text, ...)
-                end, true)
+                end
+                if ChatFrameUtil and ChatFrameUtil.InsertLink then
+                    hooksecurefunc(ChatFrameUtil, "InsertLink", OnInsertLink)
+                elseif ChatEdit_InsertLink then
+                    hooksecurefunc("ChatEdit_InsertLink", OnInsertLink)
+                end
             end
         end
     end)
@@ -845,7 +855,7 @@ local function RefreshSpellIcons(body)
             spellIconGroup:AddChild(icon)
         else
             -- Try as item
-            local itemName, itemLink, _, _, _, _, _, _, _, itemIcon = GetItemInfo(spellName)
+            local itemName, itemLink, _, _, _, _, _, _, _, itemIcon = GetItemInfoCompat(spellName)
             if itemName then
                 local ic = gui:Create("Icon")
                 ic:SetImage(itemIcon or 134400)

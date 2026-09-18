@@ -1,4 +1,4 @@
-## Interface: 120001, 120005
+## Interface: 120001, 120005, 16001
 ## Title: |cff00ccffMacro|r|cffffd700Forge|r
 ## Notes: Editeur de macros intelligent - Creer, editer, analyser, templates multi-classe, auto-completion, condition builder, palette de sorts, partage, historique, doublons, undo/redo, auto-save, keybindings.
 ## Author: Antigravity

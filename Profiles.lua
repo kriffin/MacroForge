@@ -8,23 +8,42 @@ local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 MF.Profiles = {}
 
-local MAX_ACCOUNT_MACROS = 120
-local MAX_CHARACTER_MACROS = 18
+-- 12.x clients (retail, WoW Forever) expose the slot limits: 120 account / 30 character
+local MacroConsts = Constants and Constants.MacroConsts
+local MAX_ACCOUNT_MACROS = MacroConsts and MacroConsts.MAX_ACCOUNT_MACROS or 120
+local MAX_CHARACTER_MACROS = MacroConsts and MacroConsts.MAX_CHARACTER_MACROS or 18
 
 ---------------------------------------------------
 -- Spec Detection
+-- 12.x moved the spec API into C_SpecializationInfo: the old globals only
+-- survive as deprecation fallbacks on retail and are absent on WoW Forever.
 ---------------------------------------------------
+local SpecInfo = C_SpecializationInfo or {}
+local GetSpecialization = SpecInfo.GetSpecialization or GetSpecialization
+local GetSpecializationInfo = SpecInfo.GetSpecializationInfo or GetSpecializationInfo
+local GetActiveSpecGroup = SpecInfo.GetActiveSpecGroup or GetActiveSpecGroup or GetActiveTalentGroup
+local IsSpecSelectionEnabled = SpecInfo.IsSpecSelectionEnabled -- WoW Forever only
+
+-- Returns the specID, or "group<N>" (active talent group) when the class has
+-- no selected spec, e.g. on WoW Forever before a primary tree is picked.
 function MF.Profiles:GetCurrentSpecID()
-    local currentSpec = GetSpecialization()
-    if currentSpec then
+    local _, _, classID = UnitClass("player")
+    local selectable = not IsSpecSelectionEnabled or IsSpecSelectionEnabled(classID)
+    local currentSpec = selectable and GetSpecialization and GetSpecialization()
+    if currentSpec and currentSpec > 0 then
         local specID = GetSpecializationInfo(currentSpec)
-        return specID
+        if specID and specID > 0 then return specID end
+    end
+    if GetActiveSpecGroup then
+        return "group" .. (GetActiveSpecGroup() or 1)
     end
     return nil
 end
 
 function MF.Profiles:GetSpecName(specID)
     if not specID then return "Inconnue" end
+    local group = type(specID) == "string" and specID:match("^group(%d+)$")
+    if group then return format(L["SPEC_GROUP"], tonumber(group)) end
     local _, name = GetSpecializationInfoByID(specID)
     return name or "Inconnue"
 end
