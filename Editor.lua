@@ -975,7 +975,10 @@ function Editor:OnChanged(skipUndo)
         self.wasDirty = dirty
         editorFrame:SetDirty(dirty)
         local UI = MF:GetModule("UI")
-        if UI then UI:Refresh() end
+        if UI then
+            UI:Refresh()
+            if dirty then UI:ShowTip("dirty") end
+        end
     end
 
     -- Auto-save draft (throttled 2s) — uses AceDB char namespace

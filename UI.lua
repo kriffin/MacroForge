@@ -30,7 +30,7 @@ local visibleMacros = {}  -- list order of the macros currently shown (keyboard 
 local collapsed = {}
 local TABS = { "macros", "sets", "trash" }
 local activeTab = "macros"
-local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary
+local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary, sidebarInset
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -90,6 +90,7 @@ StaticPopupDialogs["MACROFORGE_DELETE_CONFIRM"] = {
         if P and P:DeleteMacroByIndex(macro.index) then
             local E = MF:GetModule("Editor")
             if E and E:IsEditing(macro) then UI:ShowEmpty() end
+            C_Timer.After(0.8, function() UI:ShowTip("trash") end)
         end
         C_Timer.After(0.2, function() UI:Refresh() end)
     end,
@@ -538,6 +539,7 @@ function UI:SetTab(tab)
         if name == tab then PanelTemplates_SetTab(tabHost, i) end
     end
     self:Refresh()
+    if tab == "sets" then self:ShowTip("sets") end
 end
 
 local function CreateSidebar()
@@ -583,6 +585,7 @@ local function CreateSidebar()
     inset:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -86)
     inset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 36)
     inset:SetWidth(SIDEBAR_WIDTH)
+    sidebarInset = inset
 
     scrollBox = CreateFrame("Frame", nil, inset, "WowScrollBoxList")
     scrollBox:SetPoint("TOPLEFT", 4, -4)
@@ -670,6 +673,7 @@ function UI:CreateMainFrame()
     frame:SetScript("OnShow", function()
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
         UI:Refresh()
+        C_Timer.After(0.3, OnMainShown)
     end)
     frame:SetScript("OnHide", function()
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
@@ -695,6 +699,7 @@ function UI:CreateMainFrame()
 
     local inset = CreateSidebar()
     CreateToolbar()
+    CreateHelpButton()
 
     editorPane = CreateFrame("Frame", nil, frame)
     editorPane:SetPoint("TOPLEFT", inset, "TOPRIGHT", 10, -4)
@@ -765,6 +770,107 @@ function UI:ShowDetail(kind, id)
     detail = { kind = kind, id = id }
     RenderDetail()
     self:Refresh()
+end
+
+---------------------------------------------------
+-- Onboarding
+-- One-time "what's new" popup, then native HelpTip bubbles shown once each,
+-- at the moment the feature matters. Seen flags: db.global.onboarding.
+-- The "?" button in the title bar lists the shortcuts and replays the tips.
+---------------------------------------------------
+local WHATS_NEW_ID = "7.2"
+local TIP_SYSTEM = "MacroForge"
+
+local function OnboardingDB()
+    MF.db.global.onboarding = MF.db.global.onboarding or {}
+    local db = MF.db.global.onboarding
+    db.seen = db.seen or {}
+    return db
+end
+
+-- key: seen flag; parent: frame the bubble points at
+local function ShowTip(key, parent, text, targetPoint, alignment, offsetX, offsetY)
+    if not HelpTip or not MF.db or not parent or not parent:IsVisible() then return end
+    local db = OnboardingDB()
+    if db.seen[key] or HelpTip:IsShowingAnyInSystem(TIP_SYSTEM) then return end
+    HelpTip:Show(parent, {
+        text = text,
+        buttonStyle = HelpTip.ButtonStyle.Close,
+        targetPoint = targetPoint,
+        alignment = alignment or HelpTip.Alignment.Center,
+        offsetX = offsetX or 0,
+        offsetY = offsetY or 0,
+        system = TIP_SYSTEM,
+        -- Any close counts as seen: a tip never comes back by itself
+        onHideCallback = function() OnboardingDB().seen[key] = true end,
+    })
+end
+
+local TIPS = {
+    list = function()
+        ShowTip("list", sidebarInset, L["TIP_LIST"], HelpTip.Point.RightEdgeTop, HelpTip.Alignment.Top, 0, -40)
+    end,
+    sets = function()
+        ShowTip("sets", tabButtons[2], L["TIP_SETS"], HelpTip.Point.BottomEdgeCenter)
+    end,
+    trash = function()
+        ShowTip("trash", tabButtons[3], L["TIP_TRASH"], HelpTip.Point.BottomEdgeCenter)
+    end,
+    dirty = function()
+        ShowTip("dirty", editorPane, L["TIP_DIRTY"], HelpTip.Point.TopEdgeLeft, HelpTip.Alignment.Left, 40, 20)
+    end,
+}
+
+function UI:ShowTip(key)
+    if frame and frame:IsShown() and TIPS[key] then TIPS[key]() end
+end
+
+StaticPopupDialogs["MACROFORGE_WHATS_NEW"] = {
+    text = L["WHATS_NEW"],
+    button1 = OKAY,
+    OnHide = function() C_Timer.After(0.2, function() UI:ShowTip("list") end) end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+local function OnMainShown()
+    local db = OnboardingDB()
+    if db.whatsNew ~= WHATS_NEW_ID then
+        db.whatsNew = WHATS_NEW_ID
+        StaticPopup_Show("MACROFORGE_WHATS_NEW")
+    else
+        UI:ShowTip("list")
+    end
+end
+
+function UI:ResetTips()
+    wipe(OnboardingDB().seen)
+    if HelpTip then HelpTip:HideAllSystem(TIP_SYSTEM) end
+    self:ShowTip("list")
+end
+
+local function CreateHelpButton()
+    local help = CreateFrame("Button", nil, frame)
+    help:SetSize(22, 22)
+    help:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -26, 0)
+    help:SetFrameLevel(frame:GetFrameLevel() + 600)  -- above the title bar art
+    help:SetNormalTexture("Interface\\common\\help-i")
+    help:SetHighlightTexture("Interface\\common\\help-i", "ADD")
+    help:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["HELP_SHORTCUTS_TITLE"], 1, 0.82, 0)
+        for _, line in ipairs({ "HELP_KEY_SAVE", "HELP_KEY_UNDO", "HELP_KEY_SEARCH", "HELP_KEY_NEW",
+            "HELP_KEY_NAV", "HELP_KEY_DELETE", "HELP_KEY_DRAG", "HELP_KEY_MOVE" }) do
+            GameTooltip:AddLine(L[line], 1, 1, 1, true)
+        end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["HELP_REPLAY_TIPS"], 0.6, 0.8, 1, true)
+        GameTooltip:Show()
+    end)
+    help:SetScript("OnLeave", GameTooltip_Hide)
+    help:SetScript("OnClick", function() UI:ResetTips() end)
 end
 
 ---------------------------------------------------
