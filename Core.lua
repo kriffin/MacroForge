@@ -133,6 +133,33 @@ function MF:OnSpecChanged()
 end
 
 ---------------------------------------------------
+-- Out-of-combat queue
+-- CreateMacro / EditMacro / DeleteMacro are blocked in combat. Writes are
+-- queued under a key (a newer write with the same key replaces the older
+-- one) and flushed in order on PLAYER_REGEN_ENABLED.
+---------------------------------------------------
+local pendingOOC, pendingOrder = {}, {}
+
+function MF:RunOutOfCombat(key, fn)
+    if not InCombatLockdown() then
+        fn()
+        return true
+    end
+    if not pendingOOC[key] then table.insert(pendingOrder, key) end
+    pendingOOC[key] = fn
+    self:RegisterEvent("PLAYER_REGEN_ENABLED", "FlushOutOfCombat")
+    self:Print(MF.C.yellow .. L["COMBAT_QUEUED"] .. "|r")
+    return false
+end
+
+function MF:FlushOutOfCombat()
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    local order, fns = pendingOrder, pendingOOC
+    pendingOOC, pendingOrder = {}, {}
+    for _, key in ipairs(order) do fns[key]() end
+end
+
+---------------------------------------------------
 -- DB Migration (old flat → new AceDB)
 ---------------------------------------------------
 function MF:MigrateDB()

@@ -36,6 +36,8 @@ L["PROFILE_NONE"] = "Aucun profil pour %s. Utilise /mf save."
 L["PROFILE_AUTOSWAP"] = "Auto-swap"
 L["AUTOSWAP_ON"] = "Auto-swap: active"
 L["AUTOSWAP_OFF"] = "Auto-swap: desactive"
+L["COMBAT_QUEUED"] = "En combat : la modification sera appliquee en fin de combat."
+L["COMBAT_BLOCKED"] = "Impossible en combat. Reessaie apres le combat."
 L["NO_MACROS_TO_LOAD"] = "Aucune macro a charger."
 L["MACROS_SKIPPED_LIMIT"] = "%d macro(s) non creee(s) : limite d'emplacements atteinte (%d)."
 

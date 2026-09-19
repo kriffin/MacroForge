@@ -111,6 +111,10 @@ end
 -- so action bar buttons pointing to it survive the swap. Only macros absent
 -- from savedMacros are deleted, and only missing ones are created.
 function MF.Profiles:WriteMacros(scope, savedMacros)
+    if InCombatLockdown() then
+        MF:Print(MF.C.red .. L["COMBAT_BLOCKED"] .. "|r")
+        return false
+    end
     if not savedMacros or #savedMacros == 0 then
         MF:Print(MF.C.red .. L["NO_MACROS_TO_LOAD"] .. "|r")
         return false
@@ -225,11 +229,13 @@ function MF.Profiles:LoadCurrentProfile()
         return
     end
 
-    local success, count = self:WriteCharacterMacros(profile.macros)
-    if success then
-        MF:Print(MF.C.green .. L["PROFILE_LOADED"] .. "|r → "
-            .. MF.C.cyan .. profile.specName .. "|r (" .. count .. " macros)")
-    end
+    MF:RunOutOfCombat("load", function()
+        local success, count = self:WriteCharacterMacros(profile.macros)
+        if success then
+            MF:Print(MF.C.green .. L["PROFILE_LOADED"] .. "|r → "
+                .. MF.C.cyan .. profile.specName .. "|r (" .. count .. " macros)")
+        end
+    end)
 end
 
 function MF.Profiles:ListProfiles()
@@ -258,11 +264,13 @@ function MF.Profiles:OnSpecChanged()
     if profile then
         local specName = self:GetSpecName(specID)
         C_Timer.After(1, function()
-            local success, count = self:WriteCharacterMacros(profile.macros)
-            if success then
-                MF:Print(MF.C.green .. L["PROFILE_AUTOSWAP"] .. "|r → "
-                    .. MF.C.cyan .. specName .. "|r (" .. count .. " macros)")
-            end
+            MF:RunOutOfCombat("load", function()
+                local success, count = self:WriteCharacterMacros(profile.macros)
+                if success then
+                    MF:Print(MF.C.green .. L["PROFILE_AUTOSWAP"] .. "|r → "
+                        .. MF.C.cyan .. specName .. "|r (" .. count .. " macros)")
+                end
+            end)
         end)
     end
 end
@@ -311,17 +319,28 @@ function MF.Profiles:RestoreBackup(index)
         return
     end
     local backup = MF.db.char.backups[index]
-    local success, count = self:WriteCharacterMacros(backup.character)
-    if success then
-        MF:Print(MF.C.green .. format(L["BACKUP_RESTORED"], MF.C.grey .. backup.timestamp .. "|r")
-            .. " (" .. count .. " macros)")
-    end
+    MF:RunOutOfCombat("load", function()
+        local success, count = self:WriteCharacterMacros(backup.character)
+        if success then
+            MF:Print(MF.C.green .. format(L["BACKUP_RESTORED"], MF.C.grey .. backup.timestamp .. "|r")
+                .. " (" .. count .. " macros)")
+        end
+    end)
 end
 
 ---------------------------------------------------
 -- Create / Delete macros
 ---------------------------------------------------
+local queuedCreates = 0
+
 function MF.Profiles:CreateNewMacro(name, icon, body, perCharacter)
+    if InCombatLockdown() then
+        queuedCreates = queuedCreates + 1
+        MF:RunOutOfCombat("create" .. queuedCreates, function()
+            self:CreateNewMacro(name, icon, body, perCharacter)
+        end)
+        return nil
+    end
     local numAccount, numCharacter = GetNumMacros()
     if perCharacter then
         if numCharacter >= MAX_CHARACTER_MACROS then
@@ -346,6 +365,11 @@ function MF.Profiles:CreateNewMacro(name, icon, body, perCharacter)
 end
 
 function MF.Profiles:DeleteMacroByIndex(macroIndex)
+    -- Not queued: two queued deletes would shift each other's index
+    if InCombatLockdown() then
+        MF:Print(MF.C.red .. L["COMBAT_BLOCKED"] .. "|r")
+        return false
+    end
     local name = GetMacroInfo(macroIndex)
     if name then
         DeleteMacro(macroIndex)

@@ -1005,11 +1005,15 @@ function Editor:Save()
         if not self.cur or not self.cur.index then
             MF:Print(MF.C.red .. L["MISSING_INDEX"] .. "|r"); return
         end
-        -- Save history snapshot before overwriting
-        local H = MF:GetModule("History")
-        if H then H:SaveSnapshot(self.cur) end
-        EditMacro(self.cur.index, name, icon, body)
-        MF:Print(MF.C.green .. L["MACRO_SAVED"]:format(MF.C.cyan .. name .. MF.C.r))
+        -- Nothing can move macro slots during combat, so the index stays valid
+        local cur = self.cur
+        MF:RunOutOfCombat("save" .. cur.index, function()
+            -- Save history snapshot before overwriting
+            local H = MF:GetModule("History")
+            if H then H:SaveSnapshot(cur) end
+            EditMacro(cur.index, name, icon, body)
+            MF:Print(MF.C.green .. L["MACRO_SAVED"]:format(MF.C.cyan .. name .. MF.C.r))
+        end)
     end
 
     -- Clear draft on save
