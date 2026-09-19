@@ -131,6 +131,22 @@ Switch back to Fire ─────────► your edited "Nuke" is there
 - A spec change that fires several events swaps only once.
 - 7.1 spec profiles are migrated to sets named after the spec.
 
+#### Debug log
+
+A persistent log (`MacroForgeLog` SavedVariable, 2000 lines) records sessions,
+spec changes, set swaps, macro writes, backups, combat queue and rejected
+comm messages. MacroForge errors caught by BugGrabber are mirrored in it.
+
+```
+2026-09-19 21:40:11 #3 [INFO] spec: 63 -> 64
+2026-09-19 21:40:12 #3 [INFO] sets: saved Raid (6 macros) [auto]
+2026-09-19 21:40:12 #3 [INFO] write: character: kept=4 edited=2 created=1 deleted=2 skipped=0
+```
+
+- `/mf log [n|clear]` in game, `/mf debug` for verbose mode echoed to chat.
+- `tools/read-logs.sh` prints the log and BugGrabber errors outside the game
+  (written on `/reload`, logout or exit).
+
 ---
 
 ### ⌨️ Commands
@@ -145,6 +161,8 @@ Switch back to Fire ─────────► your edited "Nuke" is there
 | `/mf restore [n]` | changed | Restores character **and** account macros |
 | `/mf trash` | new | Deleted macros, recreatable |
 | `/mf history` | changed | Versions of the open macro, by name |
+| `/mf log [n\|clear]` | new | Last log lines in chat |
+| `/mf debug [on\|off]` | new | Verbose log, echoed to chat |
 
 ---
 
@@ -157,4 +175,5 @@ Switch back to Fire ─────────► your edited "Nuke" is there
 | `char.history` (by slot index) | Migrated to `char.revisions` (by name), then removed |
 | `global.revisions` | New: account macro versions |
 | `profile.autoSaveOnSwap` | New, default `true` |
+| `MacroForgeLog` | New SavedVariable: debug log |
 | `profile.maxHistory` | Default 10 → 20, max 30 → 50 |

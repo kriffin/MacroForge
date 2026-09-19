@@ -118,6 +118,7 @@ function MF:OnInitialize()
 end
 
 function MF:OnEnable()
+    self:StartLogSession()
     -- Register WoW events via AceEvent
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", "OnSpecChanged")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
@@ -138,8 +139,9 @@ function MF:OnEnable()
     self:Print(MF.C.cyan .. spec .. MF.C.r)
 end
 
-function MF:OnSpecChanged(_, unit)
+function MF:OnSpecChanged(event, unit)
     if unit and unit ~= "player" then return end
+    self:Debug("spec", "%s", event)
     self:SendMessage("MF_SPEC_CHANGED")
 end
 
@@ -162,6 +164,7 @@ function MF:RunOutOfCombat(key, fn)
     end
     if not pendingOOC[key] then table.insert(pendingOrder, key) end
     pendingOOC[key] = fn
+    self:Log("INFO", "combat", "queued %s (%d pending)", key, #pendingOrder)
     self:RegisterEvent("PLAYER_REGEN_ENABLED", "FlushOutOfCombat")
     self:Print(MF.C.yellow .. L["COMBAT_QUEUED"] .. "|r")
     return false
@@ -171,7 +174,14 @@ function MF:FlushOutOfCombat()
     self:UnregisterEvent("PLAYER_REGEN_ENABLED")
     local order, fns = pendingOrder, pendingOOC
     pendingOOC, pendingOrder = {}, {}
-    for _, key in ipairs(order) do fns[key]() end
+    self:Log("INFO", "combat", "flush %d queued write(s): %s", #order, table.concat(order, ", "))
+    for _, key in ipairs(order) do
+        local ok, err = pcall(fns[key])
+        if not ok then
+            self:Log("ERROR", "combat", "queued %s failed: %s", key, err)
+            geterrorhandler()(err)
+        end
+    end
 end
 
 ---------------------------------------------------
@@ -287,6 +297,10 @@ function MF:HandleSlash(msg)
     elseif cmd == "send" then
         local S = self:GetModule("Share")
         if S and S.OpenSend then S:OpenSend() end
+    elseif cmd == "debug" then
+        if arg == "on" or arg == "off" then self:SetDebug(arg == "on")
+        else self:SetDebug(not self:IsDebug()) end
+    elseif cmd == "log" then self:PrintLog(arg)
     elseif cmd == "help" then self:PrintHelp()
     else
         self:Print(MF.C.red .. format(L["UNKNOWN_CMD"], cmd) .. "|r")
@@ -318,6 +332,8 @@ function MF:PrintHelp()
         { "/mf trash", L["HELP_TRASH"] },
         { "/mf send", "Send macro to player (AceComm)" },
         { "/mf settings", L["HELP_SETTINGS"] },
+        { "/mf log [n|clear]", "Show the last n log lines" },
+        { "/mf debug [on|off]", "Verbose log (echoed to chat)" },
     }
     for _, v in ipairs(cmds) do
         self:Print(c.cyan .. v[1] .. "|r - " .. v[2])
@@ -353,15 +369,19 @@ StaticPopupDialogs["MACROFORGE_RECV"] = {
 function MF:OnCommReceived(prefix, message, distribution, sender)
     if prefix ~= "MacroForge" then return end
     if sender == UnitName("player") then return end
-    if distribution ~= "WHISPER" then return end
-    if type(message) ~= "string" or #message > MAX_COMM_LENGTH then return end
+    local function reject(reason)
+        self:Log("WARN", "comm", "rejected macro from %s: %s", tostring(sender), reason)
+    end
+    if distribution ~= "WHISPER" then return reject("channel " .. tostring(distribution)) end
+    if type(message) ~= "string" or #message > MAX_COMM_LENGTH then return reject("size") end
     -- One offer at a time: a sender cannot stack or swap popups
-    if StaticPopup_Visible("MACROFORGE_RECV") then return end
+    if StaticPopup_Visible("MACROFORGE_RECV") then return reject("popup already open") end
 
     local success, data = self:Deserialize(message)
-    if not success then return end
-    local macro = MF.Helpers:SanitizeMacro(data)
-    if not macro then return end
+    if not success then return reject("deserialize") end
+    local macro, err = MF.Helpers:SanitizeMacro(data)
+    if not macro then return reject(err) end
+    self:Log("INFO", "comm", "macro offered by %s: %s", tostring(sender), macro.name)
 
     local who = (sender or "?"):gsub("|", "||")
     StaticPopup_Show("MACROFORGE_RECV", who, macro.name, { sender = who, macro = macro })

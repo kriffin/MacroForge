@@ -34,8 +34,9 @@ function Share:Decode(encoded)
     encoded = encoded:match("^%s*(.-)%s*$")
     if #encoded > MAX_CODE_LENGTH then return nil, L["SHARE_INVALID"] end
     local macro, err = self:DecodeRaw(encoded)
-    if not macro then return nil, err end
-    return MF.Helpers:SanitizeMacro(macro)
+    if macro then macro, err = MF.Helpers:SanitizeMacro(macro) end
+    if not macro then MF:Debug("share", "decode failed: %s", err) end
+    return macro, err
 end
 
 function Share:DecodeRaw(encoded)

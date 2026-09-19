@@ -124,6 +124,7 @@ end
 function MF.Profiles:WriteMacros(scope, savedMacros)
     if InCombatLockdown() then
         MF:Print(MF.C.red .. L["COMBAT_BLOCKED"] .. "|r")
+        MF:Log("WARN", "write", "%s refused: in combat", scope)
         return false
     end
     if not savedMacros or #savedMacros == 0 then
@@ -185,6 +186,9 @@ function MF.Profiles:WriteMacros(scope, savedMacros)
     if skipped > 0 then
         MF:Print(MF.C.red .. format(L["MACROS_SKIPPED_LIMIT"], skipped, limit) .. "|r")
     end
+    MF:Log(skipped > 0 and "WARN" or "INFO", "write",
+        "%s: kept=%d edited=%d created=%d deleted=%d skipped=%d",
+        scope, #matched, edited, created, #toDelete, skipped)
 
     return true, #matched + created, {
         kept = #matched, edited = edited, created = created,
@@ -284,6 +288,7 @@ function MF.Profiles:SaveSet(name, silent)
     set.updated = time()
     sets[name] = set
     MF.db.char.activeSet = name
+    MF:Log("INFO", "sets", "saved %s (%d macros)%s", name, #macros, silent and " [auto]" or "")
     if not silent then
         MF:Print(MF.C.green .. L["SET_SAVED"] .. "|r → " .. MF.C.cyan .. name .. "|r ("
             .. #macros .. " macros)")
@@ -303,6 +308,7 @@ function MF.Profiles:ApplySet(name, reasonMsg)
         self:CreateBackup(true)
         local H = MF:GetModule("History")
         if H then H:SetNextReason("set: " .. name) end
+        MF:Log("INFO", "sets", "apply %s", name)
         local success, count = self:WriteCharacterMacros(set.macros)
         if success then
             MF.db.char.activeSet = name
@@ -318,6 +324,7 @@ function MF.Profiles:DeleteSet(name)
     if not sets[name] then return end
     sets[name] = nil
     if MF.db.char.activeSet == name then MF.db.char.activeSet = nil end
+    MF:Log("INFO", "sets", "deleted %s", name)
     MF:Print(MF.C.orange .. format(L["SET_DELETED"], name) .. "|r")
     self:RefreshUI()
 end
@@ -411,11 +418,13 @@ function MF.Profiles:OnSpecChanged()
     if not MF.db then return end
     local specID = self:GetCurrentSpecID()
     if not specID or specID == MF.db.char.lastSpec then return end
+    MF:Log("INFO", "spec", "%s -> %s", tostring(MF.db.char.lastSpec), tostring(specID))
     MF.db.char.lastSpec = specID
 
-    if not MF.db.profile.autoSwap then return end
+    if not MF.db.profile.autoSwap then return MF:Debug("spec", "auto-swap off") end
     local target = self:GetSetForSpec(specID)
-    if not target or target == self:GetActiveSet() then return end
+    if not target then return MF:Debug("spec", "no set bound to %s", tostring(specID)) end
+    if target == self:GetActiveSet() then return MF:Debug("spec", "%s already active", target) end
 
     C_Timer.After(1, function()
         MF:RunOutOfCombat("swap", function()
@@ -443,6 +452,7 @@ function MF.Profiles:MigrateProfilesToSets()
             local unique, n = name, 2
             while sets[unique] do unique = name .. " " .. n; n = n + 1 end
             sets[unique] = { macros = p.macros, specs = { [specKey] = true } }
+            MF:Log("INFO", "migrate", "profile %s -> set %s", tostring(specKey), unique)
             self:BindSpec(unique, specKey, true)
         end
     end
@@ -489,6 +499,8 @@ function MF.Profiles:CreateBackup(auto)
         end
     end
 
+    MF:Log("INFO", "backup", "%s backup: %d character, %d account",
+        auto and "auto" or "manual", #backup.character, #backup.account)
     if not auto then
         MF:Print(MF.C.green .. L["BACKUP_CREATED"] .. "|r — "
             .. format(L["BACKUP_COUNTS"], #backup.character, #backup.account)
@@ -520,6 +532,7 @@ function MF.Profiles:RestoreBackup(index)
     local backup = MF.db.char.backups[index]
     MF:RunOutOfCombat("load", function()
         self:CreateBackup(true)
+        MF:Log("INFO", "backup", "restore #%d (%s)", index, backup.timestamp)
         -- The restored macros are no set: don't let a swap save them into one
         MF.db.char.activeSet = nil
         local counts = {}

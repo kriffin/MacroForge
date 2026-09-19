@@ -125,6 +125,10 @@ function History:Scan(scope, reason)
         store[key].deletedReason = reason
     end
     PruneDeleted(store)
+    if #appeared > 0 or #vanished > 0 then
+        MF:Debug("history", "%s scan: %d appeared, %d deleted%s", scope, #appeared, #vanished,
+            reason and (" [" .. reason .. "]") or "")
+    end
 end
 
 function History:ScanAll(reason)
@@ -183,6 +187,7 @@ function History:MigrateIndexHistory()
         end
     end
     MF.db.char.history = nil
+    MF:Log("INFO", "migrate", "index-keyed history migrated to revisions")
 end
 
 ---------------------------------------------------

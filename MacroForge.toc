@@ -3,7 +3,7 @@
 ## Notes: Editeur de macros intelligent - Creer, editer, analyser, templates multi-classe, auto-completion, condition builder, palette de sorts, partage, historique, doublons, undo/redo, auto-save, keybindings.
 ## Author: Antigravity
 ## Version: 7.1.0
-## SavedVariables: MacroForgeDB
+## SavedVariables: MacroForgeDB, MacroForgeLog
 ## IconTexture: Interface\Icons\Trade_Engineering
 
 # Libraries — Core
@@ -36,6 +36,7 @@ Locales\frFR.lua
 
 # Core
 Core.lua
+Log.lua
 Helpers.lua
 Templates.lua
 Profiles.lua
