@@ -27,7 +27,10 @@ local frame, scrollBox, searchBox, editorPane, emptyState, detailHost
 local detail  -- { kind = "set" | "sets" | "trash", id = ... } shown in the right pane
 local searchQuery = ""
 local visibleMacros = {}  -- list order of the macros currently shown (keyboard navigation)
-local collapsed = { trash = true }
+local collapsed = {}
+local TABS = { "macros", "sets", "trash" }
+local activeTab = "macros"
+local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -156,7 +159,11 @@ local function DisplayName(macro)
     return dn:match("^([^\n]+)") or dn
 end
 
-local function BuildDataProvider()
+local function Matches(text)
+    return searchQuery == "" or (text or ""):lower():find(searchQuery:lower(), 1, true)
+end
+
+local function BuildMacrosProvider(dataProvider)
     local P = MF:GetModule("Profiles")
     local An = MF:GetModule("Analyzer")
     local numAccount, numCharacter = GetNumMacros()
@@ -164,22 +171,15 @@ local function BuildDataProvider()
         character = { count = numCharacter, max = P.MAX_CHARACTER_MACROS },
         account = { count = numAccount, max = P.MAX_ACCOUNT_MACROS },
     }
-
-    local dataProvider = CreateTreeDataProvider()
-    wipe(visibleMacros)
     for _, scope in ipairs(SCOPES) do
         local header = dataProvider:Insert({
             header = scope, count = limits[scope].count, max = limits[scope].max,
         })
-        local shown = 0
         for _, macro in ipairs(P:ReadMacros(scope)) do
             if MatchesSearch(macro) then
-                local res = An and An:Analyze(macro.body, macro.name)
-                header:Insert({ macro = macro, analysis = res })
-                shown = shown + 1
+                header:Insert({ macro = macro, analysis = An and An:Analyze(macro.body, macro.name) })
             end
         end
-        header:GetData().shown = shown
         -- A search always expands the groups so matches are visible
         local isCollapsed = searchQuery == "" and collapsed[scope] or false
         header:SetCollapsed(isCollapsed, false, true)
@@ -189,28 +189,40 @@ local function BuildDataProvider()
             end
         end
     end
-    -- Sets: one row per set + a "manage" row opening the full view
-    local setNames = P:GetSetNames()
-    local sets = dataProvider:Insert({ header = "sets", count = #setNames })
-    for _, name in ipairs(setNames) do
-        if searchQuery == "" or name:lower():find(searchQuery:lower(), 1, true) then
-            sets:Insert({ set = name })
-        end
-    end
-    sets:Insert({ action = "sets" })
-    sets:SetCollapsed(searchQuery == "" and collapsed.sets or false, false, true)
+    return true
+end
 
-    -- Trash: deleted macros (collapsed by default)
-    local H = MF:GetModule("History")
-    local deleted = H and H:GetDeleted() or {}
-    local trash = dataProvider:Insert({ header = "trash", count = #deleted })
-    for _, d in ipairs(deleted) do
-        if searchQuery == "" or d.key:lower():find(searchQuery:lower(), 1, true) then
-            trash:Insert({ trash = d })
+local function BuildSetsProvider(dataProvider)
+    local any = false
+    for _, name in ipairs(MF:GetModule("Profiles"):GetSetNames()) do
+        if Matches(name) then
+            dataProvider:Insert({ set = name })
+            any = true
         end
     end
-    trash:SetCollapsed(searchQuery == "" and collapsed.trash or false, false, true)
-    return dataProvider
+    return any
+end
+
+local function BuildTrashProvider(dataProvider)
+    local H = MF:GetModule("History")
+    local any = false
+    for _, d in ipairs(H and H:GetDeleted() or {}) do
+        if Matches(d.key) then
+            dataProvider:Insert({ trash = d })
+            any = true
+        end
+    end
+    return any
+end
+
+local PROVIDERS = { macros = BuildMacrosProvider, sets = BuildSetsProvider, trash = BuildTrashProvider }
+
+-- Returns the provider and whether it has any row
+local function BuildDataProvider()
+    local dataProvider = CreateTreeDataProvider()
+    wipe(visibleMacros)
+    local any = PROVIDERS[activeTab](dataProvider)
+    return dataProvider, any
 end
 
 ---------------------------------------------------
@@ -279,23 +291,14 @@ local function InitHeader(btn, node)
     btn.mfName:ClearAllPoints()
     btn.mfName:SetPoint("LEFT", btn.mfArrow, "RIGHT", 6, 0)
     btn.mfName:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
-    local labels = {
-        character = L["SIDEBAR_CHARACTER"], account = L["SIDEBAR_ACCOUNT"],
-        sets = L["SETS"], trash = L["TRASH"],
-    }
-    btn.mfName:SetText(labels[data.header])
-
-    if data.max then
-        local full = data.count >= data.max
-        btn.mfBadge:SetText((full and MF.C.red or MF.C.grey) .. data.count .. "/" .. data.max .. "|r")
-    else
-        btn.mfBadge:SetText(MF.C.grey .. data.count .. "|r")
-    end
+    btn.mfName:SetText(data.header == "character" and L["SIDEBAR_CHARACTER"] or L["SIDEBAR_ACCOUNT"])
+    local full = data.count >= data.max
+    btn.mfBadge:SetText((full and MF.C.red or MF.C.grey) .. data.count .. "/" .. data.max .. "|r")
 
     -- Dropping a macro from the other group on this header moves it here
     local function DropMacro()
         local m = CursorMacro()
-        if m and (data.header == "character" or data.header == "account") and m.scope ~= data.header then
+        if m and m.scope ~= data.header then
             ClearCursor()
             UI:ConfirmMove(m, data.header)
             return true
@@ -383,11 +386,6 @@ local function InitTrashRow(btn, node)
         "trash", d.scope .. ":" .. d.key)
 end
 
-local function InitActionRow(btn, node)
-    InitDetailRow(btn, "Interface\\PaperDollInfoFrame\\Character-Plus", L["SIDEBAR_MANAGE_SETS"],
-        L["SIDEBAR_MANAGE_SETS_SUB"], nil, "sets", "all")
-end
-
 local function InitMacroRow(btn, node)
     local data = node:GetData()
     local macro, res = data.macro, data.analysis
@@ -437,7 +435,6 @@ local function InitElement(btn, node)
     if data.header then InitHeader(btn, node)
     elseif data.set then InitSetRow(btn, node)
     elseif data.trash then InitTrashRow(btn, node)
-    elseif data.action then InitActionRow(btn, node)
     else InitMacroRow(btn, node) end
 end
 
@@ -468,11 +465,103 @@ end
 ---------------------------------------------------
 -- Build
 ---------------------------------------------------
+-- Bottom buttons change with the tab: { text, onClick } or false (hidden)
+local TAB_BUTTONS = {
+    macros = {
+        { "CREATE", function(btn)
+            MenuUtil.CreateContextMenu(btn, function(_, root)
+                local E = MF:GetModule("Editor")
+                root:CreateButton(L["SIDEBAR_NEW_CHARACTER"], function() E:OpenNew(true) end)
+                root:CreateButton(L["SIDEBAR_NEW_ACCOUNT"], function() E:OpenNew(false) end)
+            end)
+        end },
+        { "IMPORT", function()
+            local S = MF:GetModule("Share")
+            if S then S:OpenImport() end
+        end },
+    },
+    sets = {
+        { "SIDEBAR_NEW_SET", function() UI:ShowDetail("sets", "all") end },
+        false,
+    },
+    trash = {
+        { "TRASH_EMPTY_BTN", function()
+            StaticPopup_Show("MACROFORGE_EMPTY_TRASH")
+        end },
+        false,
+    },
+}
+
+StaticPopupDialogs["MACROFORGE_EMPTY_TRASH"] = {
+    text = L["TRASH_EMPTY_CONFIRM"],
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function()
+        local H = MF:GetModule("History")
+        if H then H:EmptyTrash() end
+        UI:ShowEmpty()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+local EMPTY_TEXT = { macros = "NO_MACRO", sets = "SET_NONE", trash = "TRASH_EMPTY" }
+
+local function UpdateTabButtons()
+    local H = MF:GetModule("History")
+    local deleted = H and MF.db and #H:GetDeleted() or 0
+    local labels = {
+        macros = L["SIDEBAR_TAB_MACROS"],
+        sets = L["SETS"],
+        trash = deleted > 0 and format("%s (%d)", L["TRASH"], deleted) or L["TRASH"],
+    }
+    for i, tab in ipairs(tabButtons) do
+        tab:SetText(labels[TABS[i]])
+        PanelTemplates_TabResize(tab, 0)
+    end
+    for i, def in ipairs(TAB_BUTTONS[activeTab]) do
+        local btn = i == 1 and btnPrimary or btnSecondary
+        btn:SetShown(def and true or false)
+        if def then
+            btn:SetText(L[def[1]])
+            btn:SetScript("OnClick", def[2])
+        end
+    end
+end
+
+function UI:SetTab(tab)
+    activeTab = tab
+    if MF.db then MF.db.global.sidebarTab = tab end
+    for i, name in ipairs(TABS) do
+        if name == tab then PanelTemplates_SetTab(tabHost, i) end
+    end
+    self:Refresh()
+end
+
 local function CreateSidebar()
+    -- Tabs (Macros / Sets / Trash) above the list
+    tabHost = CreateFrame("Frame", nil, frame)
+    tabHost:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -24)
+    tabHost:SetSize(SIDEBAR_WIDTH, 30)
+    tabHost.Tabs, tabButtons = {}, {}
+    for i, name in ipairs(TABS) do
+        local tab = CreateFrame("Button", nil, tabHost, "PanelTopTabButtonTemplate")
+        tab:SetID(i)
+        if i == 1 then tab:SetPoint("TOPLEFT", tabHost, "TOPLEFT", 0, 0) end
+        tab:SetScript("OnClick", function()
+            PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+            UI:SetTab(name)
+        end)
+        tabHost.Tabs[i], tabButtons[i] = tab, tab
+    end
+    PanelTemplates_SetNumTabs(tabHost, #TABS)
+
     searchBox = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
     searchBox:SetHeight(20)
-    searchBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 68, -32)
-    searchBox:SetWidth(SIDEBAR_WIDTH - 60)
+    searchBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -60)
+    searchBox:SetWidth(SIDEBAR_WIDTH - 10)
     searchBox:HookScript("OnTextChanged", function(self)
         searchQuery = (self:GetText() or ""):match("^%s*(.-)%s*$")
         UI:Refresh()
@@ -491,7 +580,7 @@ local function CreateSidebar()
     end)
 
     local inset = CreateFrame("Frame", nil, frame, "InsetFrameTemplate")
-    inset:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -62)
+    inset:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -86)
     inset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 36)
     inset:SetWidth(SIDEBAR_WIDTH)
 
@@ -512,27 +601,25 @@ local function CreateSidebar()
     end)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
-    local btnNew = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    btnNew:SetSize(132, 22)
-    btnNew:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 9)
-    btnNew:SetText(L["CREATE"])
-    btnNew:SetScript("OnClick", function()
-        MenuUtil.CreateContextMenu(btnNew, function(_, root)
-            local E = MF:GetModule("Editor")
-            root:CreateButton(L["SIDEBAR_NEW_CHARACTER"], function() E:OpenNew(true) end)
-            root:CreateButton(L["SIDEBAR_NEW_ACCOUNT"], function() E:OpenNew(false) end)
-        end)
-    end)
+    -- Shown when the active tab has no row
+    listEmptyText = inset:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    listEmptyText:SetPoint("TOPLEFT", 16, -24)
+    listEmptyText:SetPoint("TOPRIGHT", -16, -24)
+    listEmptyText:SetJustifyH("CENTER")
 
-    local btnImport = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    btnImport:SetSize(132, 22)
-    btnImport:SetPoint("LEFT", btnNew, "RIGHT", 6, 0)
-    btnImport:SetText(L["IMPORT"])
-    btnImport:SetScript("OnClick", function()
-        local S = MF:GetModule("Share")
-        if S then S:OpenImport() end
-    end)
+    btnPrimary = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    btnPrimary:SetSize(132, 22)
+    btnPrimary:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 9)
 
+    btnSecondary = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    btnSecondary:SetSize(132, 22)
+    btnSecondary:SetPoint("LEFT", btnPrimary, "RIGHT", 6, 0)
+
+    local saved = MF.db and MF.db.global.sidebarTab
+    activeTab = PROVIDERS[saved] and saved or "macros"
+    for i, name in ipairs(TABS) do
+        if name == activeTab then PanelTemplates_SetTab(tabHost, i) end
+    end
     return inset
 end
 
@@ -575,7 +662,9 @@ function UI:CreateMainFrame()
         SaveGeometry()
     end)
     frame:SetTitle("|cff00ccffMacro|r|cffffd700Forge|r  " .. MF.C.grey .. "v" .. MF.VERSION .. "|r")
-    frame:SetPortraitToAsset("Interface\\Icons\\Trade_Engineering")
+    -- No portrait: the sidebar tabs take the top-left corner
+    frame:SetBorder("ButtonFrameTemplateNoPortrait")
+    if frame.SetPortraitShown then frame:SetPortraitShown(false) end
     tinsert(UISpecialFrames, FRAME_NAME)  -- ESC closes
 
     frame:SetScript("OnShow", function()
@@ -608,7 +697,7 @@ function UI:CreateMainFrame()
     CreateToolbar()
 
     editorPane = CreateFrame("Frame", nil, frame)
-    editorPane:SetPoint("TOPLEFT", inset, "TOPRIGHT", 10, 0)
+    editorPane:SetPoint("TOPLEFT", inset, "TOPRIGHT", 10, -4)
     editorPane:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, 10)
 
     emptyState = CreateFrame("Frame", nil, editorPane)
@@ -757,7 +846,10 @@ end
 
 function UI:Refresh()
     if not frame or not frame:IsShown() then return end
-    scrollBox:SetDataProvider(BuildDataProvider(), ScrollBoxConstants.RetainScrollPosition)
+    local dataProvider, any = BuildDataProvider()
+    scrollBox:SetDataProvider(dataProvider, ScrollBoxConstants.RetainScrollPosition)
+    listEmptyText:SetText(any and "" or L[EMPTY_TEXT[activeTab]])
+    UpdateTabButtons()
     if detail then RenderDetail() end
 end
 

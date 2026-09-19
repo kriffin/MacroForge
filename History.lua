@@ -230,6 +230,17 @@ function History:GetDeleted()
     return list
 end
 
+-- Forgets every deleted macro (their versions go too)
+function History:EmptyTrash()
+    for _, scope in ipairs(SCOPES) do
+        local store = self:Store(scope)
+        for key, entry in pairs(store) do
+            if entry.deleted then store[key] = nil end
+        end
+    end
+    MF:Log("INFO", "history", "trash emptied")
+end
+
 function History:Purge()
     MF.db.char.revisions = {}
     MF.db.global.revisions = {}
