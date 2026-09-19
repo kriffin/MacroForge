@@ -64,6 +64,23 @@ a popup with arbitrary content.
 - Comm: whisper only, size-capped, one popup at a time.
 - Share codes: size-capped before and after decompression.
 
+#### Class templates work in every client language
+
+Template bodies held French spell names (`/cast Mur protecteur`), and several
+were wrong even in French (`Gouger`, `Rebuffade`, `Tranche Menu`). WoW matches
+`/cast` by name in the client language, so they failed on an English client.
+
+Bodies now store spell IDs, resolved when a template is previewed, loaded or
+created:
+
+```
+Stored                                   English client          French client
+/cast [nomod] {spell:871:Shield Wall}    /cast [nomod] Shield Wall   /cast [nomod] Mur protecteur
+```
+
+The name after the ID is the fallback when the spell does not exist in the
+client. Generic placeholders (`SPELL`, `FLYING_MOUNT`…) are localized too.
+
 ---
 
 ### ✨ New

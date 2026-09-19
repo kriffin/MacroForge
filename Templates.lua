@@ -47,17 +47,17 @@ local UNIVERSAL = {
     {
         category = "universal", name = "Mouseover Heal/Cast",
         description = L["TPL_DESC_MOUSEOVER_HEAL_CAST"],
-        body = "#showtooltip\n/cast [@mouseover,help,nodead][] SORT",
+        body = "#showtooltip\n/cast [@mouseover,help,nodead][] {ph:SORT}",
     },
     {
         category = "universal", name = "Focus Interrupt",
         description = L["TPL_DESC_FOCUS_INTERRUPT"],
-        body = "#showtooltip\n/cast [@focus,harm,nodead][] SORT",
+        body = "#showtooltip\n/cast [@focus,harm,nodead][] {ph:SORT}",
     },
     {
         category = "universal", name = "Mouseover Harm",
         description = L["TPL_DESC_MOUSEOVER_HARM"],
-        body = "#showtooltip\n/cast [@mouseover,harm,nodead][] SORT",
+        body = "#showtooltip\n/cast [@mouseover,harm,nodead][] {ph:SORT}",
     },
     {
         category = "universal", name = "Trinket 1",
@@ -72,32 +72,32 @@ local UNIVERSAL = {
     {
         category = "universal", name = "Mount Smart",
         description = L["TPL_DESC_MOUNT_SMART"],
-        body = "#showtooltip\n/dismount [mounted]\n/cast [advflyable] MONTURE_VOL; MONTURE_SOL",
+        body = "#showtooltip\n/dismount [mounted]\n/cast [advflyable] {ph:MONTURE_VOL}; {ph:MONTURE_SOL}",
     },
     {
         category = "universal", name = "Cancelaura + Cast",
         description = L["TPL_DESC_CANCELAURA_CAST"],
-        body = "#showtooltip\n/cancelaura NOM_BUFF\n/cast SORT",
+        body = "#showtooltip\n/cancelaura {ph:NOM_BUFF}\n/cast {ph:SORT}",
     },
     {
         category = "universal", name = "Startattack + Cast",
         description = L["TPL_DESC_STARTATTACK_CAST"],
-        body = "#showtooltip\n/startattack\n/cast SORT",
+        body = "#showtooltip\n/startattack\n/cast {ph:SORT}",
     },
     {
         category = "universal", name = "Mod Shift/Ctrl/Alt",
         description = L["TPL_DESC_MOD_SHIFT_CTRL_ALT"],
-        body = "#showtooltip\n/cast [mod:shift] SORT_SHIFT; [mod:ctrl] SORT_CTRL; SORT_NORMAL",
+        body = "#showtooltip\n/cast [mod:shift] {ph:SORT_SHIFT}; [mod:ctrl] {ph:SORT_CTRL}; {ph:SORT_NORMAL}",
     },
     {
         category = "universal", name = "Cast Sequence",
         description = L["TPL_DESC_CAST_SEQUENCE"],
-        body = "#showtooltip\n/castsequence reset=target SORT1, SORT2, SORT3",
+        body = "#showtooltip\n/castsequence reset=target {ph:SORT1}, {ph:SORT2}, {ph:SORT3}",
     },
     {
         category = "universal", name = "Stopcasting + Cast",
         description = L["TPL_DESC_STOPCASTING_CAST"],
-        body = "#showtooltip\n/stopcasting\n/cast SORT",
+        body = "#showtooltip\n/stopcasting\n/cast {ph:SORT}",
     },
     {
         category = "utility", name = "Focus Set/Clear",
@@ -107,17 +107,17 @@ local UNIVERSAL = {
     {
         category = "pvp", name = "Arena Target 1",
         description = L["TPL_DESC_ARENA_TARGET_1"],
-        body = "#showtooltip\n/cast [@arena1] SORT",
+        body = "#showtooltip\n/cast [@arena1] {ph:SORT}",
     },
     {
         category = "pvp", name = "Arena Target 2",
         description = L["TPL_DESC_ARENA_TARGET_2"],
-        body = "#showtooltip\n/cast [@arena2] SORT",
+        body = "#showtooltip\n/cast [@arena2] {ph:SORT}",
     },
     {
         category = "pvp", name = "Arena Target 3",
         description = L["TPL_DESC_ARENA_TARGET_3"],
-        body = "#showtooltip\n/cast [@arena3] SORT",
+        body = "#showtooltip\n/cast [@arena3] {ph:SORT}",
     },
     {
         category = "pvp", name = "PvP Trinket",
@@ -127,22 +127,22 @@ local UNIVERSAL = {
     {
         category = "healer", name = "Mouseover Heal",
         description = L["TPL_DESC_MOUSEOVER_HEAL"],
-        body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] SORT_HEAL",
+        body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {ph:SORT_HEAL}",
     },
     {
         category = "healer", name = "Dispel Mouseover",
         description = L["TPL_DESC_DISPEL_MOUSEOVER"],
-        body = "#showtooltip\n/cast [@mouseover,help,nodead][] SORT_DISPEL",
+        body = "#showtooltip\n/cast [@mouseover,help,nodead][] {ph:SORT_DISPEL}",
     },
     {
         category = "tank", name = "Taunt Mouseover",
         description = L["TPL_DESC_TAUNT_MOUSEOVER"],
-        body = "#showtooltip\n/cast [@mouseover,harm,nodead][] SORT_TAUNT",
+        body = "#showtooltip\n/cast [@mouseover,harm,nodead][] {ph:SORT_TAUNT}",
     },
     {
         category = "tank", name = "Defensive + Mod",
         description = L["TPL_DESC_DEFENSIVE_MOD"],
-        body = "#showtooltip\n/cast [mod:shift] GROS_DEF; PETIT_DEF",
+        body = "#showtooltip\n/cast [mod:shift] {ph:GROS_DEF}; {ph:PETIT_DEF}",
     },
 }
 
@@ -154,95 +154,95 @@ local CLASS_TEMPLATES = {
         {
             category = "interrupt", name = "Kick Priority",
             description = L["TPL_DESC_ROGUE_KICK_PRIORITY"],
-            body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift,@mouseover,harm,nodead][mod:shift] Gouger\n/cast [mod:ctrl,@focus,harm,nodead][mod:ctrl] Coup au rein\n/cast [nomod,@focus,harm,nodead][nomod,@mouseover,harm,nodead][nomod] Coup de pied",
+            body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift,@mouseover,harm,nodead][mod:shift] {spell:1776:Gouge}\n/cast [mod:ctrl,@focus,harm,nodead][mod:ctrl] {spell:408:Kidney Shot}\n/cast [nomod,@focus,harm,nodead][nomod,@mouseover,harm,nodead][nomod] {spell:1766:Kick}",
         },
         {
             category = "offensive", name = "Opener Burst",
             description = L["TPL_DESC_ROGUE_OPENER_BURST"],
-            body = "#showtooltip Danse de l'ombre\n/startattack\n/use 13\n/cast Symboles de mort\n/cast Lames de l'ombre\n/cast Danse de l'ombre\n/cast Frappe-tenebres",
+            body = "#showtooltip {spell:185313:Shadow Dance}\n/startattack\n/use 13\n/cast {spell:212283:Symbols of Death}\n/cast {spell:121471:Shadow Blades}\n/cast {spell:185313:Shadow Dance}\n/cast {spell:185438:Shadowstrike}",
         },
         {
             category = "offensive", name = "Builder Smart",
             description = L["TPL_DESC_ROGUE_BUILDER_SMART"],
-            body = "#showtooltip\n/cast [stealth] Frappe-tenebres; Attaque sournoise",
+            body = "#showtooltip\n/cast [stealth] {spell:185438:Shadowstrike}; {spell:53:Backstab}",
         },
         {
             category = "offensive", name = "Finisher Multi",
             description = L["TPL_DESC_ROGUE_FINISHER_MULTI"],
-            body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift] Coup au rein\n/cast [mod:ctrl] Tranche Menu\n/cast [nomod] Evisceration",
+            body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift] {spell:408:Kidney Shot}\n/cast [mod:ctrl] {spell:315496:Slice and Dice}\n/cast [nomod] {spell:196819:Eviscerate}",
         },
         {
             category = "cc", name = "CC Smart",
             description = L["TPL_DESC_ROGUE_CC_SMART"],
-            body = "#showtooltip\n/cast [stealth] Coup bas; Cecite",
+            body = "#showtooltip\n/cast [stealth] {spell:1833:Cheap Shot}; {spell:2094:Blind}",
         },
         {
-            category = "defensive", name = "Defensifs",
+            category = "defensive", name = "Defensives",
             description = L["TPL_DESC_ROGUE_DEFENSIFS"],
-            body = "#showtooltip\n/cast [mod:shift] Cape de l'ombre\n/cast [mod:ctrl] Feinte\n/cast [nomod] Evasion",
+            body = "#showtooltip\n/cast [mod:shift] {spell:31224:Cloak of Shadows}\n/cast [mod:ctrl] {spell:1966:Feint}\n/cast [nomod] {spell:5277:Evasion}",
         },
         {
             category = "defensive", name = "Vanish",
             description = L["TPL_DESC_ROGUE_VANISH"],
-            body = "#showtooltip Disparition\n/stopattack\n/cast Disparition",
+            body = "#showtooltip {spell:1856:Vanish}\n/stopattack\n/cast {spell:1856:Vanish}",
         },
     },
     WARRIOR = {
         {
             category = "interrupt", name = "Pummel Priority",
             description = L["TPL_DESC_WARRIOR_PUMMEL_PRIORITY"],
-            body = "#showtooltip\n/cast [mod:shift] Cri d'intimidation\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Volée de coups",
+            body = "#showtooltip\n/cast [mod:shift] {spell:5246:Intimidating Shout}\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:6552:Pummel}",
         },
         {
             category = "offensive", name = "Charge + Attack",
             description = L["TPL_DESC_WARRIOR_CHARGE_ATTACK"],
-            body = "#showtooltip Charge\n/startattack\n/cast Charge",
+            body = "#showtooltip {spell:100:Charge}\n/startattack\n/cast {spell:100:Charge}",
         },
         {
             category = "defensive", name = "Def Multi",
             description = L["TPL_DESC_WARRIOR_DEF_MULTI"],
-            body = "#showtooltip\n/cast [mod:shift] Enrager\n/cast [mod:ctrl] Cri de ralliement\n/cast [nomod] Mur protecteur",
+            body = "#showtooltip\n/cast [mod:shift] {spell:184364:Enraged Regeneration}\n/cast [mod:ctrl] {spell:97462:Rallying Cry}\n/cast [nomod] {spell:871:Shield Wall}",
         },
     },
     PALADIN = {
         {
             category = "interrupt", name = "Rebuke Priority",
             description = L["TPL_DESC_PALADIN_REBUKE_PRIORITY"],
-            body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift] Marteau de la justice\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Rebuffade",
+            body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift] {spell:853:Hammer of Justice}\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:96231:Rebuke}",
         },
         {
             category = "healer", name = "Heal Smart",
             description = L["TPL_DESC_PALADIN_HEAL_SMART"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] Lumiere sacree",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:82326:Holy Light}",
         },
         {
             category = "defensive", name = "Bubble + Cancel",
             description = L["TPL_DESC_PALADIN_BUBBLE_CANCEL"],
-            body = "#showtooltip Bouclier divin\n/cast [nomod] Bouclier divin\n/cancelaura [mod:shift] Bouclier divin",
+            body = "#showtooltip {spell:642:Divine Shield}\n/cast [nomod] {spell:642:Divine Shield}\n/cancelaura [mod:shift] {spell:642:Divine Shield}",
         },
     },
     MAGE = {
         {
             category = "interrupt", name = "Counterspell Priority",
             description = L["TPL_DESC_MAGE_COUNTERSPELL_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Contresort",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:2139:Counterspell}",
         },
         {
             category = "cc", name = "Polymorph Focus",
             description = L["TPL_DESC_MAGE_POLYMORPH_FOCUS"],
-            body = "#showtooltip Metamorphose\n/cast [@focus,exists,nodead][mod:shift] Metamorphose",
+            body = "#showtooltip {spell:118:Polymorph}\n/cast [@focus,exists,nodead][mod:shift] {spell:118:Polymorph}",
         },
         {
             category = "defensive", name = "Ice Block Cancel",
             description = L["TPL_DESC_MAGE_ICE_BLOCK_CANCEL"],
-            body = "#showtooltip Bloc de glace\n/cast [nomod] Bloc de glace\n/cancelaura [mod:shift] Bloc de glace",
+            body = "#showtooltip {spell:45438:Ice Block}\n/cast [nomod] {spell:45438:Ice Block}\n/cancelaura [mod:shift] {spell:45438:Ice Block}",
         },
     },
     HUNTER = {
         {
             category = "interrupt", name = "Counter Shot Priority",
             description = L["TPL_DESC_HUNTER_COUNTER_SHOT_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Tir de desarcon",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:147362:Counter Shot}",
         },
         {
             category = "utility", name = "Pet Control",
@@ -252,113 +252,113 @@ local CLASS_TEMPLATES = {
         {
             category = "cc", name = "Trap Mouseover",
             description = L["TPL_DESC_HUNTER_TRAP_MOUSEOVER"],
-            body = "#showtooltip Piege givrant\n/cast [@cursor] Piege givrant",
+            body = "#showtooltip {spell:187650:Freezing Trap}\n/cast [@cursor] {spell:187650:Freezing Trap}",
         },
     },
     PRIEST = {
         {
             category = "healer", name = "Heal Mouseover",
             description = L["TPL_DESC_PRIEST_HEAL_MOUSEOVER"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] Soins rapides",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:2061:Flash Heal}",
         },
         {
             category = "healer", name = "Dispel Smart",
             description = L["TPL_DESC_PRIEST_DISPEL_SMART"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][] Purifier la maladie",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][] {spell:213634:Purify Disease}",
         },
         {
             category = "defensive", name = "Fade + Shield",
             description = L["TPL_DESC_PRIEST_FADE_SHIELD"],
-            body = "#showtooltip\n/cast [mod:shift,@player] Mot de pouvoir : Bouclier\n/cast [nomod] Oubli",
+            body = "#showtooltip\n/cast [mod:shift,@player] {spell:17:Power Word: Shield}\n/cast [nomod] {spell:586:Fade}",
         },
     },
     DRUID = {
         {
             category = "interrupt", name = "Skull Bash Priority",
             description = L["TPL_DESC_DRUID_SKULL_BASH_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Choc cerebral",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:106839:Skull Bash}",
         },
         {
             category = "healer", name = "Rejuv Mouseover",
             description = L["TPL_DESC_DRUID_REJUV_MOUSEOVER"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] Recuperation",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:774:Rejuvenation}",
         },
         {
             category = "utility", name = "Form Cancel + Cast",
             description = L["TPL_DESC_DRUID_FORM_CANCEL_CAST"],
-            body = "#showtooltip\n/cancelform [form:1/2/3/4]\n/cast SORT",
+            body = "#showtooltip\n/cancelform [form:1/2/3/4]\n/cast {ph:SORT}",
         },
     },
     DEATHKNIGHT = {
         {
             category = "interrupt", name = "Mind Freeze Priority",
             description = L["TPL_DESC_DEATHKNIGHT_MIND_FREEZE_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Gel de l'esprit",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:47528:Mind Freeze}",
         },
         {
             category = "offensive", name = "Death Grip + Attack",
             description = L["TPL_DESC_DEATHKNIGHT_DEATH_GRIP_ATTACK"],
-            body = "#showtooltip Poigne de la mort\n/startattack\n/cast Poigne de la mort",
+            body = "#showtooltip {spell:49576:Death Grip}\n/startattack\n/cast {spell:49576:Death Grip}",
         },
     },
     SHAMAN = {
         {
             category = "interrupt", name = "Wind Shear Priority",
             description = L["TPL_DESC_SHAMAN_WIND_SHEAR_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Cisaillement",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:57994:Wind Shear}",
         },
         {
             category = "healer", name = "Healing Surge MO",
             description = L["TPL_DESC_SHAMAN_HEALING_SURGE_MO"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] Vague de soins",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:8004:Healing Surge}",
         },
     },
     WARLOCK = {
         {
             category = "interrupt", name = "Spelllock Pet",
             description = L["TPL_DESC_WARLOCK_SPELLLOCK_PET"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][] Verrouillage de sort",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][] {spell:19647:Spell Lock}",
         },
         {
             category = "utility", name = "Pet Sacrifice",
             description = L["TPL_DESC_WARLOCK_PET_SACRIFICE"],
-            body = "#showtooltip\n/cast [mod:shift] Pacte demoniaque\n/cast [nomod] Sacrifice demoniaque",
+            body = "#showtooltip\n/cast [mod:shift] {spell:108416:Dark Pact}\n/cast [nomod] {spell:108503:Grimoire of Sacrifice}",
         },
     },
     MONK = {
         {
             category = "interrupt", name = "Spear Hand Priority",
             description = L["TPL_DESC_MONK_SPEAR_HAND_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Frappe de la paume",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:116705:Spear Hand Strike}",
         },
         {
             category = "healer", name = "Vivify MO",
             description = L["TPL_DESC_MONK_VIVIFY_MO"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] Vivifier",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:116670:Vivify}",
         },
     },
     DEMONHUNTER = {
         {
             category = "interrupt", name = "Disrupt Priority",
             description = L["TPL_DESC_DEMONHUNTER_DISRUPT_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Perturbation",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:183752:Disrupt}",
         },
         {
             category = "offensive", name = "Fel Rush + Attack",
             description = L["TPL_DESC_DEMONHUNTER_FEL_RUSH_ATTACK"],
-            body = "#showtooltip Ruee de Gangrefeu\n/startattack\n/cast Ruee de Gangrefeu",
+            body = "#showtooltip {spell:195072:Fel Rush}\n/startattack\n/cast {spell:195072:Fel Rush}",
         },
     },
     EVOKER = {
         {
             category = "interrupt", name = "Quell Priority",
             description = L["TPL_DESC_EVOKER_QUELL_PRIORITY"],
-            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] Apaisement",
+            body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:351338:Quell}",
         },
         {
             category = "healer", name = "Dream Breath MO",
             description = L["TPL_DESC_EVOKER_DREAM_BREATH_MO"],
-            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] Souffle onirique",
+            body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:355936:Dream Breath}",
         },
     },
 }
@@ -405,6 +405,28 @@ function MF.Templates:GetTemplatesForPlayer(categoryFilter)
         end
     end
     return result
+end
+
+---------------------------------------------------
+-- Body resolution
+-- Template bodies never hold localized spell names: WoW matches /cast by
+-- name in the client's language. Markers are resolved when a template is
+-- previewed, loaded or created:
+--   {spell:ID:Name}  spell name in the client language (Name if the spell
+--                    does not exist in this client, e.g. another flavor)
+--   {ph:KEY}         placeholder to replace by hand (L["TPL_PH_KEY"])
+---------------------------------------------------
+local GetSpellName = C_Spell and C_Spell.GetSpellName
+    or function(id) return (GetSpellInfo(id)) end
+
+function MF.Templates:ResolveBody(body)
+    if not body then return "" end
+    body = body:gsub("{spell:(%d+):([^}]*)}", function(id, fallback)
+        return GetSpellName(tonumber(id)) or fallback
+    end)
+    return (body:gsub("{ph:([%w_]+)}", function(key)
+        return L["TPL_PH_" .. key]
+    end))
 end
 
 ---------------------------------------------------
@@ -513,7 +535,7 @@ function MF.Templates:OpenBrowser()
 
                 -- Colorized preview of body
                 if An and tmpl.body then
-                    local colored = An:ColorizeBody(tmpl.body)
+                    local colored = An:ColorizeBody(MF.Templates:ResolveBody(tmpl.body))
                     local pvLbl = AceGUI:Create("Label")
                     pvLbl:SetFullWidth(true)
                     pvLbl:SetFontObject(GameFontNormalSmall)
@@ -534,7 +556,7 @@ function MF.Templates:OpenBrowser()
                     if E then
                         E:OpenNew(true)
                         C_Timer.After(0.1, function()
-                            E:LoadContent(tmpl.name or "", tmpl.body or "", 134400)
+                            E:LoadContent(tmpl.name or "", MF.Templates:ResolveBody(tmpl.body), 134400)
                         end)
                     end
                     if browserFrame then browserFrame:Release(); browserFrame = nil end
@@ -547,7 +569,7 @@ function MF.Templates:OpenBrowser()
                 btnCreate:SetCallback("OnClick", function()
                     local P = MF:GetModule("Profiles")
                     if P then
-                        P:CreateNewMacro(tmpl.name or "Template", 134400, tmpl.body or "", true)
+                        P:CreateNewMacro(tmpl.name or "Template", 134400, MF.Templates:ResolveBody(tmpl.body), true)
                         local UI = MF:GetModule("UI")
                         if UI then C_Timer.After(0.3, function() UI:Refresh() end) end
                     end
