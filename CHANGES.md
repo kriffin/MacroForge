@@ -93,6 +93,39 @@ client. Generic placeholders (`SPELL`, `FLYING_MOUNT`…) are localized too.
 
 ### ✨ New
 
+#### One window, Blizzard style
+
+The list and the editor were two AceGUI windows replacing each other. They are
+now one movable, resizable window built on Blizzard templates (ESC closes it,
+position and size are remembered).
+
+```
+┌─ MacroForge ───────────────────────────────────── [Templates][Settings] X ┐
+│ 🔍 search            │ ● Character  Kick  #121                             │
+│ ▾ Character   6/30   │ [📖][📝][⚙][✂] [📜][✉][✉] [⌚][👣]  Snippets ▾  13px │
+│   Kick          82%  │ ┌ code ─────────────────┐  Analysis                  │
+│   Backstab           │ │1 #showtooltip         │  ⚠ ...                     │
+│ ▾ Account    21/120  │ │2 /cast [@focus] Kick  │  Detected spells [i][i]    │
+│ ▾ Sets               │ └───────────────────────┘                            │
+│   Raid     [active]  │ [Save] [Cancel]  Ctrl+S save, Ctrl+Z undo            │
+│ ▸ Trash           3  │                                                     │
+│ [Create] [Import]    │                                                   ◢ │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+- Sidebar: search (name + body), Character / Account groups with n/max,
+  rows with icon, condensed body and quality badge; click edits, drag puts
+  on a bar, right-click menu (duplicate, share, move, history, delete).
+  Sets and Trash are groups too: click shows the detail, double-click
+  applies a set.
+- Unsaved changes are marked (header + row) and switching away asks
+  Save / Keep editing / Discard.
+- Editor: icon toolbar with tooltips, code and analysis side by side.
+- Keyboard: Ctrl+S / Ctrl+Z / Ctrl+Y / Ctrl+F / Ctrl+N, Up / Down to walk
+  the list, Delete, Enter to edit the code.
+- Move a macro between Character and Account (menu, or drop it on the other
+  group's header); its revisions follow.
+
 #### Revisions and trash
 
 Every version of every macro is kept, **including edits made in Blizzard's
