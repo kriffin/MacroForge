@@ -303,31 +303,41 @@ end
 ---------------------------------------------------
 -- AceComm handler (receive macros from other players)
 ---------------------------------------------------
+-- A serialized macro is well under 1 KB; bigger messages are dropped unread
+local MAX_COMM_LENGTH = 2048
+
+StaticPopupDialogs["MACROFORGE_RECV"] = {
+    text = L["RECV_DIALOG"],
+    button1 = L["RECV_ACCEPT"],
+    button2 = L["RECV_DECLINE"],
+    OnAccept = function(_, data)
+        local E = MF:GetModule("Editor")
+        if E then
+            E:OpenNew(true)
+            C_Timer.After(0.1, function()
+                E:LoadContent(data.macro.name, data.macro.body, data.macro.icon)
+            end)
+        end
+        MF:Print(MF.C.green .. format(L["RECV_MACRO"], data.sender, data.macro.name) .. "|r")
+    end,
+    timeout = 60,
+    whileDead = true,
+    hideOnEscape = true,
+}
+
 function MF:OnCommReceived(prefix, message, distribution, sender)
     if prefix ~= "MacroForge" then return end
     if sender == UnitName("player") then return end
+    if distribution ~= "WHISPER" then return end
+    if type(message) ~= "string" or #message > MAX_COMM_LENGTH then return end
+    -- One offer at a time: a sender cannot stack or swap popups
+    if StaticPopup_Visible("MACROFORGE_RECV") then return end
 
     local success, data = self:Deserialize(message)
-    if not success or not data or not data.name then return end
+    if not success then return end
+    local macro = MF.Helpers:SanitizeMacro(data)
+    if not macro then return end
 
-    -- Show dialog to accept
-    StaticPopupDialogs["MACROFORGE_RECV"] = {
-        text = format(L["RECV_DIALOG"], sender, data.name),
-        button1 = L["RECV_ACCEPT"],
-        button2 = L["RECV_DECLINE"],
-        OnAccept = function()
-            local E = self:GetModule("Editor")
-            if E then
-                E:OpenNew(true)
-                C_Timer.After(0.1, function()
-                    E:LoadContent(data.name, data.body, data.icon)
-                end)
-            end
-            self:Print(MF.C.green .. format(L["RECV_MACRO"], sender, data.name) .. "|r")
-        end,
-        timeout = 60,
-        whileDead = true,
-        hideOnEscape = true,
-    }
-    StaticPopup_Show("MACROFORGE_RECV")
+    local who = (sender or "?"):gsub("|", "||")
+    StaticPopup_Show("MACROFORGE_RECV", who, macro.name, { sender = who, macro = macro })
 end

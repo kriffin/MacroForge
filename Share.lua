@@ -26,8 +26,19 @@ function Share:Encode(name, icon, body)
     return PREFIX .. encoded
 end
 
+-- Share codes are short: anything bigger is junk or a decompression bomb
+local MAX_CODE_LENGTH = 4096
+
 function Share:Decode(encoded)
-    if not encoded then return nil, L["SHARE_INVALID"] end
+    if type(encoded) ~= "string" then return nil, L["SHARE_INVALID"] end
+    encoded = encoded:match("^%s*(.-)%s*$")
+    if #encoded > MAX_CODE_LENGTH then return nil, L["SHARE_INVALID"] end
+    local macro, err = self:DecodeRaw(encoded)
+    if not macro then return nil, err end
+    return MF.Helpers:SanitizeMacro(macro)
+end
+
+function Share:DecodeRaw(encoded)
 
     -- Try new MF7: format first
     if encoded:sub(1, 4) == "MF7:" then
@@ -35,14 +46,10 @@ function Share:Decode(encoded)
         local decoded = LibDeflate:DecodeForPrint(raw)
         if not decoded then return nil, L["SHARE_DECODE_FAIL"] end
         local decompressed = LibDeflate:DecompressDeflate(decoded)
-        if not decompressed then return nil, L["SHARE_DECODE_FAIL"] end
+        if not decompressed or #decompressed > MAX_CODE_LENGTH then return nil, L["SHARE_DECODE_FAIL"] end
         local success, data = MF:Deserialize(decompressed)
         if not success or not data then return nil, L["SHARE_BAD_STRUCT"] end
-        return {
-            name = data.name or "",
-            icon = tonumber(data.icon) or 134400,
-            body = data.body or "",
-        }
+        return data
     end
 
     -- Legacy support for MF5:/MF6: (old Base64 format)

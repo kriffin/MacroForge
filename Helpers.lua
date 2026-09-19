@@ -4,6 +4,7 @@
 ---------------------------------------------------
 local _, MF_NS = ...
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
+local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 MF.Helpers = {}
 
 -- Severity markers (WoW-compatible, no unicode)
@@ -83,6 +84,50 @@ function MF.Helpers:FormatModBadges(modifiers)
         if c then table.insert(b, c .. "[" .. m:upper() .. "]|r") end
     end
     return table.concat(b, " ")
+end
+
+---------------------------------------------------
+-- Macro validation for data coming from outside (AceComm, share codes)
+---------------------------------------------------
+MF.Helpers.MAX_NAME_CHARS = 16
+MF.Helpers.MAX_BODY_CHARS = 255
+
+local function Utf8Len(s)
+    local _, n = s:gsub("[^\128-\191]", "")
+    return n
+end
+
+-- First maxChars UTF-8 characters of s, never cutting a multibyte sequence
+local function Utf8Truncate(s, maxChars)
+    local count, cut = 0, #s
+    for pos in s:gmatch("()[^\128-\191]") do
+        count = count + 1
+        if count > maxChars then cut = pos - 1; break end
+    end
+    return s:sub(1, cut)
+end
+
+-- Returns a clean {name, icon, body} copy, or nil + localized error.
+-- The name loses control chars and "|" (no escape sequences in popups or
+-- chat), the body is rejected past the macro limit instead of silently cut.
+function MF.Helpers:SanitizeMacro(data)
+    if type(data) ~= "table" or type(data.name) ~= "string" or type(data.body) ~= "string" then
+        return nil, L["SHARE_BAD_STRUCT"]
+    end
+    local name = data.name:gsub("[%c|]", ""):match("^%s*(.-)%s*$")
+    if name == "" then return nil, L["SHARE_BAD_STRUCT"] end
+    name = Utf8Truncate(name, self.MAX_NAME_CHARS)
+
+    local body = data.body:gsub("\r\n?", "\n"):gsub("[%z\1-\9\11-\31]", "")
+    if Utf8Len(body) > self.MAX_BODY_CHARS then
+        return nil, format(L["SHARE_TOO_LONG"], Utf8Len(body), self.MAX_BODY_CHARS)
+    end
+
+    local icon = tonumber(data.icon)
+    if not icon and type(data.icon) == "string" and #data.icon <= 256 and not data.icon:find("|", 1, true) then
+        icon = data.icon
+    end
+    return { name = name, icon = icon or 134400, body = body }
 end
 
 ---------------------------------------------------

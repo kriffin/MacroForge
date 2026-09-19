@@ -113,6 +113,7 @@ L["SHARE_IMPORTED"] = "Macro importee: %s"
 L["SHARE_INVALID"] = "Format invalide"
 L["SHARE_NOT_MF"] = "Format invalide (pas un code MacroForge)"
 L["SHARE_DECODE_FAIL"] = "Decodage echoue"
+L["SHARE_TOO_LONG"] = "Macro trop longue (%d/%d caracteres)"
 L["SHARE_BAD_STRUCT"] = "Structure invalide"
 L["SHARE_PREVIEW"] = "(collez un code ci-dessus)"
 
