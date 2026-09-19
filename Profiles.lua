@@ -587,6 +587,41 @@ function MF.Profiles:CreateNewMacro(name, icon, body, perCharacter)
     return macroId
 end
 
+-- Moves a macro to the other scope (character <-> account): create a copy
+-- there, then delete the original. Slots are separate ranges (account
+-- 1..MAX_ACCOUNT, character after), so creating in one scope never shifts
+-- the other. Action bar buttons pointing to the original are emptied.
+function MF.Profiles:MoveMacro(macro, toScope)
+    if not macro or not macro.index or macro.scope == toScope then return nil end
+    if InCombatLockdown() then
+        MF:Print(MF.C.red .. L["COMBAT_BLOCKED"] .. "|r")
+        return nil
+    end
+    local numAccount, numCharacter = GetNumMacros()
+    local toChar = toScope == "character"
+    if toChar and numCharacter >= MAX_CHARACTER_MACROS then
+        MF:Print(MF.C.red .. format(L["MACRO_LIMIT_CHAR"], numCharacter) .. "|r")
+        return nil
+    elseif not toChar and numAccount >= MAX_ACCOUNT_MACROS then
+        MF:Print(MF.C.red .. format(L["MACRO_LIMIT_ACCOUNT"], numAccount) .. "|r")
+        return nil
+    end
+    local name, _, body = GetMacroInfo(macro.index)
+    if name ~= macro.name or body ~= macro.body then return nil end  -- stale row
+
+    -- Carry the revisions over to the new scope
+    local H = MF:GetModule("History")
+    if H and H.MoveEntry then H:MoveEntry(macro, toScope) end
+
+    local newIndex = CreateMacro(macro.name, macro.icon or 134400, macro.body or "", toChar)
+    if not newIndex then return nil end
+    DeleteMacro(macro.index)
+    MF:Log("INFO", "move", "%s: %s -> %s", macro.name, macro.scope, toScope)
+    MF:Print(MF.C.green .. format(L["MACRO_MOVED"], MF.C.cyan .. macro.name .. "|r",
+        toChar and L["SIDEBAR_CHARACTER"] or L["SIDEBAR_ACCOUNT"]) .. "|r")
+    return newIndex
+end
+
 function MF.Profiles:DeleteMacroByIndex(macroIndex)
     -- Not queued: two queued deletes would shift each other's index
     if InCombatLockdown() then

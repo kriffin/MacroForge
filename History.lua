@@ -202,6 +202,16 @@ function History:KeyFor(macro)
     return macro.name
 end
 
+-- A macro moving to the other scope keeps its versions
+function History:MoveEntry(macro, toScope)
+    if not MF.db then return end
+    local key = self:KeyFor(macro)
+    local from, to = self:Store(macro.scope), self:Store(toScope)
+    if key and from[key] and not to[macro.name] then
+        to[macro.name], from[key] = from[key], nil
+    end
+end
+
 function History:GetVersions(scope, key)
     local entry = MF.db and self:Store(scope)[key]
     return entry and entry.versions or {}

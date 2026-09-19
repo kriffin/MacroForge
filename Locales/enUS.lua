@@ -685,3 +685,9 @@ L["TOOL_IMPORT_DESC"] = "Paste macro text into the editor."
 L["TOOL_EXPORT_DESC"] = "Get a share code for another player."
 L["TOOL_DRAG_DESC"] = "Put the macro on the cursor, then click an action bar slot."
 L["EDITOR_SHORTCUTS_HINT"] = "Ctrl+S save, Ctrl+Z undo"
+
+-- Move between scopes
+L["MOVE_TO_ACCOUNT"] = "Move to Account"
+L["MOVE_TO_CHARACTER"] = "Move to Character"
+L["MOVE_CONFIRM"] = "Move |cffffff00%s|r to %s?\nAction bar buttons using it will be emptied."
+L["MACRO_MOVED"] = "%s moved to %s."

@@ -56,6 +56,11 @@ local function ShowContextMenu(macro)
             end
         end)
 
+        local other = macro.scope == "character" and "account" or "character"
+        rootDescription:CreateButton(other == "account" and L["MOVE_TO_ACCOUNT"] or L["MOVE_TO_CHARACTER"], function()
+            UI:ConfirmMove(macro, other)
+        end)
+
         rootDescription:CreateButton("|cffff9933" .. L["DRAG_ACTIONBAR"] .. "|r", function()
             MF.Helpers:PickupMacro(macro.index)
         end)
@@ -88,6 +93,46 @@ StaticPopupDialogs["MACROFORGE_DELETE_CONFIRM"] = {
     hideOnEscape = true,
     preferredIndex = 3,
 }
+
+StaticPopupDialogs["MACROFORGE_MOVE_CONFIRM"] = {
+    text = L["MOVE_CONFIRM"],
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function(_, data)
+        local P, E = MF:GetModule("Profiles"), MF:GetModule("Editor")
+        local wasOpen = E and E:IsEditing(data.macro)
+        if P:MoveMacro(data.macro, data.toScope) and wasOpen then
+            -- Follow the macro to its new slot
+            C_Timer.After(0.3, function()
+                for _, m in ipairs(P:ReadMacros(data.toScope)) do
+                    if m.name == data.macro.name and m.body == data.macro.body then return E:Open(m, true) end
+                end
+            end)
+        end
+        C_Timer.After(0.2, function() UI:Refresh() end)
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+function UI:ConfirmMove(macro, toScope)
+    StaticPopup_Show("MACROFORGE_MOVE_CONFIRM", macro.name or "?",
+        toScope == "character" and L["SIDEBAR_CHARACTER"] or L["SIDEBAR_ACCOUNT"],
+        { macro = macro, toScope = toScope })
+end
+
+-- Macro currently on the cursor (dragged from the list or Blizzard's frame)
+local function CursorMacro()
+    local cursorType, index = GetCursorInfo()
+    if cursorType ~= "macro" or not index then return nil end
+    local P = MF:GetModule("Profiles")
+    local scope = index > P.MAX_ACCOUNT_MACROS and "character" or "account"
+    for _, m in ipairs(P:ReadMacros(scope)) do
+        if m.index == index then return m end
+    end
+end
 
 function UI:ConfirmDelete(macro)
     StaticPopup_Show("MACROFORGE_DELETE_CONFIRM", macro.name or "?", nil, macro)
@@ -216,7 +261,18 @@ local function InitHeader(btn, node)
     local full = data.count >= data.max
     btn.mfBadge:SetText((full and MF.C.red or MF.C.grey) .. data.count .. "/" .. data.max .. "|r")
 
+    -- Dropping a macro from the other group on this header moves it here
+    local function DropMacro()
+        local m = CursorMacro()
+        if m and m.scope ~= data.header then
+            ClearCursor()
+            UI:ConfirmMove(m, data.header)
+            return true
+        end
+    end
+    btn:SetScript("OnReceiveDrag", DropMacro)
     btn:SetScript("OnClick", function()
+        if DropMacro() then return end
         node:ToggleCollapsed()
         if searchQuery == "" then collapsed[data.header] = node:IsCollapsed() end
         btn.mfArrow:SetTexture(node:IsCollapsed()

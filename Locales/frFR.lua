@@ -685,3 +685,9 @@ L["TOOL_IMPORT_DESC"] = "Coller un texte de macro dans l'editeur."
 L["TOOL_EXPORT_DESC"] = "Obtenir un code de partage pour un autre joueur."
 L["TOOL_DRAG_DESC"] = "Mettre la macro sur le curseur, puis cliquer un emplacement de barre."
 L["EDITOR_SHORTCUTS_HINT"] = "Ctrl+S enregistrer, Ctrl+Z annuler"
+
+-- Move between scopes
+L["MOVE_TO_ACCOUNT"] = "Deplacer vers Compte"
+L["MOVE_TO_CHARACTER"] = "Deplacer vers Personnage"
+L["MOVE_CONFIRM"] = "Deplacer |cffffff00%s|r vers %s ?\nLes boutons de barre qui l'utilisent seront vides."
+L["MACRO_MOVED"] = "%s deplacee vers %s."
