@@ -24,6 +24,7 @@ local SCOPES = { "character", "account" }
 
 local frame, scrollBox, searchBox, editorPane, emptyState
 local searchQuery = ""
+local visibleMacros = {}  -- list order of the macros currently shown (keyboard navigation)
 local collapsed = {}
 
 ---------------------------------------------------
@@ -65,26 +66,31 @@ local function ShowContextMenu(macro)
         end
 
         rootDescription:CreateButton("|cffff4444" .. L["DELETE"] .. "|r", function()
-            StaticPopupDialogs["MACROFORGE_DELETE_CONFIRM"] = {
-                text = format(L["DELETE_CONFIRM"], macro.name or "?"),
-                button1 = L["DELETE_YES"],
-                button2 = L["DELETE_NO"],
-                OnAccept = function()
-                    local P = MF:GetModule("Profiles")
-                    if P and P:DeleteMacroByIndex(macro.index) then
-                        local E = MF:GetModule("Editor")
-                        if E and E.cur and E.cur.index == macro.index then UI:ShowEmpty() end
-                    end
-                    C_Timer.After(0.2, function() UI:Refresh() end)
-                end,
-                timeout = 0,
-                whileDead = true,
-                hideOnEscape = true,
-                preferredIndex = 3,
-            }
-            StaticPopup_Show("MACROFORGE_DELETE_CONFIRM")
+            UI:ConfirmDelete(macro)
         end)
     end)
+end
+
+StaticPopupDialogs["MACROFORGE_DELETE_CONFIRM"] = {
+    text = L["DELETE_CONFIRM"],
+    button1 = L["DELETE_YES"],
+    button2 = L["DELETE_NO"],
+    OnAccept = function(_, macro)
+        local P = MF:GetModule("Profiles")
+        if P and P:DeleteMacroByIndex(macro.index) then
+            local E = MF:GetModule("Editor")
+            if E and E:IsEditing(macro) then UI:ShowEmpty() end
+        end
+        C_Timer.After(0.2, function() UI:Refresh() end)
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+function UI:ConfirmDelete(macro)
+    StaticPopup_Show("MACROFORGE_DELETE_CONFIRM", macro.name or "?", nil, macro)
 end
 
 ---------------------------------------------------
@@ -113,6 +119,7 @@ local function BuildDataProvider()
     }
 
     local dataProvider = CreateTreeDataProvider()
+    wipe(visibleMacros)
     for _, scope in ipairs(SCOPES) do
         local header = dataProvider:Insert({
             header = scope, count = limits[scope].count, max = limits[scope].max,
@@ -127,7 +134,13 @@ local function BuildDataProvider()
         end
         header:GetData().shown = shown
         -- A search always expands the groups so matches are visible
-        header:SetCollapsed(searchQuery == "" and collapsed[scope] or false, false, true)
+        local isCollapsed = searchQuery == "" and collapsed[scope] or false
+        header:SetCollapsed(isCollapsed, false, true)
+        if not isCollapsed then
+            for _, child in ipairs(header:GetNodes()) do
+                table.insert(visibleMacros, child:GetData().macro)
+            end
+        end
     end
     return dataProvider
 end
@@ -297,6 +310,18 @@ local function CreateSidebar()
         searchQuery = (self:GetText() or ""):match("^%s*(.-)%s*$")
         UI:Refresh()
     end)
+    searchBox:HookScript("OnKeyDown", function(self, key)
+        if IsControlKeyDown() then UI:HandleKey(key) end
+    end)
+    -- Up/Down from the search box walk the results, Enter opens the first one
+    searchBox:HookScript("OnArrowPressed", function(self, key)
+        if key == "UP" then UI:SelectRelative(-1) elseif key == "DOWN" then UI:SelectRelative(1) end
+    end)
+    searchBox:HookScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        local E = MF:GetModule("Editor")
+        if visibleMacros[1] and E and not E.cur then E:Open(visibleMacros[1]) end
+    end)
 
     local inset = CreateFrame("Frame", nil, frame, "InsetFrameTemplate")
     inset:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -62)
@@ -400,6 +425,15 @@ function UI:CreateMainFrame()
 
     RestoreGeometry()
 
+    -- Keys reach this frame when no text field has the focus; the editor's
+    -- and the search box's fields forward their Ctrl shortcuts to HandleKey.
+    -- SetPropagateKeyboardInput is blocked in combat: keys then just propagate.
+    frame:EnableKeyboard(true)
+    frame:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then return end
+        self:SetPropagateKeyboardInput(not UI:HandleKey(key))
+    end)
+
     local resize = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")
     resize:SetPoint("BOTTOMRIGHT", -2, 2)
     resize:Init(frame, MIN_WIDTH, MIN_HEIGHT)
@@ -424,6 +458,48 @@ function UI:CreateMainFrame()
     emptyText:SetPoint("TOP", emptyIcon, "BOTTOM", 0, -14)
     emptyText:SetWidth(360)
     emptyText:SetText(L["EDITOR_EMPTY_STATE"])
+end
+
+---------------------------------------------------
+-- Keyboard
+--   Ctrl+S save   Ctrl+Z / Ctrl+Y undo / redo   Ctrl+F search   Ctrl+N new
+--   Up / Down previous / next macro   Delete delete (confirm)   Enter edit the code
+-- The list keys only act when no text field has the focus.
+---------------------------------------------------
+function UI:SelectRelative(delta)
+    if #visibleMacros == 0 then return end
+    local E = MF:GetModule("Editor")
+    local pos
+    for i, m in ipairs(visibleMacros) do
+        if E and E:IsEditing(m) then pos = i; break end
+    end
+    local target = visibleMacros[pos and math.max(1, math.min(#visibleMacros, pos + delta)) or 1]
+    if not target or (E and E:IsEditing(target)) then return end
+    E:Open(target)
+    scrollBox:ScrollToElementDataByPredicate(function(node)
+        local m = node:GetData().macro
+        return m and m.index == target.index and m.scope == target.scope
+    end, ScrollBoxConstants.AlignNearest)
+end
+
+function UI:HandleKey(key)
+    local E = MF:GetModule("Editor")
+    if IsControlKeyDown() then
+        if key == "S" then E:Save()
+        elseif key == "Z" then E:Undo()
+        elseif key == "Y" then E:Redo()
+        elseif key == "F" then searchBox:SetFocus(); searchBox:HighlightText()
+        elseif key == "N" then E:OpenNew(true)
+        else return false end
+        return true
+    end
+    if GetCurrentKeyBoardFocus() then return false end
+    if key == "UP" then self:SelectRelative(-1)
+    elseif key == "DOWN" then self:SelectRelative(1)
+    elseif key == "DELETE" and E.cur then self:ConfirmDelete(E.cur)
+    elseif key == "ENTER" and E.FocusBody then E:FocusBody()
+    else return false end
+    return true
 end
 
 ---------------------------------------------------

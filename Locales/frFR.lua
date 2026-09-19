@@ -280,7 +280,7 @@ L["DUPLICATE_DETECTOR_BTN"] = "Detecter doublons"
 L["DUPLICATE_DETECTOR_DESC"] = "Scanner toutes vos macros pour trouver les duplicatas"
 
 -- Delete confirmation
-L["DELETE_CONFIRM"] = "|cff00ccffMacroForge|r\n\nSupprimer la macro |cffffff00%s|r ?\nCette action est irreversible."
+L["DELETE_CONFIRM"] = "|cff00ccffMacroForge|r\n\nSupprimer la macro |cffffff00%s|r ?\nElle reste recuperable depuis la Corbeille."
 L["DELETE_YES"] = "Supprimer"
 L["DELETE_NO"] = "Annuler"
 L["RESET"] = "Reinitialiser"

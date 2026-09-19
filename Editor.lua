@@ -455,41 +455,16 @@ local function CreateEditor()
     f:AddChild(mainCol)
 
     ---------------------------------------------------
-    -- Keyboard shortcuts (Ctrl+S, Ctrl+Z, Ctrl+Y)
+    -- Ctrl shortcuts while typing: the fields forward them to the main
+    -- window's key handler (UI:HandleKey), which owns every shortcut.
     ---------------------------------------------------
-    f.frame:EnableKeyboard(true)
-    f.frame:SetPropagateKeyboardInput(true)
-    f.frame:SetScript("OnKeyDown", function(self, key)
-        -- SetPropagateKeyboardInput is blocked in combat: keys keep propagating
-        if InCombatLockdown() then return end
-        -- Check if an EditBox has focus — if so, don't propagate to the game
-        local nameEB = nameWidget and (nameWidget.editBox or nameWidget.editbox)
-        local bodyEB = bodyWidget and (bodyWidget.editBox or bodyWidget.editbox)
-        local hasFocus = (nameEB and nameEB:HasFocus()) or (bodyEB and bodyEB:HasFocus())
-
-        if IsControlKeyDown() then
-            if key == "S" then
-                self:SetPropagateKeyboardInput(false)
-                Editor:Save()
-                return
-            elseif key == "Z" then
-                self:SetPropagateKeyboardInput(false)
-                Editor:Undo()
-                return
-            elseif key == "Y" then
-                self:SetPropagateKeyboardInput(false)
-                Editor:Redo()
-                return
-            end
-        end
-
-        -- If an EditBox has focus, swallow ALL keys so they don't leak to the game
-        if hasFocus then
-            self:SetPropagateKeyboardInput(false)
-        else
-            self:SetPropagateKeyboardInput(true)
-        end
-    end)
+    local function ForwardCtrl(_, key)
+        if IsControlKeyDown() then MF:GetModule("UI"):HandleKey(key) end
+    end
+    local nameEB = nameWidget.editBox or nameWidget.editbox
+    if nameEB then nameEB:HookScript("OnKeyDown", ForwardCtrl) end
+    local bodyEB = bodyWidget.editBox or bodyWidget.editbox
+    if bodyEB then bodyEB:HookScript("OnKeyDown", ForwardCtrl) end
 
     editorFrame:Hide()
 end
@@ -1116,6 +1091,11 @@ function Editor:Revert()
         if m.index == self.cur.index then return self:Open(m, true) end
     end
     self:Clear()
+end
+
+function Editor:FocusBody()
+    local eb = bodyWidget and (bodyWidget.editBox or bodyWidget.editbox)
+    if eb and editorFrame and editorFrame:IsShown() then eb:SetFocus() end
 end
 
 function Editor:Clear()

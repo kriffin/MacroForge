@@ -280,7 +280,7 @@ L["DUPLICATE_DETECTOR_BTN"] = "Detect duplicates"
 L["DUPLICATE_DETECTOR_DESC"] = "Scan all your macros for duplicates"
 
 -- Delete confirmation
-L["DELETE_CONFIRM"] = "|cff00ccffMacroForge|r\n\nDelete macro |cffffff00%s|r?\nThis cannot be undone."
+L["DELETE_CONFIRM"] = "|cff00ccffMacroForge|r\n\nDelete macro |cffffff00%s|r?\nYou can recreate it from the Trash."
 L["DELETE_YES"] = "Delete"
 L["DELETE_NO"] = "Cancel"
 L["RESET"] = "Reset"
