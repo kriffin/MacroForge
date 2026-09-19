@@ -131,6 +131,21 @@ function MF.Helpers:SanitizeMacro(data)
 end
 
 ---------------------------------------------------
+-- Put a macro on the cursor (drop it on an action bar)
+---------------------------------------------------
+function MF.Helpers:PickupMacro(index)
+    if not index then return false end
+    if InCombatLockdown() then
+        MF:Print(MF.C.red .. L["COMBAT_BLOCKED"] .. "|r")
+        return false
+    end
+    PickupMacro(index)
+    local cursorType, cursorValue = GetCursorInfo()
+    MF:Debug("drag", "pickup macro #%d -> cursor %s %s", index, tostring(cursorType), tostring(cursorValue))
+    return cursorType == "macro"
+end
+
+---------------------------------------------------
 -- AceGUI lazy accessor (replaces redundant G() across files)
 ---------------------------------------------------
 local _AceGUI

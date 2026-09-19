@@ -396,8 +396,8 @@ local function CreateEditor()
     btnDrag:SetText(L["DRAG_TO_BAR_BTN"])
     btnDrag:SetWidth(120)
     btnDrag:SetCallback("OnClick", function()
-        if Editor.cur and Editor.cur.index and not InCombatLockdown() then
-            PickupMacro(Editor.cur.index)
+        if Editor.cur and Editor.cur.index then
+            MF.Helpers:PickupMacro(Editor.cur.index)
         elseif Editor.isNew then
             MF:Print(MF.C.yellow .. L["SAVE_FIRST_DRAG"] .. "|r")
         end

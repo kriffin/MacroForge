@@ -216,6 +216,7 @@ L["HELP_SHORTCUTS"] = "Raccourcis: Ctrl+S sauvegarder, Ctrl+Z undo, Ctrl+Y redo"
 
 -- Click tooltips
 L["CLICK_EDIT"] = "|cff00ccffClic|r editer"
+L["CLICK_DRAG"] = "|cffff9933Glisser|r vers une barre (ou Shift+Clic)"
 L["CLICK_SHIFT_DRAG"] = "|cffff9933Shift+Clic|r glisser"
 L["CLICK_RIGHT_MENU"] = "|cff888888Clic-droit|r menu"
 L["QUALITY"] = "Qualite: %d%% (syntaxe, sorts, longueur)"

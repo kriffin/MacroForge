@@ -47,9 +47,7 @@ local function ShowContextMenu(macro)
         end)
 
         rootDescription:CreateButton("|cffff9933" .. L["DRAG_ACTIONBAR"] .. "|r", function()
-            if not InCombatLockdown() then
-                PickupMacro(macro.index)
-            end
+            MF.Helpers:PickupMacro(macro.index)
         end)
 
         rootDescription:CreateButton("|cffff4444" .. L["DELETE"] .. "|r", function()
@@ -87,6 +85,39 @@ local function FilterMacros(macros, query)
         end
     end
     return filtered
+end
+
+---------------------------------------------------
+-- Drag & drop from a row to an action bar
+-- InteractiveLabel frames are pooled by AceGUI and reused by other addons:
+-- the scripts set here are removed when the row is released.
+---------------------------------------------------
+local function OpenInEditor(macro)
+    PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
+    local E = MF:GetModule("Editor")
+    if E then E:Open(macro) end
+end
+
+local function EnableRowDrag(row, macro)
+    -- row.mfDragged is reset on each press (OnClick fires on mouse down):
+    -- OnMouseUp does not always reach the row once a drag has started.
+    local frame = row.frame
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", function()
+        row.mfDragged = true
+        MF.Helpers:PickupMacro(macro.index)
+    end)
+    frame:SetScript("OnMouseUp", function(_, button)
+        if button == "LeftButton" and not row.mfDragged and not IsShiftKeyDown() and frame:IsMouseOver() then
+            OpenInEditor(macro)
+        end
+    end)
+    row:SetCallback("OnRelease", function()
+        frame:RegisterForDrag()
+        frame:SetScript("OnDragStart", nil)
+        frame:SetScript("OnMouseUp", nil)
+        row.mfDragged = nil
+    end)
 end
 
 ---------------------------------------------------
@@ -143,21 +174,18 @@ local function PopulateScroll(scroll, macros)
         row:SetImage(iconTex)
         row:SetImageSize(20, 20)
 
-        -- Click to edit, Right-click for context menu, Shift+drag for pickup
+        -- Right-click: context menu. Shift+click: pickup. Left click opens the
+        -- editor on mouse up, so a drag (left button held + move) only picks
+        -- the macro up without opening the editor.
         row:SetCallback("OnClick", function(_, _, button)
+            row.mfDragged = false
             if button == "RightButton" then
                 ShowContextMenu(macro)
             elseif IsShiftKeyDown() then
-                -- Drag to actionbar
-                if not InCombatLockdown() then
-                    PickupMacro(macro.index)
-                end
-            else
-                PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
-                local E = MF:GetModule("Editor")
-                if E then E:Open(macro) end
+                MF.Helpers:PickupMacro(macro.index)
             end
         end)
+        EnableRowDrag(row, macro)
 
         -- Tooltip with explanation
         row:SetCallback("OnEnter", function(w)
@@ -176,7 +204,7 @@ local function PopulateScroll(scroll, macros)
                 end
             end
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(L["CLICK_EDIT"] .. "  " .. L["CLICK_SHIFT_DRAG"] .. "  " .. L["CLICK_RIGHT_MENU"])
+            GameTooltip:AddLine(L["CLICK_EDIT"] .. "  " .. L["CLICK_DRAG"] .. "  " .. L["CLICK_RIGHT_MENU"])
             GameTooltip:Show()
         end)
         row:SetCallback("OnLeave", function() GameTooltip:Hide() end)
