@@ -554,8 +554,7 @@ function MF.Templates:OpenBrowser()
                 btnEdit:SetCallback("OnClick", function()
                     local E = MF:GetModule("Editor")
                     if E then
-                        E:OpenNew(true)
-                        C_Timer.After(0.1, function()
+                        E:OpenNew(true, nil, function()
                             E:LoadContent(tmpl.name or "", MF.Templates:ResolveBody(tmpl.body), 134400)
                         end)
                     end

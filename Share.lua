@@ -225,9 +225,9 @@ function Share:OpenImport()
         if decodedMacro then
             local E = MF:GetModule("Editor")
             if E then
-                E:OpenNew(true)
-                C_Timer.After(0.1, function()
-                    E:LoadContent(decodedMacro.name, decodedMacro.body, decodedMacro.icon)
+                local macro = decodedMacro
+                E:OpenNew(true, nil, function()
+                    E:LoadContent(macro.name, macro.body, macro.icon)
                 end)
             end
             f:Release()

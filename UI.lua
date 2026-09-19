@@ -51,8 +51,7 @@ local function ShowContextMenu(macro)
         rootDescription:CreateButton("|cffffff33" .. L["EXPORT"] .. "|r", function()
             local E = MF:GetModule("Editor")
             if E then
-                E:Open(macro)
-                C_Timer.After(0.2, function() E:OpenExport() end)
+                E:Open(macro, nil, function() E:OpenExport() end)
             end
         end)
 
@@ -228,7 +227,9 @@ local function InitMacroRow(btn, node)
     btn.mfName:ClearAllPoints()
     btn.mfName:SetPoint("TOPLEFT", btn.mfIcon, "TOPRIGHT", 8, 1)
     btn.mfName:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
-    btn.mfName:SetText(DisplayName(macro))
+    local E = MF:GetModule("Editor")
+    local editing = E and E:IsEditing(macro)
+    btn.mfName:SetText(((editing and E:IsDirty()) and (E.DIRTY_MARK .. " ") or "") .. DisplayName(macro))
 
     btn.mfSub:ClearAllPoints()
     btn.mfSub:SetPoint("BOTTOMLEFT", btn.mfIcon, "BOTTOMRIGHT", 8, -1)
@@ -238,8 +239,7 @@ local function InitMacroRow(btn, node)
     local score = res and res.score or 100
     btn.mfBadge:SetText(score < 100 and (MF.C.red .. score .. "%|r") or "")
 
-    local E = MF:GetModule("Editor")
-    btn.mfSelected:SetShown(E and E.cur and E.cur.index == macro.index and E.cur.scope == macro.scope)
+    btn.mfSelected:SetShown(editing and true or false)
 
     btn:SetScript("OnClick", function(_, button)
         if button == "RightButton" then

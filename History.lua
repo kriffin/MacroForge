@@ -286,8 +286,8 @@ function History:OpenVersions(scope, key)
             for _, m in ipairs(self:KeyedMacros(scope)) do
                 if m.key == key then live = m; break end
             end
-            if live then E:Open(live) else E:OpenNew(scope == "character") end
-            C_Timer.After(0.1, function() E:LoadContent(v.name, v.body, v.icon) end)
+            local function load() E:LoadContent(v.name, v.body, v.icon) end
+            if live then E:Open(live, nil, load) else E:OpenNew(scope == "character", nil, load) end
             MF:Print(MF.C.green .. format(L["VERSION_RESTORED"], i) .. "|r")
             f:Release()
         end)

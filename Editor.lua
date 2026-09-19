@@ -48,6 +48,10 @@ end
 ---------------------------------------------------
 local draftTimer
 
+-- Marker for unsaved changes (header + list row)
+local DIRTY_MARK = "|TInterface\\COMMON\\Indicator-Yellow:14:14|t"
+Editor.DIRTY_MARK = DIRTY_MARK
+
 ---------------------------------------------------
 -- Snippets database
 ---------------------------------------------------
@@ -107,10 +111,15 @@ local function CreateEditor()
     header:SetJustifyH("LEFT")
 
     -- Shim keeping the old AceGUI Frame calls working on the embedded pane
+    local headerText, headerDirty = "", false
+    local function RenderHeader()
+        header:SetText((headerDirty and (DIRTY_MARK .. " ") or "") .. headerText)
+    end
     editorFrame = {
         frame = f.frame,
-        SetTitle = function(_, text) header:SetText(text) end,
-        SetStatusText = function(_, text) header:SetText(text) end,
+        SetTitle = function(_, text) headerText = text; RenderHeader() end,
+        SetStatusText = function(_, text) headerText = text; RenderHeader() end,
+        SetDirty = function(_, dirty) headerDirty = dirty; RenderHeader() end,
         Show = function()
             f.frame:Show()
             header:Show()
@@ -150,6 +159,7 @@ local function CreateEditor()
             IP:Open(function(iconId)
                 Editor.selectedIcon = iconId
                 iconButton:SetImage(iconId)
+                Editor:OnChanged()
             end)
         end
     end)
@@ -720,10 +730,17 @@ local function SameBody(a, b)
     return (a or ""):gsub("%s+$", "") == (b or ""):gsub("%s+$", "")
 end
 
-function Editor:Open(macro)
+-- onOpened (optional) runs once the macro is shown: callers that fill the
+-- editor afterwards must use it, since Open can wait for the user to
+-- save/discard unsaved changes.
+function Editor:Open(macro, force, onOpened)
+    if not force and self:IsDirty() and not self:IsEditing(macro) then
+        return self:ConfirmLeave(function() self:Open(macro, true, onOpened) end)
+    end
     CreateEditor()
     self.isNew = false; self.cur = macro
     self.selectedIcon = macro.icon
+    self.baseline = { name = macro.name or "", body = macro.body or "", icon = macro.icon }
     MF.editingIndex = macro.index
 
     -- Reset undo/redo stacks
@@ -780,15 +797,20 @@ function Editor:Open(macro)
     editorFrame:Show()
     local UI = MF:GetModule("UI")
     if UI then UI:Refresh() end
+    if onOpened then C_Timer.After(0.1, onOpened) end
 end
 
 ---------------------------------------------------
 -- Open (new)
 ---------------------------------------------------
-function Editor:OpenNew(perChar)
+function Editor:OpenNew(perChar, force, onOpened)
+    if not force and self:IsDirty() then
+        return self:ConfirmLeave(function() self:OpenNew(perChar, true, onOpened) end)
+    end
     CreateEditor()
     self.isNew = true; self.newPerChar = perChar; self.cur = nil
     self.selectedIcon = 134400
+    self.baseline = { name = "", body = "#showtooltip\n/cast ", icon = 134400 }
     MF.editingIndex = nil
 
     -- Reset undo/redo stacks
@@ -811,6 +833,7 @@ function Editor:OpenNew(perChar)
     local UI = MF:GetModule("UI")
     if UI then UI:Refresh() end
     nameWidget:SetFocus()
+    if onOpened then C_Timer.After(0.1, onOpened) end
 end
 
 ---------------------------------------------------
@@ -985,6 +1008,15 @@ function Editor:OnChanged(skipUndo)
         end)
     end
 
+    -- Unsaved-changes marker: header now, list row on state change only
+    local dirty = self:IsDirty()
+    if dirty ~= (self.wasDirty or false) then
+        self.wasDirty = dirty
+        editorFrame:SetDirty(dirty)
+        local UI = MF:GetModule("UI")
+        if UI then UI:Refresh() end
+    end
+
     -- Auto-save draft (throttled 2s) — uses AceDB char namespace
     if MF.db and MF.db.profile.autoSaveDraft then
         if draftTimer then draftTimer:Cancel() end
@@ -1007,7 +1039,7 @@ end
 ---------------------------------------------------
 -- Save
 ---------------------------------------------------
-function Editor:Save()
+function Editor:Save(noReopen)
     local name = nameWidget:GetText()
     local body = bodyWidget:GetText()
     if not name or name == "" then MF:Print(MF.C.red .. L["EMPTY_NAME"] .. "|r"); return end
@@ -1038,6 +1070,9 @@ function Editor:Save()
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
     -- Stay on the saved macro: find it again once the client has written it
     -- (a new macro gets a slot, a renamed one may move)
+    self.baseline = { name = name, body = body, icon = icon }
+    self:OnChanged()
+    if noReopen then return end
     local scope = self.isNew and (self.newPerChar and "character" or "account") or self.cur.scope
     C_Timer.After(0.3, function()
         local P = MF:GetModule("Profiles")
@@ -1045,8 +1080,41 @@ function Editor:Save()
         for _, m in ipairs(P:ReadMacros(scope)) do
             if m.name == name and m.body == body then saved = m; break end
         end
-        if saved then Editor:Open(saved) else Editor:Clear() end
+        if saved then Editor:Open(saved, true) else Editor:Clear() end
     end)
+end
+
+---------------------------------------------------
+-- Unsaved changes
+---------------------------------------------------
+function Editor:IsEditing(macro)
+    return self.cur and macro and self.cur.index == macro.index and self.cur.scope == macro.scope
+end
+
+function Editor:IsDirty()
+    local b = self.baseline
+    if not b or not editorFrame or not editorFrame:IsShown() then return false end
+    return nameWidget:GetText() ~= b.name
+        or not SameBody(bodyWidget:GetText(), b.body)
+        or (self.selectedIcon or 134400) ~= (b.icon or 134400)
+end
+
+StaticPopupDialogs["MACROFORGE_UNSAVED"] = {
+    text = L["UNSAVED_PROMPT"],
+    button1 = L["SAVE_BTN"],
+    button2 = L["UNSAVED_STAY"],
+    button3 = L["UNSAVED_DISCARD"],
+    OnAccept = function(_, proceed) Editor:Save(true); proceed() end,
+    OnAlt = function(_, proceed) proceed() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+-- Runs proceed() once the user saved or discarded the current edits
+function Editor:ConfirmLeave(proceed)
+    StaticPopup_Show("MACROFORGE_UNSAVED", nameWidget:GetText() ~= "" and nameWidget:GetText() or L["MACRO_UNNAMED"], nil, proceed)
 end
 
 ---------------------------------------------------
@@ -1059,13 +1127,13 @@ function Editor:Revert()
     end
     local P = MF:GetModule("Profiles")
     for _, m in ipairs(P:ReadMacros(self.cur.scope)) do
-        if m.index == self.cur.index then return self:Open(m) end
+        if m.index == self.cur.index then return self:Open(m, true) end
     end
     self:Clear()
 end
 
 function Editor:Clear()
-    self.cur, self.isNew = nil, false
+    self.cur, self.isNew, self.baseline, self.wasDirty = nil, false, nil, false
     MF.editingIndex = nil
     if draftTimer then draftTimer:Cancel(); draftTimer = nil end
     if undoTimer then undoTimer:Cancel(); undoTimer = nil end

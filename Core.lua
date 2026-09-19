@@ -354,8 +354,7 @@ StaticPopupDialogs["MACROFORGE_RECV"] = {
     OnAccept = function(_, data)
         local E = MF:GetModule("Editor")
         if E then
-            E:OpenNew(true)
-            C_Timer.After(0.1, function()
+            E:OpenNew(true, nil, function()
                 E:LoadContent(data.macro.name, data.macro.body, data.macro.icon)
             end)
         end
