@@ -1,20 +1,30 @@
 ---------------------------------------------------
--- MacroForge — UI (Ace3)
--- Compact macro list with search, context menu, drag
+-- MacroForge — UI
+-- Main window: macro list (sidebar) + editor (right pane) in one frame.
+--
+-- Built on Blizzard templates, like the modern default UI:
+--   PortraitFrameFlatTemplate  window chrome, title, close button
+--   PanelResizeButtonTemplate  resize grip
+--   InsetFrameTemplate         sidebar well
+--   SearchBoxTemplate          macro search (name + body)
+--   WowScrollBoxList + MinimalScrollBar + tree view   grouped macro list
+-- The editor (Editor.lua, AceGUI widgets) is hosted in GetEditorPane().
 ---------------------------------------------------
 local _, MF_NS = ...
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
-local AceGUI = LibStub("AceGUI-3.0")
 local UI = {}
 
-local function G()
-    return AceGUI
-end
+local FRAME_NAME = "MacroForgeMainFrame"
+local DEFAULT_WIDTH, DEFAULT_HEIGHT = 980, 640
+local MIN_WIDTH, MIN_HEIGHT = 860, 520
+local SIDEBAR_WIDTH = 270
+local ROW_HEIGHT, HEADER_HEIGHT = 30, 26
+local SCOPES = { "character", "account" }
 
-local mainFrame, activeTab, searchQuery
-activeTab = "character"
-searchQuery = ""
+local frame, scrollBox, searchBox, editorPane, emptyState
+local searchQuery = ""
+local collapsed = {}
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -50,6 +60,11 @@ local function ShowContextMenu(macro)
             MF.Helpers:PickupMacro(macro.index)
         end)
 
+        local H = MF:GetModule("History")
+        if H then
+            rootDescription:CreateButton(L["HISTORY_BTN"], function() H:OpenBrowser(macro) end)
+        end
+
         rootDescription:CreateButton("|cffff4444" .. L["DELETE"] .. "|r", function()
             StaticPopupDialogs["MACROFORGE_DELETE_CONFIRM"] = {
                 text = format(L["DELETE_CONFIRM"], macro.name or "?"),
@@ -57,7 +72,10 @@ local function ShowContextMenu(macro)
                 button2 = L["DELETE_NO"],
                 OnAccept = function()
                     local P = MF:GetModule("Profiles")
-                    if P then P:DeleteMacroByIndex(macro.index) end
+                    if P and P:DeleteMacroByIndex(macro.index) then
+                        local E = MF:GetModule("Editor")
+                        if E and E.cur and E.cur.index == macro.index then UI:ShowEmpty() end
+                    end
                     C_Timer.After(0.2, function() UI:Refresh() end)
                 end,
                 timeout = 0,
@@ -71,362 +89,380 @@ local function ShowContextMenu(macro)
 end
 
 ---------------------------------------------------
--- Filter macros by search query
+-- Data
 ---------------------------------------------------
-local function FilterMacros(macros, query)
-    if not query or query == "" then return macros end
-    local q = query:lower()
-    local filtered = {}
-    for _, m in ipairs(macros) do
-        local nameMatch = m.name and m.name:lower():find(q, 1, true)
-        local bodyMatch = m.body and m.body:lower():find(q, 1, true)
-        if nameMatch or bodyMatch then
-            table.insert(filtered, m)
-        end
-    end
-    return filtered
+local function MatchesSearch(macro)
+    if searchQuery == "" then return true end
+    local q = searchQuery:lower()
+    return (macro.name and macro.name:lower():find(q, 1, true))
+        or (macro.body and macro.body:lower():find(q, 1, true))
 end
 
----------------------------------------------------
--- Drag & drop from a row to an action bar
--- InteractiveLabel frames are pooled by AceGUI and reused by other addons:
--- the scripts set here are removed when the row is released.
----------------------------------------------------
-local function OpenInEditor(macro)
-    PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
-    local E = MF:GetModule("Editor")
-    if E then E:Open(macro) end
+local function DisplayName(macro)
+    local dn = macro.name and macro.name:match("^%s*(.-)%s*$") or ""
+    if dn == "" then dn = MF.Helpers:ParseShowTooltip(macro.body) or L["MACRO_UNNAMED"] end
+    return dn:match("^([^\n]+)") or dn
 end
 
-local function EnableRowDrag(row, macro)
-    -- row.mfDragged is reset on each press (OnClick fires on mouse down):
-    -- OnMouseUp does not always reach the row once a drag has started.
-    local frame = row.frame
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", function()
-        row.mfDragged = true
-        MF.Helpers:PickupMacro(macro.index)
-    end)
-    frame:SetScript("OnMouseUp", function(_, button)
-        if button == "LeftButton" and not row.mfDragged and not IsShiftKeyDown() and frame:IsMouseOver() then
-            OpenInEditor(macro)
-        end
-    end)
-    row:SetCallback("OnRelease", function()
-        frame:RegisterForDrag()
-        frame:SetScript("OnDragStart", nil)
-        frame:SetScript("OnMouseUp", nil)
-        row.mfDragged = nil
-    end)
-end
-
----------------------------------------------------
--- Populate scroll with compact rows
----------------------------------------------------
-local function PopulateScroll(scroll, macros)
-    scroll:ReleaseChildren()
-    local gui = G()
-    local An = MF:GetModule("Analyzer")
-
-    if #macros == 0 then
-        local lbl = gui:Create("Label")
-        lbl:SetFullWidth(true)
-        lbl:SetFontObject(GameFontNormal)
-        lbl:SetText(MF.C.grey .. L["NO_MACRO"] .. "|r")
-        scroll:AddChild(lbl)
-        return
-    end
-
-    for i, macro in ipairs(macros) do
-        local res = An and An:Analyze(macro.body, macro.name)
-        local sc = res and res.score or 100
-
-        -- Safe name: trim, no fallback
-        local dn = macro.name and macro.name:match("^%s*(.-)%s*$") or ""
-        -- Ensure dn is single-line
-        if dn ~= "" then dn = dn:match("^([^\n]+)") or dn end
-
-        local condensed = MF.Helpers:CondenseBody(macro.body)
-
-        -- Highlight if this macro is currently being edited
-        local isActive = MF.editingIndex and MF.editingIndex == macro.index
-
-        -- Build display text
-        local prefix = isActive and MF.C.gold .. "> |r" or "  "
-        local nameColor = isActive and MF.C.gold or MF.C.white
-        local display = prefix
-        if dn ~= "" then
-            display = display .. nameColor .. dn .. "|r  "
-        end
-        display = display .. MF.C.grey .. condensed .. "|r"
-        -- Only show score if not 100%
-        if sc < 100 then
-            display = display .. "  " .. MF.C.red .. sc .. "%|r"
-        end
-
-        local row = gui:Create("InteractiveLabel")
-        row:SetFullWidth(true)
-        row:SetFontObject(isActive and GameFontHighlight or GameFontNormal)
-        row:SetText(display)
-
-        -- Icon
-        local iconTex = (macro.icon and macro.icon ~= 0) and macro.icon or 134400
-        row:SetImage(iconTex)
-        row:SetImageSize(20, 20)
-
-        -- Right-click: context menu. Shift+click: pickup. Left click opens the
-        -- editor on mouse up, so a drag (left button held + move) only picks
-        -- the macro up without opening the editor.
-        row:SetCallback("OnClick", function(_, _, button)
-            row.mfDragged = false
-            if button == "RightButton" then
-                ShowContextMenu(macro)
-            elseif IsShiftKeyDown() then
-                MF.Helpers:PickupMacro(macro.index)
-            end
-        end)
-        EnableRowDrag(row, macro)
-
-        -- Tooltip with explanation
-        row:SetCallback("OnEnter", function(w)
-            GameTooltip:SetOwner(w.frame, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(dn, 0, 0.8, 1)
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(format(L["QUALITY"], sc), 1, 0.84, 0)
-            if macro.body then
-                GameTooltip:AddLine(" ")
-                GameTooltip:AddLine(macro.body, 0.7, 0.7, 0.7, true)
-            end
-            if res and #res.issues > 0 then
-                GameTooltip:AddLine(" ")
-                for _, iss in ipairs(res.issues) do
-                    GameTooltip:AddLine(An:FmtSev(iss.severity) .. " " .. iss.message, 1, 1, 1, true)
-                end
-            end
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(L["CLICK_EDIT"] .. "  " .. L["CLICK_DRAG"] .. "  " .. L["CLICK_RIGHT_MENU"])
-            GameTooltip:Show()
-        end)
-        row:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-
-        scroll:AddChild(row)
-    end
-end
-
----------------------------------------------------
--- Tab content
----------------------------------------------------
-local function RefreshTab(container, tab)
-    container:ReleaseChildren()
-    activeTab = tab
-    local gui = G()
+local function BuildDataProvider()
     local P = MF:GetModule("Profiles")
+    local An = MF:GetModule("Analyzer")
+    local numAccount, numCharacter = GetNumMacros()
+    local limits = {
+        character = { count = numCharacter, max = P.MAX_CHARACTER_MACROS },
+        account = { count = numAccount, max = P.MAX_ACCOUNT_MACROS },
+    }
 
-    ---------------------------------------------------
-    -- Search bar
-    ---------------------------------------------------
-    local searchRow = gui:Create("SimpleGroup")
-    searchRow:SetFullWidth(true)
-    searchRow:SetLayout("Flow")
-
-    local searchEB = gui:Create("EditBox")
-    searchEB:SetLabel("")
-    searchEB:SetWidth(420)
-    searchEB:DisableButton(true)
-    searchEB:SetText(searchQuery or "")
-    searchEB:SetCallback("OnTextChanged", function(w)
-        searchQuery = w:GetText()
-        -- Refresh the scroll below
-        local macros = P and (tab == "character" and P:ReadCharacterMacros() or P:ReadAccountMacros()) or {}
-        macros = FilterMacros(macros, searchQuery)
-        if UI._currentScroll then
-            PopulateScroll(UI._currentScroll, macros)
+    local dataProvider = CreateTreeDataProvider()
+    for _, scope in ipairs(SCOPES) do
+        local header = dataProvider:Insert({
+            header = scope, count = limits[scope].count, max = limits[scope].max,
+        })
+        local shown = 0
+        for _, macro in ipairs(P:ReadMacros(scope)) do
+            if MatchesSearch(macro) then
+                local res = An and An:Analyze(macro.body, macro.name)
+                header:Insert({ macro = macro, analysis = res })
+                shown = shown + 1
+            end
         end
-    end)
-    searchRow:AddChild(searchEB)
-
-    -- Clear search button
-    local btnClear = gui:Create("Button")
-    btnClear:SetText(L["CLEAR"])
-    btnClear:SetWidth(80)
-    btnClear:SetCallback("OnClick", function()
-        searchQuery = ""
-        searchEB:SetText("")
-        local macros = P and (tab == "character" and P:ReadCharacterMacros() or P:ReadAccountMacros()) or {}
-        if UI._currentScroll then
-            PopulateScroll(UI._currentScroll, macros)
-        end
-    end)
-    searchRow:AddChild(btnClear)
-
-    container:AddChild(searchRow)
-
-    ---------------------------------------------------
-    -- Status info row (spec, macro counts, version)
-    ---------------------------------------------------
-    local P2 = MF:GetModule("Profiles")
-    local specID = P2 and P2:GetCurrentSpecID()
-    local specName = P2 and P2:GetSpecName(specID) or "?"
-    local na, nc = GetNumMacros()
-
-    local infoRow = gui:Create("SimpleGroup")
-    infoRow:SetFullWidth(true)
-    infoRow:SetLayout("Flow")
-
-    local infoLabel = gui:Create("Label")
-    infoLabel:SetFullWidth(true)
-    infoLabel:SetFontObject(GameFontNormalSmall)
-    local activeSet = P2 and P2:GetActiveSet()
-    infoLabel:SetText(MF.C.cyan .. specName .. "|r  |  "
-        .. (activeSet and (L["SETS"] .. ": " .. MF.C.gold .. activeSet .. "|r  |  ") or "")
-        .. format(L["MACROS_COUNT"], nc, na))
-    infoRow:AddChild(infoLabel)
-
-    container:AddChild(infoRow)
-
-    -- Spacing separator
-    local sep = gui:Create("Heading")
-    sep:SetFullWidth(true)
-    sep:SetText("")
-    container:AddChild(sep)
-
-    ---------------------------------------------------
-    -- Scroll
-    ---------------------------------------------------
-    local scroll = gui:Create("ScrollFrame")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetLayout("List")
-    UI._currentScroll = scroll
-
-    local macros = P and (tab == "character" and P:ReadCharacterMacros() or P:ReadAccountMacros()) or {}
-    macros = FilterMacros(macros, searchQuery)
-    PopulateScroll(scroll, macros)
-    container:AddChild(scroll)
+        header:GetData().shown = shown
+        -- A search always expands the groups so matches are visible
+        header:SetCollapsed(searchQuery == "" and collapsed[scope] or false, false, true)
+    end
+    return dataProvider
 end
 
 ---------------------------------------------------
--- Create / Toggle
+-- Row rendering (one pooled Button type for headers and macros)
 ---------------------------------------------------
-function UI:CreateMainFrame()
-    if mainFrame then return end
-    local gui = G()
-    local f = gui:Create("Frame")
-    f:SetTitle("|cff00ccffMacro|r|cffffd700Forge|r  v" .. MF.VERSION)
-    f:SetWidth(580)
-    f:SetHeight(520)
-    f:SetLayout("Fill")
-    f:SetCallback("OnClose", function(w) w:Hide() end)
+local function EnsureRowRegions(btn)
+    if btn.mfIcon then return end
+    btn:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
 
-    -- Register with UISpecialFrames for Escape key support
-    f.frame:SetScript("OnShow", function(self)
-        _G["MacroForgeListFrame"] = self
-        tinsert(UISpecialFrames, "MacroForgeListFrame")
-        self.obj:Fire("OnShow")
-    end)
-    f.frame:SetScript("OnHide", function(self)
-        for i = #UISpecialFrames, 1, -1 do
-            if UISpecialFrames[i] == "MacroForgeListFrame" then
-                table.remove(UISpecialFrames, i)
-            end
+    btn.mfSelected = btn:CreateTexture(nil, "BACKGROUND")
+    btn.mfSelected:SetAllPoints()
+    btn.mfSelected:SetColorTexture(0.2, 0.6, 1, 0.18)
+
+    btn.mfIcon = btn:CreateTexture(nil, "ARTWORK")
+    btn.mfIcon:SetSize(24, 24)
+    btn.mfIcon:SetPoint("LEFT", 6, 0)
+
+    btn.mfName = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    btn.mfName:SetJustifyH("LEFT")
+    btn.mfName:SetWordWrap(false)
+
+    btn.mfSub = btn:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    btn.mfSub:SetJustifyH("LEFT")
+    btn.mfSub:SetWordWrap(false)
+
+    btn.mfBadge = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    btn.mfBadge:SetPoint("RIGHT", -6, 0)
+
+    btn.mfArrow = btn:CreateTexture(nil, "ARTWORK")
+    btn.mfArrow:SetSize(14, 14)
+    btn.mfArrow:SetPoint("LEFT", 4, 0)
+
+    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    btn:RegisterForDrag("LeftButton")
+end
+
+local function MacroTooltip(owner, data)
+    local macro, res = data.macro, data.analysis
+    local An = MF:GetModule("Analyzer")
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(DisplayName(macro), 0, 0.8, 1)
+    if res then GameTooltip:AddLine(format(L["QUALITY"], res.score or 100), 1, 0.84, 0) end
+    if macro.body and macro.body ~= "" then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(macro.body, 0.75, 0.75, 0.75, true)
+    end
+    if res and res.issues and #res.issues > 0 then
+        GameTooltip:AddLine(" ")
+        for _, iss in ipairs(res.issues) do
+            GameTooltip:AddLine(An:FmtSev(iss.severity) .. " " .. iss.message, 1, 1, 1, true)
         end
-        self.obj:Fire("OnClose")
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(L["CLICK_EDIT"] .. "  " .. L["CLICK_DRAG"] .. "  " .. L["CLICK_RIGHT_MENU"], 1, 1, 1, true)
+    GameTooltip:Show()
+end
+
+local function InitHeader(btn, node)
+    local data = node:GetData()
+    btn.mfIcon:Hide(); btn.mfSub:Hide(); btn.mfSelected:Hide()
+    btn.mfArrow:Show()
+    btn.mfArrow:SetTexture(node:IsCollapsed()
+        and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
+
+    btn.mfName:SetFontObject("GameFontNormal")
+    btn.mfName:ClearAllPoints()
+    btn.mfName:SetPoint("LEFT", btn.mfArrow, "RIGHT", 6, 0)
+    btn.mfName:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
+    btn.mfName:SetText(data.header == "character" and L["SIDEBAR_CHARACTER"] or L["SIDEBAR_ACCOUNT"])
+
+    local full = data.count >= data.max
+    btn.mfBadge:SetText((full and MF.C.red or MF.C.grey) .. data.count .. "/" .. data.max .. "|r")
+
+    btn:SetScript("OnClick", function()
+        node:ToggleCollapsed()
+        if searchQuery == "" then collapsed[data.header] = node:IsCollapsed() end
+        btn.mfArrow:SetTexture(node:IsCollapsed()
+            and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
     end)
-    f:EnableResize(true)
-    mainFrame = f
-    self.mainFrame = f
+    btn:SetScript("OnDragStart", nil)
+    btn:SetScript("OnEnter", nil)
+    btn:SetScript("OnLeave", nil)
+end
 
-    -- Opaque dark background for readability
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.92)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
+local function InitMacroRow(btn, node)
+    local data = node:GetData()
+    local macro, res = data.macro, data.analysis
+    btn.mfArrow:Hide()
+    btn.mfIcon:Show(); btn.mfSub:Show()
 
-    local na, nc = GetNumMacros()
+    local icon = macro.displayIcon or macro.icon
+    btn.mfIcon:SetTexture((icon and icon ~= 0) and icon or 134400)
 
-    local tabs = gui:Create("TabGroup")
-    tabs:SetFullWidth(true)
-    tabs:SetFullHeight(true)
-    tabs:SetLayout("Flow")
-    tabs:SetTabs({
-        { value = "character", text = format(L["PERSO_TAB"], nc) },
-        { value = "account", text = format(L["COMPTE_TAB"], na) },
-    })
-    tabs:SetCallback("OnGroupSelected", function(container, _, tab)
-        searchQuery = ""
-        RefreshTab(container, tab)
+    btn.mfName:SetFontObject("GameFontHighlight")
+    btn.mfName:ClearAllPoints()
+    btn.mfName:SetPoint("TOPLEFT", btn.mfIcon, "TOPRIGHT", 8, 1)
+    btn.mfName:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
+    btn.mfName:SetText(DisplayName(macro))
+
+    btn.mfSub:ClearAllPoints()
+    btn.mfSub:SetPoint("BOTTOMLEFT", btn.mfIcon, "BOTTOMRIGHT", 8, -1)
+    btn.mfSub:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
+    btn.mfSub:SetText(MF.Helpers:CondenseBody(macro.body))
+
+    local score = res and res.score or 100
+    btn.mfBadge:SetText(score < 100 and (MF.C.red .. score .. "%|r") or "")
+
+    local E = MF:GetModule("Editor")
+    btn.mfSelected:SetShown(E and E.cur and E.cur.index == macro.index and E.cur.scope == macro.scope)
+
+    btn:SetScript("OnClick", function(_, button)
+        if button == "RightButton" then
+            ShowContextMenu(macro)
+        elseif IsShiftKeyDown() then
+            MF.Helpers:PickupMacro(macro.index)
+        else
+            PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+            if E then E:Open(macro) end
+        end
     end)
-    tabs:SelectTab("character")
-    f:AddChild(tabs)
-    self.tabs = tabs
+    btn:SetScript("OnDragStart", function() MF.Helpers:PickupMacro(macro.index) end)
+    btn:SetScript("OnEnter", function(self) MacroTooltip(self, data) end)
+    btn:SetScript("OnLeave", GameTooltip_Hide)
+end
 
-    -- Persistent action buttons in the status bar area
-    local btnNew = CreateFrame("Button", nil, f.frame, "UIPanelButtonTemplate")
-    btnNew:SetSize(100, 22)
-    btnNew:SetPoint("BOTTOMLEFT", f.frame, "BOTTOMLEFT", 20, 17)
-    btnNew:SetText(MF.C.green .. L["CREATE"] .. "|r")
+local function InitElement(btn, node)
+    EnsureRowRegions(btn)
+    if node:GetData().header then InitHeader(btn, node) else InitMacroRow(btn, node) end
+end
+
+---------------------------------------------------
+-- Window position / size (MF.db.global.window)
+---------------------------------------------------
+local function SaveGeometry()
+    if not MF.db then return end
+    local point, _, relativePoint, x, y = frame:GetPoint(1)
+    MF.db.global.window = {
+        point = point, relativePoint = relativePoint, x = x, y = y,
+        width = frame:GetWidth(), height = frame:GetHeight(),
+    }
+end
+
+local function RestoreGeometry()
+    local g = MF.db and MF.db.global.window
+    frame:ClearAllPoints()
+    if g and g.point then
+        frame:SetPoint(g.point, UIParent, g.relativePoint or g.point, g.x or 0, g.y or 0)
+        frame:SetSize(math.max(g.width or DEFAULT_WIDTH, MIN_WIDTH), math.max(g.height or DEFAULT_HEIGHT, MIN_HEIGHT))
+    else
+        frame:SetPoint("CENTER")
+        frame:SetSize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+    end
+end
+
+---------------------------------------------------
+-- Build
+---------------------------------------------------
+local function CreateSidebar()
+    searchBox = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
+    searchBox:SetHeight(20)
+    searchBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 68, -32)
+    searchBox:SetWidth(SIDEBAR_WIDTH - 60)
+    searchBox:HookScript("OnTextChanged", function(self)
+        searchQuery = (self:GetText() or ""):match("^%s*(.-)%s*$")
+        UI:Refresh()
+    end)
+
+    local inset = CreateFrame("Frame", nil, frame, "InsetFrameTemplate")
+    inset:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -62)
+    inset:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 36)
+    inset:SetWidth(SIDEBAR_WIDTH)
+
+    scrollBox = CreateFrame("Frame", nil, inset, "WowScrollBoxList")
+    scrollBox:SetPoint("TOPLEFT", 4, -4)
+    scrollBox:SetPoint("BOTTOMRIGHT", -18, 4)
+
+    local scrollBar = CreateFrame("EventFrame", nil, inset, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, -2)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 2)
+
+    local view = CreateScrollBoxListTreeListView(0)
+    view:SetElementFactory(function(factory, node)
+        factory("Button", InitElement)
+    end)
+    view:SetElementExtentCalculator(function(_, node)
+        return node:GetData().header and HEADER_HEIGHT or ROW_HEIGHT
+    end)
+    ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
+
+    local btnNew = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    btnNew:SetSize(132, 22)
+    btnNew:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 9)
+    btnNew:SetText(L["CREATE"])
     btnNew:SetScript("OnClick", function()
-        local E = MF:GetModule("Editor")
-        if E then E:OpenNew(activeTab == "character") end
+        MenuUtil.CreateContextMenu(btnNew, function(_, root)
+            local E = MF:GetModule("Editor")
+            root:CreateButton(L["SIDEBAR_NEW_CHARACTER"], function() E:OpenNew(true) end)
+            root:CreateButton(L["SIDEBAR_NEW_ACCOUNT"], function() E:OpenNew(false) end)
+        end)
     end)
 
-    local btnImport = CreateFrame("Button", nil, f.frame, "UIPanelButtonTemplate")
-    btnImport:SetSize(100, 22)
-    btnImport:SetPoint("LEFT", btnNew, "RIGHT", 4, 0)
+    local btnImport = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    btnImport:SetSize(132, 22)
+    btnImport:SetPoint("LEFT", btnNew, "RIGHT", 6, 0)
     btnImport:SetText(L["IMPORT"])
     btnImport:SetScript("OnClick", function()
-        local E = MF:GetModule("Editor")
-        if E then
-            E:OpenNew(activeTab == "character")
-            C_Timer.After(0.2, function() E:OpenImport() end)
+        local S = MF:GetModule("Share")
+        if S then S:OpenImport() end
+    end)
+
+    return inset
+end
+
+local function CreateToolbar()
+    -- Top-right shortcuts to the other windows
+    local buttons = {
+        { L["SETS"], function() local S = MF:GetModule("Sets"); if S then S:Open() end end },
+        { L["TEMPLATES"], function() local T = MF:GetModule("Templates"); if T then T:OpenBrowser() end end },
+        { L["TRASH"], function() local H = MF:GetModule("History"); if H then H:OpenTrash() end end },
+        { SETTINGS or "Settings", function() local S = MF:GetModule("Settings"); if S then S:Toggle() end end },
+    }
+    local anchor
+    for i = #buttons, 1, -1 do
+        local b = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        b:SetSize(100, 22)
+        if anchor then
+            b:SetPoint("RIGHT", anchor, "LEFT", -4, 0)
+        else
+            b:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -31)
         end
-    end)
-
-    local btnTrash = CreateFrame("Button", nil, f.frame, "UIPanelButtonTemplate")
-    btnTrash:SetSize(100, 22)
-    btnTrash:SetPoint("LEFT", btnImport, "RIGHT", 4, 0)
-
-    local btnSets = CreateFrame("Button", nil, f.frame, "UIPanelButtonTemplate")
-    btnSets:SetSize(100, 22)
-    btnSets:SetPoint("LEFT", btnTrash, "RIGHT", 4, 0)
-    btnSets:SetText(MF.C.gold .. L["SETS"] .. "|r")
-    btnSets:SetScript("OnClick", function()
-        local S = MF:GetModule("Sets")
-        if S then S:Open() end
-    end)
-    btnTrash:SetText(L["TRASH"])
-    btnTrash:SetScript("OnClick", function()
-        local H = MF:GetModule("History")
-        if H then H:OpenTrash() end
-    end)
-
-    -- Hide the status bar entirely so it doesn't overlap buttons
-    -- statusbg is the parent of statustext (not stored on widget directly)
-    if f.statustext then
-        local statusbg = f.statustext:GetParent()
-        if statusbg then statusbg:Hide() end
-        f.statustext:Hide()
+        b:SetText(buttons[i][1])
+        b:SetScript("OnClick", buttons[i][2])
+        anchor = b
     end
+end
 
-    f:Hide()
+function UI:CreateMainFrame()
+    if frame then return end
+    frame = CreateFrame("Frame", FRAME_NAME, UIParent, "PortraitFrameFlatTemplate")
+    self.mainFrame = frame
+    frame:Hide()
+    frame:SetFrameStrata("HIGH")
+    frame:SetToplevel(true)
+    frame:SetClampedToScreen(true)
+    frame:SetMovable(true)
+    frame:SetResizable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        SaveGeometry()
+    end)
+    frame:SetTitle("|cff00ccffMacro|r|cffffd700Forge|r  " .. MF.C.grey .. "v" .. MF.VERSION .. "|r")
+    frame:SetPortraitToAsset("Interface\\Icons\\Trade_Engineering")
+    tinsert(UISpecialFrames, FRAME_NAME)  -- ESC closes
+
+    frame:SetScript("OnShow", function()
+        PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
+        UI:Refresh()
+    end)
+    frame:SetScript("OnHide", function()
+        PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
+        local E = MF:GetModule("Editor")
+        if E and E.OnHostHidden then E:OnHostHidden() end
+    end)
+
+    RestoreGeometry()
+
+    local resize = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")
+    resize:SetPoint("BOTTOMRIGHT", -2, 2)
+    resize:Init(frame, MIN_WIDTH, MIN_HEIGHT)
+    resize:SetOnResizeStoppedCallback(SaveGeometry)
+
+    local inset = CreateSidebar()
+    CreateToolbar()
+
+    editorPane = CreateFrame("Frame", nil, frame)
+    editorPane:SetPoint("TOPLEFT", inset, "TOPRIGHT", 10, 0)
+    editorPane:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, 10)
+
+    emptyState = CreateFrame("Frame", nil, editorPane)
+    emptyState:SetAllPoints()
+    local emptyIcon = emptyState:CreateTexture(nil, "ARTWORK")
+    emptyIcon:SetSize(64, 64)
+    emptyIcon:SetPoint("CENTER", 0, 40)
+    emptyIcon:SetTexture("Interface\\Icons\\Trade_Engineering")
+    emptyIcon:SetDesaturated(true)
+    emptyIcon:SetAlpha(0.5)
+    local emptyText = emptyState:CreateFontString(nil, "OVERLAY", "GameFontDisableLarge")
+    emptyText:SetPoint("TOP", emptyIcon, "BOTTOM", 0, -14)
+    emptyText:SetWidth(360)
+    emptyText:SetText(L["EDITOR_EMPTY_STATE"])
+end
+
+---------------------------------------------------
+-- Public API
+---------------------------------------------------
+function UI:GetEditorPane()
+    self:CreateMainFrame()
+    return editorPane
+end
+
+-- Called by the editor when it shows content / is cleared
+function UI:ShowEditorContent(shown)
+    if emptyState then emptyState:SetShown(not shown) end
+end
+
+function UI:ShowEmpty()
+    local E = MF:GetModule("Editor")
+    if E and E.Clear then E:Clear() end
+    self:ShowEditorContent(false)
+    self:Refresh()
+end
+
+function UI:IsShown()
+    return frame and frame:IsShown()
+end
+
+function UI:Show()
+    self:CreateMainFrame()
+    frame:Show()
 end
 
 function UI:Refresh()
-    if not mainFrame then self:CreateMainFrame() end
-    local na, nc = GetNumMacros()
-    if self.tabs then
-        self.tabs:SetTabs({
-            { value = "character", text = format(L["PERSO_TAB"], nc) },
-            { value = "account", text = format(L["COMPTE_TAB"], na) },
-        })
-        self.tabs:SelectTab(activeTab or "character")
-    end
+    if not frame or not frame:IsShown() then return end
+    scrollBox:SetDataProvider(BuildDataProvider(), ScrollBoxConstants.RetainScrollPosition)
 end
 
 function UI:Toggle()
-    if not mainFrame then self:CreateMainFrame() end
-    if mainFrame.frame:IsShown() then mainFrame:Hide()
-    else self:Refresh(); mainFrame:Show() end
+    self:CreateMainFrame()
+    frame:SetShown(not frame:IsShown())
 end
 
 MF.UI = UI

@@ -64,6 +64,7 @@ function MF.Profiles:ReadCharacterMacros()
             table.insert(macros, {
                 slot = i, index = idx,
                 name = name, icon = MF.Helpers:StoredMacroIcon(idx, icon, body), body = body,
+                displayIcon = icon,
                 scope = "character",
             })
         end
@@ -80,6 +81,7 @@ function MF.Profiles:ReadAccountMacros()
             table.insert(macros, {
                 slot = i, index = i,
                 name = name, icon = MF.Helpers:StoredMacroIcon(i, icon, body), body = body,
+                displayIcon = icon,
                 scope = "account",
             })
         end
@@ -342,7 +344,7 @@ end
 function MF.Profiles:RefreshUI()
     local SetsUI = MF:GetModule("Sets")
     if SetsUI and SetsUI.Refresh then SetsUI:Refresh() end
-    if MF.UI and MF.UI.mainFrame and MF.UI.mainFrame.frame:IsShown() then
+    if MF.UI then
         C_Timer.After(0.3, function() MF.UI:Refresh() end)
     end
 end

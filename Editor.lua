@@ -85,60 +85,45 @@ local function CreateEditor()
     if editorFrame then return end
     local gui = G()
 
-    local f = gui:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["EDITOR_TITLE"])
-    f:SetWidth(880)
-    f:SetHeight(620)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w)
-        w:Hide()
-        PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
-        MF.editingIndex = nil
-        -- Cancel pending timers
-        if draftTimer then draftTimer:Cancel(); draftTimer = nil end
-        if undoTimer then undoTimer:Cancel(); undoTimer = nil end
-        -- Remove from UISpecialFrames
-        for i = #UISpecialFrames, 1, -1 do
-            if UISpecialFrames[i] == "MacroForgeEditorFrame" then
-                table.remove(UISpecialFrames, i)
-            end
-        end
-        -- Show macro list again
-        local UI = MF:GetModule("UI")
-        if UI then
-            UI:Refresh()
-            if UI.mainFrame then UI.mainFrame:Show() end
-        end
-    end)
-
-    -- Name the frame for UISpecialFrames Escape support
-    f.frame:SetScript("OnShow", function(self)
-        _G["MacroForgeEditorFrame"] = self
-        tinsert(UISpecialFrames, "MacroForgeEditorFrame")
-        self.obj:Fire("OnShow")
-    end)
-    f.frame:SetScript("OnHide", function(self)
-        for i = #UISpecialFrames, 1, -1 do
-            if UISpecialFrames[i] == "MacroForgeEditorFrame" then
-                table.remove(UISpecialFrames, i)
-            end
-        end
-        self.obj:Fire("OnClose")
-    end)
-    f:EnableResize(true)
-    -- Prevent resizing below minimum to protect two-column layout
-    if f.frame.SetResizeBounds then
-        f.frame:SetResizeBounds(820, 700)
-    elseif f.frame.SetMinResize then
-        f.frame:SetMinResize(820, 700)
+    -- Hosted in the main window's right pane (UI.lua). The AceGUI container
+    -- is sized by hand: AceGUI only lays out on SetWidth/SetHeight.
+    local UI = MF:GetModule("UI")
+    local pane = UI:GetEditorPane()
+    local f = gui:Create("SimpleGroup")
+    f:SetLayout("Fill")
+    f.frame:SetParent(pane)
+    f.frame:ClearAllPoints()
+    f.frame:SetPoint("TOPLEFT", pane, "TOPLEFT")
+    local function Fit()
+        f:SetWidth(pane:GetWidth())
+        f:SetHeight(pane:GetHeight())
     end
-    editorFrame = f
+    pane:HookScript("OnSizeChanged", Fit)
+    Fit()
 
-    -- Add opaque dark background to the content area
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.92)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
+    -- Header: scope + name of the macro being edited
+    local header = pane:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    header:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, 18)
+    header:SetJustifyH("LEFT")
+
+    -- Shim keeping the old AceGUI Frame calls working on the embedded pane
+    editorFrame = {
+        frame = f.frame,
+        SetTitle = function(_, text) header:SetText(text) end,
+        SetStatusText = function(_, text) header:SetText(text) end,
+        Show = function()
+            f.frame:Show()
+            header:Show()
+            UI:ShowEditorContent(true)
+            UI:Show()
+        end,
+        Hide = function()
+            f.frame:Hide()
+            header:Hide()
+            UI:ShowEditorContent(false)
+        end,
+        IsShown = function() return f.frame:IsShown() end,
+    }
 
     ---------------------------------------------------
     -- Single-column: full-width editor, analysis below
@@ -261,7 +246,7 @@ local function CreateEditor()
     local btnCancel = gui:Create("Button")
     btnCancel:SetText(L["CANCEL_BTN"])
     btnCancel:SetWidth(80)
-    btnCancel:SetCallback("OnClick", function() editorFrame:Hide() end)
+    btnCancel:SetCallback("OnClick", function() Editor:Revert() end)
     editorBar:AddChild(btnCancel)
 
     mainCol:AddChild(editorBar)
@@ -479,6 +464,8 @@ local function CreateEditor()
     f.frame:EnableKeyboard(true)
     f.frame:SetPropagateKeyboardInput(true)
     f.frame:SetScript("OnKeyDown", function(self, key)
+        -- SetPropagateKeyboardInput is blocked in combat: keys keep propagating
+        if InCombatLockdown() then return end
         -- Check if an EditBox has focus — if so, don't propagate to the game
         local nameEB = nameWidget and (nameWidget.editBox or nameWidget.editbox)
         local bodyEB = bodyWidget and (bodyWidget.editBox or bodyWidget.editbox)
@@ -508,7 +495,7 @@ local function CreateEditor()
         end
     end)
 
-    f:Hide()
+    editorFrame:Hide()
 end
 
 ---------------------------------------------------
@@ -790,10 +777,9 @@ function Editor:Open(macro)
     -- Push initial state for undo
     PushUndo(macro.name or "", macro.body or "", macro.icon or 134400)
 
-    -- Hide macro list and show editor
-    local UI = MF:GetModule("UI")
-    if UI and UI.mainFrame then UI.mainFrame:Hide() end
     editorFrame:Show()
+    local UI = MF:GetModule("UI")
+    if UI then UI:Refresh() end
 end
 
 ---------------------------------------------------
@@ -821,10 +807,9 @@ function Editor:OpenNew(perChar)
     -- Push initial state
     PushUndo("", "#showtooltip\n/cast ", 134400)
 
-    -- Hide macro list and show editor
-    local UI = MF:GetModule("UI")
-    if UI and UI.mainFrame then UI.mainFrame:Hide() end
     editorFrame:Show()
+    local UI = MF:GetModule("UI")
+    if UI then UI:Refresh() end
     nameWidget:SetFocus()
 end
 
@@ -1050,11 +1035,48 @@ function Editor:Save()
     if MF.db and MF.db.char then MF.db.char.draft = nil end
     if draftTimer then draftTimer:Cancel(); draftTimer = nil end
 
-    local UI = MF:GetModule("UI")
-    MF.editingIndex = nil
-    if UI then C_Timer.After(0.3, function() UI:Refresh() end) end
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
-    editorFrame:Hide()
+    -- Stay on the saved macro: find it again once the client has written it
+    -- (a new macro gets a slot, a renamed one may move)
+    local scope = self.isNew and (self.newPerChar and "character" or "account") or self.cur.scope
+    C_Timer.After(0.3, function()
+        local P = MF:GetModule("Profiles")
+        local saved
+        for _, m in ipairs(P:ReadMacros(scope)) do
+            if m.name == name and m.body == body then saved = m; break end
+        end
+        if saved then Editor:Open(saved) else Editor:Clear() end
+    end)
+end
+
+---------------------------------------------------
+-- Revert / Clear (embedded editor: no window to close)
+---------------------------------------------------
+function Editor:Revert()
+    if self.isNew or not self.cur then
+        self:Clear()
+        return
+    end
+    local P = MF:GetModule("Profiles")
+    for _, m in ipairs(P:ReadMacros(self.cur.scope)) do
+        if m.index == self.cur.index then return self:Open(m) end
+    end
+    self:Clear()
+end
+
+function Editor:Clear()
+    self.cur, self.isNew = nil, false
+    MF.editingIndex = nil
+    if draftTimer then draftTimer:Cancel(); draftTimer = nil end
+    if undoTimer then undoTimer:Cancel(); undoTimer = nil end
+    if editorFrame then editorFrame:Hide() end
+    local UI = MF:GetModule("UI")
+    if UI then UI:Refresh() end
+end
+
+-- Main window closed: stop the timers, keep the editor content for next open
+function Editor:OnHostHidden()
+    if undoTimer then undoTimer:Cancel(); undoTimer = nil end
 end
 
 ---------------------------------------------------

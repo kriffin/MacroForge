@@ -665,3 +665,10 @@ L["TPL_PH_MONTURE_SOL"] = "GROUND_MOUNT"
 L["TPL_PH_NOM_BUFF"] = "BUFF_NAME"
 L["TPL_PH_GROS_DEF"] = "BIG_DEFENSIVE"
 L["TPL_PH_PETIT_DEF"] = "SMALL_DEFENSIVE"
+
+-- Main window
+L["SIDEBAR_CHARACTER"] = "Character"
+L["SIDEBAR_ACCOUNT"] = "Account"
+L["SIDEBAR_NEW_CHARACTER"] = "New character macro"
+L["SIDEBAR_NEW_ACCOUNT"] = "New account macro"
+L["EDITOR_EMPTY_STATE"] = "Select a macro on the left, or create a new one."
