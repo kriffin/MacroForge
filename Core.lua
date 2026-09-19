@@ -120,6 +120,7 @@ end
 function MF:OnEnable()
     -- Register WoW events via AceEvent
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", "OnSpecChanged")
+    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
     self:RegisterEvent("UPDATE_MACROS", "OnMacrosUpdated")
     -- UPDATE_MACROS normally fires once macros are loaded; this covers a
     -- login where it fired before the addon was enabled.
@@ -137,7 +138,8 @@ function MF:OnEnable()
     self:Print(MF.C.cyan .. spec .. MF.C.r)
 end
 
-function MF:OnSpecChanged()
+function MF:OnSpecChanged(_, unit)
+    if unit and unit ~= "player" then return end
     self:SendMessage("MF_SPEC_CHANGED")
 end
 
