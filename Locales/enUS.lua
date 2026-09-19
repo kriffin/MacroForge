@@ -37,6 +37,7 @@ L["PROFILE_AUTOSWAP"] = "Auto-swap"
 L["AUTOSWAP_ON"] = "Auto-swap: enabled"
 L["AUTOSWAP_OFF"] = "Auto-swap: disabled"
 L["NO_MACROS_TO_LOAD"] = "No macros to load."
+L["MACROS_SKIPPED_LIMIT"] = "%d macro(s) not created: slot limit reached (%d)."
 
 -- Backup
 L["BACKUP_CREATED"] = "Backup created"

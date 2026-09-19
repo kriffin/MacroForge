@@ -91,27 +91,94 @@ function MF.Profiles:ReadAllMacros()
     return all
 end
 
-function MF.Profiles:WriteCharacterMacros(savedMacros)
+function MF.Profiles:ReadMacros(scope)
+    if scope == "account" then return self:ReadAccountMacros() end
+    return self:ReadCharacterMacros()
+end
+
+-- Groups a macro list by name, keeping slot order for duplicate names
+local function GroupByName(macros)
+    local byName = {}
+    for _, m in ipairs(macros) do
+        byName[m.name] = byName[m.name] or {}
+        table.insert(byName[m.name], m)
+    end
+    return byName
+end
+
+-- Replaces the macros of a scope with savedMacros without wiping the slots.
+-- A macro that exists on both sides under the same name is edited in place,
+-- so action bar buttons pointing to it survive the swap. Only macros absent
+-- from savedMacros are deleted, and only missing ones are created.
+function MF.Profiles:WriteMacros(scope, savedMacros)
     if not savedMacros or #savedMacros == 0 then
         MF:Print(MF.C.red .. L["NO_MACROS_TO_LOAD"] .. "|r")
         return false
     end
 
-    local _, numCharacter = GetNumMacros()
-    for i = numCharacter, 1, -1 do
-        DeleteMacro(MAX_ACCOUNT_MACROS + i)
-    end
+    local perCharacter = scope ~= "account"
+    local limit = perCharacter and MAX_CHARACTER_MACROS or MAX_ACCOUNT_MACROS
 
-    local created = 0
-    for _, macro in ipairs(savedMacros) do
-        if created < MAX_CHARACTER_MACROS then
-            local icon = macro.icon or 134400
-            local body = macro.body or ""
-            CreateMacro(macro.name, icon, body, true)
-            created = created + 1
+    -- 1. Pair wanted macros with existing ones by name
+    local pool = GroupByName(self:ReadMacros(scope))
+    local matched, toCreate = {}, {}
+    for _, wanted in ipairs(savedMacros) do
+        local candidates = pool[wanted.name]
+        if candidates and #candidates > 0 then
+            table.remove(candidates, 1)
+            table.insert(matched, wanted)
+        else
+            table.insert(toCreate, wanted)
         end
     end
-    return true, created
+
+    -- 2. Delete the leftovers, highest index first so lower indexes stay valid
+    local toDelete = {}
+    for _, candidates in pairs(pool) do
+        for _, m in ipairs(candidates) do table.insert(toDelete, m.index) end
+    end
+    table.sort(toDelete, function(a, b) return a > b end)
+    for _, idx in ipairs(toDelete) do DeleteMacro(idx) end
+
+    -- 3. Edit kept macros in place. Deletions shifted indexes, so re-read:
+    -- the scope now only holds matched names, in their original order.
+    local current = GroupByName(self:ReadMacros(scope))
+    local edited = 0
+    for _, wanted in ipairs(matched) do
+        local m = table.remove(current[wanted.name], 1)
+        local icon = wanted.icon or 134400
+        local body = wanted.body or ""
+        if m.body ~= body or m.icon ~= icon then
+            EditMacro(m.index, wanted.name, icon, body)
+            edited = edited + 1
+        end
+    end
+
+    -- 4. Create what is missing, within the slot limit
+    local numAccount, numCharacter = GetNumMacros()
+    local used = perCharacter and numCharacter or numAccount
+    local created, skipped = 0, 0
+    for _, wanted in ipairs(toCreate) do
+        if used < limit then
+            CreateMacro(wanted.name, wanted.icon or 134400, wanted.body or "", perCharacter)
+            used = used + 1
+            created = created + 1
+        else
+            skipped = skipped + 1
+        end
+    end
+    if skipped > 0 then
+        MF:Print(MF.C.red .. format(L["MACROS_SKIPPED_LIMIT"], skipped, limit) .. "|r")
+    end
+
+    return true, #matched + created, {
+        kept = #matched, edited = edited, created = created,
+        deleted = #toDelete, skipped = skipped,
+    }
+end
+
+function MF.Profiles:WriteCharacterMacros(savedMacros)
+    return self:WriteMacros("character", savedMacros)
 end
 
 ---------------------------------------------------
