@@ -122,7 +122,7 @@ local function BuildSetGroup(P, name, specChoices)
         P:BindSpec(name, key, checked)
     end)
     dd:SetCallback("OnClosed", function()
-        C_Timer.After(0, function() Sets:Refresh() end)
+        C_Timer.After(0, function() P:RefreshUI() end)
     end)
     grp:AddChild(dd)
 
@@ -248,6 +248,36 @@ function Sets:Refresh()
     if not frame then return end
     frame:ReleaseChildren()
     Build(frame)
+end
+
+---------------------------------------------------
+-- Embedded views (main window right pane)
+---------------------------------------------------
+-- Full sets view: info, "save current macros as" form, every set
+function Sets:BuildOverview(container)
+    Build(container)
+end
+
+-- One set: info line + its group (summary, bound specs, actions)
+function Sets:BuildDetail(container, name)
+    local P = MF:GetModule("Profiles")
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetFullWidth(true)
+    scroll:SetFullHeight(true)
+    scroll:SetLayout("List")
+    container:AddChild(scroll)
+    local hint = AceGUI:Create("Label")
+    hint:SetFullWidth(true)
+    hint:SetFontObject(GameFontNormalSmall)
+    hint:SetText(MF.C.grey .. L["SET_HINT"] .. "|r")
+    scroll:AddChild(hint)
+    scroll:AddChild(BuildSetGroup(P, name, P:GetSpecChoices()))
+end
+
+function Sets:ConfirmApply(name)
+    Confirm(format(L["SET_APPLY_CONFIRM"], name), function()
+        MF:GetModule("Profiles"):ApplySet(name)
+    end)
 end
 
 MF:RegisterModule("Sets", Sets)

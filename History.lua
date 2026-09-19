@@ -320,6 +320,50 @@ end
 ---------------------------------------------------
 -- Trash: deleted macros, recreatable
 ---------------------------------------------------
+-- One deleted macro: title, last body, Recreate / Versions.
+-- onDone runs after either button (e.g. close the window hosting it).
+function History:BuildTrashGroup(d, onDone)
+    local last = LastVersion(d.entry)
+    local grp = AceGUI:Create("InlineGroup")
+    grp:SetFullWidth(true)
+    grp:SetLayout("Flow")
+    grp:SetTitle(MF.C.white .. d.key .. "|r  "
+        .. MF.C.cyan .. (d.scope == "character" and L["SCOPE_CHAR"] or L["SCOPE_ACCOUNT"]) .. "|r  "
+        .. MF.C.grey .. format(L["TRASH_DELETED_AT"], date("%Y-%m-%d %H:%M", d.entry.deleted)) .. "|r"
+        .. ReasonTag(d.entry.deletedReason))
+    AddBodyPreview(grp, last.body or "")
+
+    local btnRecreate = AceGUI:Create("Button")
+    btnRecreate:SetText(L["TRASH_RECREATE"])
+    btnRecreate:SetWidth(130)
+    btnRecreate:SetCallback("OnClick", function()
+        local P = MF:GetModule("Profiles")
+        if P then P:CreateNewMacro(last.name, last.icon, last.body, d.scope == "character") end
+        local UI = MF:GetModule("UI")
+        if UI then C_Timer.After(0.6, function() UI:Refresh() end) end
+        if onDone then onDone() end
+    end)
+    grp:AddChild(btnRecreate)
+
+    local btnVersions = AceGUI:Create("Button")
+    btnVersions:SetText(format(L["TRASH_VERSIONS"], #d.entry.versions))
+    btnVersions:SetWidth(130)
+    btnVersions:SetCallback("OnClick", function()
+        if onDone then onDone() end
+        self:OpenVersions(d.scope, d.key)
+    end)
+    grp:AddChild(btnVersions)
+    return grp
+end
+
+-- Deleted entry by scope + key, or nil once recreated / pruned
+function History:GetDeletedEntry(scope, key)
+    local entry = MF.db and self:Store(scope)[key]
+    if entry and entry.deleted and LastVersion(entry) then
+        return { scope = scope, key = key, entry = entry }
+    end
+end
+
 function History:OpenTrash()
     self:ScanAll()
     local deleted = self:GetDeleted()
@@ -332,40 +376,8 @@ function History:OpenTrash()
     local scroll = AceGUI:Create("ScrollFrame")
     scroll:SetLayout("List")
     f:AddChild(scroll)
-
     for _, d in ipairs(deleted) do
-        local last = LastVersion(d.entry)
-        local grp = AceGUI:Create("InlineGroup")
-        grp:SetFullWidth(true)
-        grp:SetLayout("Flow")
-        grp:SetTitle(MF.C.white .. d.key .. "|r  "
-            .. MF.C.cyan .. (d.scope == "character" and L["SCOPE_CHAR"] or L["SCOPE_ACCOUNT"]) .. "|r  "
-            .. MF.C.grey .. format(L["TRASH_DELETED_AT"], date("%Y-%m-%d %H:%M", d.entry.deleted)) .. "|r"
-            .. ReasonTag(d.entry.deletedReason))
-        AddBodyPreview(grp, last.body or "")
-
-        local btnRecreate = AceGUI:Create("Button")
-        btnRecreate:SetText(L["TRASH_RECREATE"])
-        btnRecreate:SetWidth(130)
-        btnRecreate:SetCallback("OnClick", function()
-            local P = MF:GetModule("Profiles")
-            if P then P:CreateNewMacro(last.name, last.icon, last.body, d.scope == "character") end
-            local UI = MF:GetModule("UI")
-            if UI then C_Timer.After(0.3, function() UI:Refresh() end) end
-            f:Release()
-        end)
-        grp:AddChild(btnRecreate)
-
-        local btnVersions = AceGUI:Create("Button")
-        btnVersions:SetText(format(L["TRASH_VERSIONS"], #d.entry.versions))
-        btnVersions:SetWidth(130)
-        btnVersions:SetCallback("OnClick", function()
-            f:Release()
-            self:OpenVersions(d.scope, d.key)
-        end)
-        grp:AddChild(btnVersions)
-
-        scroll:AddChild(grp)
+        scroll:AddChild(self:BuildTrashGroup(d, function() f:Release() end))
     end
     f:Show()
 end

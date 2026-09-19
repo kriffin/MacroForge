@@ -22,10 +22,12 @@ local SIDEBAR_WIDTH = 270
 local ROW_HEIGHT, HEADER_HEIGHT = 30, 26
 local SCOPES = { "character", "account" }
 
-local frame, scrollBox, searchBox, editorPane, emptyState
+local AceGUI = LibStub("AceGUI-3.0")
+local frame, scrollBox, searchBox, editorPane, emptyState, detailHost
+local detail  -- { kind = "set" | "sets" | "trash", id = ... } shown in the right pane
 local searchQuery = ""
 local visibleMacros = {}  -- list order of the macros currently shown (keyboard navigation)
-local collapsed = {}
+local collapsed = { trash = true }
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -187,6 +189,27 @@ local function BuildDataProvider()
             end
         end
     end
+    -- Sets: one row per set + a "manage" row opening the full view
+    local setNames = P:GetSetNames()
+    local sets = dataProvider:Insert({ header = "sets", count = #setNames })
+    for _, name in ipairs(setNames) do
+        if searchQuery == "" or name:lower():find(searchQuery:lower(), 1, true) then
+            sets:Insert({ set = name })
+        end
+    end
+    sets:Insert({ action = "sets" })
+    sets:SetCollapsed(searchQuery == "" and collapsed.sets or false, false, true)
+
+    -- Trash: deleted macros (collapsed by default)
+    local H = MF:GetModule("History")
+    local deleted = H and H:GetDeleted() or {}
+    local trash = dataProvider:Insert({ header = "trash", count = #deleted })
+    for _, d in ipairs(deleted) do
+        if searchQuery == "" or d.key:lower():find(searchQuery:lower(), 1, true) then
+            trash:Insert({ trash = d })
+        end
+    end
+    trash:SetCollapsed(searchQuery == "" and collapsed.trash or false, false, true)
     return dataProvider
 end
 
@@ -256,15 +279,23 @@ local function InitHeader(btn, node)
     btn.mfName:ClearAllPoints()
     btn.mfName:SetPoint("LEFT", btn.mfArrow, "RIGHT", 6, 0)
     btn.mfName:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
-    btn.mfName:SetText(data.header == "character" and L["SIDEBAR_CHARACTER"] or L["SIDEBAR_ACCOUNT"])
+    local labels = {
+        character = L["SIDEBAR_CHARACTER"], account = L["SIDEBAR_ACCOUNT"],
+        sets = L["SETS"], trash = L["TRASH"],
+    }
+    btn.mfName:SetText(labels[data.header])
 
-    local full = data.count >= data.max
-    btn.mfBadge:SetText((full and MF.C.red or MF.C.grey) .. data.count .. "/" .. data.max .. "|r")
+    if data.max then
+        local full = data.count >= data.max
+        btn.mfBadge:SetText((full and MF.C.red or MF.C.grey) .. data.count .. "/" .. data.max .. "|r")
+    else
+        btn.mfBadge:SetText(MF.C.grey .. data.count .. "|r")
+    end
 
     -- Dropping a macro from the other group on this header moves it here
     local function DropMacro()
         local m = CursorMacro()
-        if m and m.scope ~= data.header then
+        if m and (data.header == "character" or data.header == "account") and m.scope ~= data.header then
             ClearCursor()
             UI:ConfirmMove(m, data.header)
             return true
@@ -279,8 +310,82 @@ local function InitHeader(btn, node)
             and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
     end)
     btn:SetScript("OnDragStart", nil)
+    btn:SetScript("OnDoubleClick", nil)
     btn:SetScript("OnEnter", nil)
     btn:SetScript("OnLeave", nil)
+end
+
+-- Generic row: icon, title, subtitle, badge; click shows a detail view
+local function InitDetailRow(btn, icon, title, sub, badge, kind, id)
+    btn.mfArrow:Hide()
+    btn.mfIcon:Show(); btn.mfSub:Show()
+    btn.mfIcon:SetTexture(icon)
+    btn.mfName:SetFontObject("GameFontHighlight")
+    btn.mfName:ClearAllPoints()
+    btn.mfName:SetPoint("TOPLEFT", btn.mfIcon, "TOPRIGHT", 8, 1)
+    btn.mfName:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
+    btn.mfName:SetText(title)
+    btn.mfSub:ClearAllPoints()
+    btn.mfSub:SetPoint("BOTTOMLEFT", btn.mfIcon, "BOTTOMRIGHT", 8, -1)
+    btn.mfSub:SetPoint("RIGHT", btn.mfBadge, "LEFT", -6, 0)
+    btn.mfSub:SetText(sub or "")
+    btn.mfBadge:SetText(badge or "")
+    btn.mfSelected:SetShown(detail and detail.kind == kind and detail.id == id or false)
+    btn:SetScript("OnClick", function() UI:ShowDetail(kind, id) end)
+    btn:SetScript("OnDragStart", nil)
+    btn:SetScript("OnDoubleClick", nil)
+    btn:SetScript("OnEnter", nil)
+    btn:SetScript("OnLeave", nil)
+end
+
+local function SetIcon(set)
+    for specKey in pairs(set.specs or {}) do
+        if type(specKey) == "number" and GetSpecializationInfoByID then
+            local _, _, _, icon = GetSpecializationInfoByID(specKey)
+            if icon then return icon end
+        end
+    end
+    return "Interface\\Icons\\INV_Misc_Book_09"
+end
+
+local function InitSetRow(btn, node)
+    local name = node:GetData().set
+    local P = MF:GetModule("Profiles")
+    local set = P:GetSets()[name]
+    local specs = P:GetSetSpecNames(name)
+    local sub = format(L["MACROS_N"], #(set.macros or {}))
+        .. (#specs > 0 and (" — " .. table.concat(specs, ", ")) or "")
+    local active = name == P:GetActiveSet()
+    InitDetailRow(btn, SetIcon(set), name, sub,
+        active and (MF.C.green .. L["SET_ACTIVE_TAG"] .. "|r") or nil, "set", name)
+    btn:SetScript("OnDoubleClick", function()
+        local S = MF:GetModule("Sets")
+        if S then S:ConfirmApply(name) end
+    end)
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(name, 0, 0.8, 1)
+        for _, m in ipairs(set.macros or {}) do GameTooltip:AddLine(m.name, 1, 1, 1) end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L["SIDEBAR_SET_HINT"], 0.7, 0.7, 0.7, true)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", GameTooltip_Hide)
+end
+
+local function InitTrashRow(btn, node)
+    local d = node:GetData().trash
+    local last = d.entry.versions[#d.entry.versions]
+    local icon = (last.icon and last.icon ~= 0) and last.icon or 134400
+    InitDetailRow(btn, icon, d.key,
+        format(L["TRASH_DELETED_AT"], date("%Y-%m-%d %H:%M", d.entry.deleted)),
+        MF.C.grey .. (d.scope == "character" and L["SCOPE_CHAR"] or L["SCOPE_ACCOUNT"]) .. "|r",
+        "trash", d.scope .. ":" .. d.key)
+end
+
+local function InitActionRow(btn, node)
+    InitDetailRow(btn, "Interface\\PaperDollInfoFrame\\Character-Plus", L["SIDEBAR_MANAGE_SETS"],
+        L["SIDEBAR_MANAGE_SETS_SUB"], nil, "sets", "all")
 end
 
 local function InitMacroRow(btn, node)
@@ -321,13 +426,19 @@ local function InitMacroRow(btn, node)
         end
     end)
     btn:SetScript("OnDragStart", function() MF.Helpers:PickupMacro(macro.index) end)
+    btn:SetScript("OnDoubleClick", nil)
     btn:SetScript("OnEnter", function(self) MacroTooltip(self, data) end)
     btn:SetScript("OnLeave", GameTooltip_Hide)
 end
 
 local function InitElement(btn, node)
     EnsureRowRegions(btn)
-    if node:GetData().header then InitHeader(btn, node) else InitMacroRow(btn, node) end
+    local data = node:GetData()
+    if data.header then InitHeader(btn, node)
+    elseif data.set then InitSetRow(btn, node)
+    elseif data.trash then InitTrashRow(btn, node)
+    elseif data.action then InitActionRow(btn, node)
+    else InitMacroRow(btn, node) end
 end
 
 ---------------------------------------------------
@@ -428,9 +539,7 @@ end
 local function CreateToolbar()
     -- Top-right shortcuts to the other windows
     local buttons = {
-        { L["SETS"], function() local S = MF:GetModule("Sets"); if S then S:Open() end end },
         { L["TEMPLATES"], function() local T = MF:GetModule("Templates"); if T then T:OpenBrowser() end end },
-        { L["TRASH"], function() local H = MF:GetModule("History"); if H then H:OpenTrash() end end },
         { SETTINGS or "Settings", function() local S = MF:GetModule("Settings"); if S then S:Toggle() end end },
     }
     local anchor
@@ -514,6 +623,59 @@ function UI:CreateMainFrame()
     emptyText:SetPoint("TOP", emptyIcon, "BOTTOM", 0, -14)
     emptyText:SetWidth(360)
     emptyText:SetText(L["EDITOR_EMPTY_STATE"])
+
+    -- Detail views (set, sets overview, deleted macro) share the pane with
+    -- the editor; AceGUI container sized by hand like the editor's.
+    detailHost = AceGUI:Create("SimpleGroup")
+    detailHost:SetLayout("Flow")
+    detailHost.frame:SetParent(editorPane)
+    detailHost.frame:ClearAllPoints()
+    detailHost.frame:SetPoint("TOPLEFT", editorPane, "TOPLEFT")
+    local function Fit()
+        detailHost:SetWidth(editorPane:GetWidth())
+        detailHost:SetHeight(editorPane:GetHeight())
+    end
+    editorPane:HookScript("OnSizeChanged", Fit)
+    Fit()
+    detailHost.frame:Hide()
+end
+
+---------------------------------------------------
+-- Detail views in the right pane
+---------------------------------------------------
+local function RenderDetail()
+    detailHost:ReleaseChildren()
+    if detail.kind == "set" then
+        local P = MF:GetModule("Profiles")
+        if not P:GetSets()[detail.id] then return UI:ShowEmpty() end
+        MF:GetModule("Sets"):BuildDetail(detailHost, detail.id)
+    elseif detail.kind == "sets" then
+        MF:GetModule("Sets"):BuildOverview(detailHost)
+    elseif detail.kind == "trash" then
+        local H = MF:GetModule("History")
+        local scope, key = detail.id:match("^(%a+):(.*)$")
+        local d = H:GetDeletedEntry(scope, key)
+        if not d then return UI:ShowEmpty() end
+        local scroll = AceGUI:Create("ScrollFrame")
+        scroll:SetFullWidth(true)
+        scroll:SetFullHeight(true)
+        scroll:SetLayout("List")
+        detailHost:AddChild(scroll)
+        scroll:AddChild(H:BuildTrashGroup(d))
+    end
+    detailHost.frame:Show()
+    emptyState:Hide()
+end
+
+function UI:ShowDetail(kind, id)
+    local E = MF:GetModule("Editor")
+    if E and E:IsDirty() then
+        return E:ConfirmLeave(function() E:Clear(); UI:ShowDetail(kind, id) end)
+    end
+    if E and E.cur or (E and E.isNew) then E:Clear() end
+    detail = { kind = kind, id = id }
+    RenderDetail()
+    self:Refresh()
 end
 
 ---------------------------------------------------
@@ -568,10 +730,16 @@ end
 
 -- Called by the editor when it shows content / is cleared
 function UI:ShowEditorContent(shown)
-    if emptyState then emptyState:SetShown(not shown) end
+    if shown and detailHost then
+        detail = nil
+        detailHost.frame:Hide()
+    end
+    if emptyState then emptyState:SetShown(not shown and not detail) end
 end
 
 function UI:ShowEmpty()
+    detail = nil
+    if detailHost then detailHost.frame:Hide() end
     local E = MF:GetModule("Editor")
     if E and E.Clear then E:Clear() end
     self:ShowEditorContent(false)
@@ -590,6 +758,7 @@ end
 function UI:Refresh()
     if not frame or not frame:IsShown() then return end
     scrollBox:SetDataProvider(BuildDataProvider(), ScrollBoxConstants.RetainScrollPosition)
+    if detail then RenderDetail() end
 end
 
 function UI:Toggle()
