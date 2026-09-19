@@ -39,6 +39,7 @@ local DB_DEFAULTS = {
     profile = {
         -- Options
         autoSwap = true,
+        autoSaveOnSwap = true,
         fontSize = 13,
         fontName = "Friz Quadrata TT",
         maxBackups = 3,
@@ -51,7 +52,7 @@ local DB_DEFAULTS = {
     },
     char = {
         -- Per-character data
-        profiles = {},
+        sets = {},       -- named macro sets bound to specs (Profiles.lua)
         backups = {},
         revisions = {},  -- character macro versions, keyed by name (History.lua)
         draft = nil,
@@ -184,7 +185,8 @@ function MF:MigrateDB()
         if raw.profiles and type(raw.profiles) == "table" then
             -- Old profiles were spec-based macro sets
             local charData = self.db.char
-            if not next(charData.profiles) then
+            if not charData.profiles or not next(charData.profiles) then
+                charData.profiles = {}  -- picked up by Profiles:MigrateProfilesToSets
                 for k, v in pairs(raw.profiles) do
                     if type(v) == "table" and v.macros then
                         charData.profiles[k] = v
@@ -228,8 +230,11 @@ function MF:HandleSlash(msg)
 
     if cmd == "" or cmd == "show" then
         if UI then UI:Toggle() end
-    elseif cmd == "save" then if P then P:SaveCurrentProfile() end
-    elseif cmd == "load" then if P then P:LoadCurrentProfile() end
+    elseif cmd == "save" then if P then P:SaveCurrentProfile(arg) end
+    elseif cmd == "load" then if P then P:LoadCurrentProfile(arg) end
+    elseif cmd == "sets" then
+        local S = self:GetModule("Sets")
+        if S then S:Toggle() end
     elseif cmd == "backup" then if P then P:CreateBackup() end
     elseif cmd == "restore" then if P then P:RestoreBackup(tonumber(arg) or 1) end
     elseif cmd == "backups" then if P then P:ListBackups() end
@@ -291,8 +296,10 @@ function MF:PrintHelp()
     self:Print(c.gold .. format(L["HELP_TITLE"], self.VERSION) .. c.r)
     local cmds = {
         { "/mf", L["HELP_SHOW"] },
-        { "/mf save", L["HELP_SAVE"] },
-        { "/mf load", L["HELP_LOAD"] },
+        { "/mf sets", L["HELP_SETS"] },
+        { "/mf save [set]", L["HELP_SAVE"] },
+        { "/mf load [set]", L["HELP_LOAD"] },
+        { "/mf list", L["HELP_LIST"] },
         { "/mf backup", L["HELP_BACKUP"] },
         { "/mf backups", L["HELP_BACKUPS"] },
         { "/mf restore [n]", L["HELP_RESTORE"] },

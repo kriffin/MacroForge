@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/WoW-Retail_12.0-148EFF?style=for-the-badge&logoColor=white" alt="WoW Retail" />
-  <img src="https://img.shields.io/badge/Version-7.0.0-FFD700?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-7.1.0-FFD700?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Ace3-Framework-00CCFF?style=for-the-badge" alt="Ace3" />
   <img src="https://img.shields.io/github/license/kriffin/MacroForge?style=for-the-badge&color=44CC88" alt="License" />
 </p>
@@ -52,8 +52,9 @@ Whether you're a **Mythic raider** optimizing cooldown sequencing, a **PvP playe
 | 🔗 **Share & Send** | Export/import codes + send macros directly to online players |
 | 📖 **Spell Browser** | Full spellbook with icons — search and insert any spell instantly |
 | 🎯 **Command Palette** | All slash commands categorized and searchable |
-| 💾 **Spec Profiles** | Per-specialization macro sets with auto-swap on spec change |
-| 🔄 **Backup & History** | Up to 10 backups + undo/redo per macro |
+| 💾 **Macro Sets** | Named sets (Raid, M+, PvP…) bound to specs, auto-swapped on spec change without emptying your action bars |
+| 🔄 **Revisions & Trash** | Every version of every macro — even edits made in Blizzard's editor — plus a trash to recreate deleted macros |
+| 🛟 **Backups** | Manual backups + automatic ones before any overwrite |
 | 🔎 **Duplicate Detector** | Find and clean up duplicate macros |
 | 🌐 **Localization** | English & French |
 
@@ -187,8 +188,11 @@ Uses shortest command aliases, strips whitespace inside conditions, removes redu
 | `/mf import` | Import a macro from a code |
 | `/mf send` | Send a macro to another player |
 | `/mf duplicates` | Detect duplicate macros |
-| `/mf save` / `load` | Save/load spec profiles |
-| `/mf backup` / `restore [n]` | Backup/restore macros |
+| `/mf sets` | Manage macro sets |
+| `/mf save [set]` / `load [set]` | Save/apply a set (default: the set of the current spec) |
+| `/mf list` | List sets |
+| `/mf backup` / `backups` / `restore [n]` | Create, list, restore backups (character + account) |
+| `/mf history` / `trash` | Versions of the open macro / deleted macros |
 | `/mf settings` | Open settings panel |
 | `/mf help` | Show all commands |
 

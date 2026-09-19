@@ -46,6 +46,15 @@ function Settings:GetOptionsTable()
                 get = function() return MF.db.profile.autoSwap end,
                 set = function(_, v) MF.db.profile.autoSwap = v end,
             },
+            autoSaveOnSwap = {
+                type = "toggle",
+                name = L["OPT_AUTOSAVE_ON_SWAP"],
+                desc = L["OPT_AUTOSAVE_ON_SWAP_DESC"],
+                order = 2.5,
+                width = "full",
+                get = function() return MF.db.profile.autoSaveOnSwap end,
+                set = function(_, v) MF.db.profile.autoSaveOnSwap = v end,
+            },
             autocomplete = {
                 type = "toggle",
                 name = L["OPT_AUTOCOMPLETE"],
@@ -160,8 +169,8 @@ function Settings:GetOptionsTable()
                 name = function()
                     local profileCount = 0
                     local charData = MF.db and MF.db.char
-                    if charData and charData.profiles then
-                        for _ in pairs(charData.profiles) do profileCount = profileCount + 1 end
+                    if charData and charData.sets then
+                        for _ in pairs(charData.sets) do profileCount = profileCount + 1 end
                     end
                     local backupCount = charData and charData.backups and #charData.backups or 0
                     return MF.C.white .. format(L["PROFILES_COUNT"], profileCount, backupCount) .. "|r"

@@ -24,6 +24,7 @@ local SpecInfo = C_SpecializationInfo or {}
 local GetSpecialization = SpecInfo.GetSpecialization or GetSpecialization
 local GetSpecializationInfo = SpecInfo.GetSpecializationInfo or GetSpecializationInfo
 local GetActiveSpecGroup = SpecInfo.GetActiveSpecGroup or GetActiveSpecGroup or GetActiveTalentGroup
+local GetNumSpecializations = SpecInfo.GetNumSpecializations or GetNumSpecializations
 local IsSpecSelectionEnabled = SpecInfo.IsSpecSelectionEnabled -- WoW Forever only
 
 -- Returns the specID, or "group<N>" (active talent group) when the class has
@@ -96,6 +97,14 @@ end
 function MF.Profiles:ReadMacros(scope)
     if scope == "account" then return self:ReadAccountMacros() end
     return self:ReadCharacterMacros()
+end
+
+local function CopyMacros(macros)
+    local out = {}
+    for _, m in ipairs(macros) do
+        table.insert(out, { name = m.name, icon = m.icon, body = m.body })
+    end
+    return out
 end
 
 -- Groups a macro list by name, keeping slot order for duplicate names
@@ -188,95 +197,256 @@ function MF.Profiles:WriteCharacterMacros(savedMacros)
 end
 
 ---------------------------------------------------
--- Profile Save / Load (uses AceDB char namespace)
+-- Macro sets (uses AceDB char namespace)
+-- A set is a named snapshot of the character macros:
+--   db.char.sets[name] = { macros = {...}, specs = { [specKey] = true }, updated = time() }
+-- A spec key (specID or "group<N>") belongs to at most one set; changing
+-- spec applies the set bound to the new spec. db.char.activeSet is the set
+-- currently on the bars: with autoSaveOnSwap, it absorbs the edits made to
+-- the macros before another set replaces them.
 ---------------------------------------------------
-function MF.Profiles:SaveCurrentProfile()
-    local specID = self:GetCurrentSpecID()
-    if not specID then
-        MF:Print(MF.C.red .. L["PROFILE_NO_SPEC"] .. "|r")
-        return
+function MF.Profiles:GetSets()
+    MF.db.char.sets = MF.db.char.sets or {}
+    return MF.db.char.sets
+end
+
+function MF.Profiles:GetSetNames()
+    local names = {}
+    for name in pairs(self:GetSets()) do table.insert(names, name) end
+    table.sort(names, function(a, b) return a:lower() < b:lower() end)
+    return names
+end
+
+function MF.Profiles:GetActiveSet()
+    local name = MF.db.char.activeSet
+    if name and self:GetSets()[name] then return name end
+    return nil
+end
+
+function MF.Profiles:GetSetForSpec(specKey)
+    if not specKey then return nil end
+    for name, set in pairs(self:GetSets()) do
+        if set.specs and set.specs[specKey] then return name end
     end
+    return nil
+end
 
-    local specName = self:GetSpecName(specID)
-    local macros = self:ReadCharacterMacros()
-    local serialized = {}
-    for _, m in ipairs(macros) do
-        table.insert(serialized, { name = m.name, icon = m.icon, body = m.body })
+-- Specs selectable for binding, in class order: { key, name }
+function MF.Profiles:GetSpecChoices()
+    local choices = {}
+    local _, _, classID = UnitClass("player")
+    local selectable = not IsSpecSelectionEnabled or IsSpecSelectionEnabled(classID)
+    local numSpecs = selectable and GetNumSpecializations and GetNumSpecializations() or 0
+    for i = 1, numSpecs do
+        local specID, name = GetSpecializationInfo(i)
+        if specID and specID > 0 then table.insert(choices, { key = specID, name = name }) end
     end
+    if #choices == 0 then
+        for group = 1, 2 do
+            local key = "group" .. group
+            table.insert(choices, { key = key, name = self:GetSpecName(key) })
+        end
+    end
+    return choices
+end
 
-    MF.db.char.profiles[specID] = {
-        specName = specName,
-        macros = serialized,
-        timestamp = date("%Y-%m-%d %H:%M"),
-    }
-
-    MF:Print(MF.C.green .. L["PROFILE_SAVED"] .. "|r → "
-        .. MF.C.cyan .. specName .. "|r (" .. #serialized .. " macros)")
-
-    if MF.UI and MF.UI.frame and MF.UI.frame:IsShown() then
-        MF.UI:Refresh()
+function MF.Profiles:BindSpec(setName, specKey, bound)
+    local sets = self:GetSets()
+    local set = sets[setName]
+    if not set or not specKey then return end
+    set.specs = set.specs or {}
+    if bound then
+        for _, other in pairs(sets) do
+            if other.specs then other.specs[specKey] = nil end
+        end
+        set.specs[specKey] = true
+    else
+        set.specs[specKey] = nil
     end
 end
 
-function MF.Profiles:LoadCurrentProfile()
+function MF.Profiles:GetSetSpecNames(setName)
+    local set = self:GetSets()[setName]
+    local names = {}
+    for specKey in pairs(set and set.specs or {}) do
+        table.insert(names, self:GetSpecName(specKey))
+    end
+    table.sort(names)
+    return names
+end
+
+-- Stores the current character macros into a set (created if missing)
+function MF.Profiles:SaveSet(name, silent)
+    local sets = self:GetSets()
+    local macros = CopyMacros(self:ReadCharacterMacros())
+    local set = sets[name] or { specs = {} }
+    set.macros = macros
+    set.updated = time()
+    sets[name] = set
+    MF.db.char.activeSet = name
+    if not silent then
+        MF:Print(MF.C.green .. L["SET_SAVED"] .. "|r → " .. MF.C.cyan .. name .. "|r ("
+            .. #macros .. " macros)")
+    end
+    self:RefreshUI()
+    return set
+end
+
+-- Replaces the character macros with a set's macros
+function MF.Profiles:ApplySet(name, reasonMsg)
+    local set = self:GetSets()[name]
+    if not set then
+        MF:Print(MF.C.red .. format(L["SET_NOT_FOUND"], name) .. "|r")
+        return
+    end
+    MF:RunOutOfCombat("load", function()
+        self:CreateBackup(true)
+        local H = MF:GetModule("History")
+        if H then H:SetNextReason("set: " .. name) end
+        local success, count = self:WriteCharacterMacros(set.macros)
+        if success then
+            MF.db.char.activeSet = name
+            MF:Print(MF.C.green .. (reasonMsg or L["SET_APPLIED"]) .. "|r → "
+                .. MF.C.cyan .. name .. "|r (" .. count .. " macros)")
+        end
+        self:RefreshUI()
+    end)
+end
+
+function MF.Profiles:DeleteSet(name)
+    local sets = self:GetSets()
+    if not sets[name] then return end
+    sets[name] = nil
+    if MF.db.char.activeSet == name then MF.db.char.activeSet = nil end
+    MF:Print(MF.C.orange .. format(L["SET_DELETED"], name) .. "|r")
+    self:RefreshUI()
+end
+
+function MF.Profiles:RenameSet(oldName, newName)
+    local sets = self:GetSets()
+    newName = newName and newName:match("^%s*(.-)%s*$")
+    if not sets[oldName] or not newName or newName == "" or sets[newName] then return false end
+    sets[newName], sets[oldName] = sets[oldName], nil
+    if MF.db.char.activeSet == oldName then MF.db.char.activeSet = newName end
+    self:RefreshUI()
+    return true
+end
+
+function MF.Profiles:RefreshUI()
+    local SetsUI = MF:GetModule("Sets")
+    if SetsUI and SetsUI.Refresh then SetsUI:Refresh() end
+    if MF.UI and MF.UI.mainFrame and MF.UI.mainFrame.frame:IsShown() then
+        C_Timer.After(0.3, function() MF.UI:Refresh() end)
+    end
+end
+
+-- /mf save [name]: without a name, targets the set bound to the current
+-- spec, creating one named after the spec (and bound to it) if needed.
+function MF.Profiles:SaveCurrentProfile(name)
+    name = name and name:match("^%s*(.-)%s*$")
+    if name and name ~= "" then
+        self:SaveSet(name)
+        return
+    end
     local specID = self:GetCurrentSpecID()
     if not specID then
         MF:Print(MF.C.red .. L["PROFILE_NO_SPEC"] .. "|r")
         return
     end
+    local target = self:GetSetForSpec(specID)
+    if not target then
+        target = self:GetSpecName(specID)
+        self:SaveSet(target)
+        self:BindSpec(target, specID, true)
+    else
+        self:SaveSet(target)
+    end
+end
 
-    local profile = MF.db.char.profiles[specID]
-    if not profile then
+-- /mf load [name]: without a name, applies the set bound to the current spec
+function MF.Profiles:LoadCurrentProfile(name)
+    name = name and name:match("^%s*(.-)%s*$")
+    if name and name ~= "" then
+        self:ApplySet(name)
+        return
+    end
+    local specID = self:GetCurrentSpecID()
+    if not specID then
+        MF:Print(MF.C.red .. L["PROFILE_NO_SPEC"] .. "|r")
+        return
+    end
+    local target = self:GetSetForSpec(specID)
+    if not target then
         MF:Print(MF.C.red .. format(L["PROFILE_NONE"], MF.C.cyan .. self:GetSpecName(specID) .. "|r"))
         return
     end
-
-    MF:RunOutOfCombat("load", function()
-        self:CreateBackup(true)
-        local success, count = self:WriteCharacterMacros(profile.macros)
-        if success then
-            MF:Print(MF.C.green .. L["PROFILE_LOADED"] .. "|r → "
-                .. MF.C.cyan .. profile.specName .. "|r (" .. count .. " macros)")
-        end
-    end)
+    self:ApplySet(target)
 end
 
 function MF.Profiles:ListProfiles()
     local C = MF.C
-    MF:Print(C.gold .. "═══ Profils ═══|r")
-    local found = false
-    for specID, p in pairs(MF.db.char.profiles) do
-        found = true
-        MF:Print(C.cyan .. p.specName .. "|r — "
-            .. #p.macros .. " macros — " .. C.grey .. p.timestamp .. "|r")
+    MF:Print(C.gold .. "═══ Sets ═══|r")
+    local names = self:GetSetNames()
+    if #names == 0 then
+        MF:Print(C.grey .. L["SET_NONE"] .. "|r")
+        return
     end
-    if not found then
-        MF:Print(C.grey .. "Aucun profil. /mf save|r")
+    local active = self:GetActiveSet()
+    for _, name in ipairs(names) do
+        local set = self:GetSets()[name]
+        local specs = self:GetSetSpecNames(name)
+        MF:Print(C.cyan .. name .. "|r"
+            .. (name == active and (" " .. C.green .. L["SET_ACTIVE_TAG"] .. "|r") or "")
+            .. " — " .. #set.macros .. " macros"
+            .. (#specs > 0 and (" — " .. C.yellow .. table.concat(specs, ", ") .. "|r") or ""))
     end
 end
 
 ---------------------------------------------------
 -- Auto-swap
 ---------------------------------------------------
+-- Both ACTIVE_TALENT_GROUP_CHANGED and spec events can fire for one change:
+-- only a real change of spec key triggers a swap.
 function MF.Profiles:OnSpecChanged()
-    if not MF.db or not MF.db.profile.autoSwap then return end
+    if not MF.db then return end
     local specID = self:GetCurrentSpecID()
-    if not specID then return end
+    if not specID or specID == MF.db.char.lastSpec then return end
+    MF.db.char.lastSpec = specID
 
-    local profile = MF.db.char.profiles[specID]
-    if profile then
-        local specName = self:GetSpecName(specID)
-        C_Timer.After(1, function()
-            MF:RunOutOfCombat("load", function()
-                self:CreateBackup(true)
-                local success, count = self:WriteCharacterMacros(profile.macros)
-                if success then
-                    MF:Print(MF.C.green .. L["PROFILE_AUTOSWAP"] .. "|r → "
-                        .. MF.C.cyan .. specName .. "|r (" .. count .. " macros)")
-                end
-            end)
+    if not MF.db.profile.autoSwap then return end
+    local target = self:GetSetForSpec(specID)
+    if not target or target == self:GetActiveSet() then return end
+
+    C_Timer.After(1, function()
+        MF:RunOutOfCombat("swap", function()
+            local active = self:GetActiveSet()
+            if active and MF.db.profile.autoSaveOnSwap then
+                self:SaveSet(active, true)
+            end
+            self:ApplySet(target, L["PROFILE_AUTOSWAP"])
         end)
+    end)
+end
+
+function MF.Profiles:OnLogin()
+    MF.db.char.lastSpec = self:GetCurrentSpecID()
+end
+
+-- v7.1 stored one profile per spec in db.char.profiles
+function MF.Profiles:MigrateProfilesToSets()
+    local old = MF.db.char.profiles
+    if not old or not next(old) then return end
+    local sets = self:GetSets()
+    for specKey, p in pairs(old) do
+        if type(p) == "table" and p.macros then
+            local name = p.specName or self:GetSpecName(specKey)
+            local unique, n = name, 2
+            while sets[unique] do unique = name .. " " .. n; n = n + 1 end
+            sets[unique] = { macros = p.macros, specs = { [specKey] = true } }
+            self:BindSpec(unique, specKey, true)
+        end
     end
+    MF.db.char.profiles = nil
 end
 
 function MF.Profiles:ToggleAutoSwap()
@@ -292,14 +462,6 @@ end
 -- Automatic backups (taken before any overwrite) rotate on their own quota,
 -- so a few spec swaps never push the manual ones out.
 local MAX_AUTO_BACKUPS = 5
-
-local function CopyMacros(macros)
-    local out = {}
-    for _, m in ipairs(macros) do
-        table.insert(out, { name = m.name, icon = m.icon, body = m.body })
-    end
-    return out
-end
 
 function MF.Profiles:CreateBackup(auto)
     local backup = {
@@ -358,6 +520,8 @@ function MF.Profiles:RestoreBackup(index)
     local backup = MF.db.char.backups[index]
     MF:RunOutOfCombat("load", function()
         self:CreateBackup(true)
+        -- The restored macros are no set: don't let a swap save them into one
+        MF.db.char.activeSet = nil
         local counts = {}
         -- An empty scope in the backup is skipped rather than wiping that scope
         for _, scope in ipairs({ "character", "account" }) do
@@ -424,8 +588,12 @@ function MF.Profiles:DeleteMacroByIndex(macroIndex)
 end
 
 function MF.Profiles:OnInitialize()
+    self:MigrateProfilesToSets()
     MF:RegisterMessage("MF_SPEC_CHANGED", function()
         self:OnSpecChanged()
+    end)
+    MF:RegisterMessage("MF_LOGIN", function()
+        self:OnLogin()
     end)
 end
 

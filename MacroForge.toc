@@ -50,6 +50,7 @@ CommandPalette.lua
 IconPicker.lua
 Share.lua
 History.lua
+Sets.lua
 DuplicateDetector.lua
 Autocomplete.lua
 
