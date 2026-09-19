@@ -727,6 +727,12 @@ end
 ---------------------------------------------------
 -- Open (edit existing)
 ---------------------------------------------------
+-- The edit box can drop a trailing newline: compare bodies without it, or
+-- merely opening a macro would leave a "draft" that differs from it.
+local function SameBody(a, b)
+    return (a or ""):gsub("%s+$", "") == (b or ""):gsub("%s+$", "")
+end
+
 function Editor:Open(macro)
     CreateEditor()
     self.isNew = false; self.cur = macro
@@ -746,7 +752,7 @@ function Editor:Open(macro)
 
     -- Check for auto-saved draft
     local draft = MF.db and MF.db.char and MF.db.char.draft
-    if draft and draft.index == macro.index and draft.body ~= macro.body then
+    if draft and draft.index == macro.index and not SameBody(draft.body, macro.body) then
         -- Propose draft restoration
         StaticPopupDialogs["MACROFORGE_DRAFT"] = {
             text = L["DRAFT_FOUND"],
@@ -998,6 +1004,11 @@ function Editor:OnChanged(skipUndo)
     if MF.db and MF.db.profile.autoSaveDraft then
         if draftTimer then draftTimer:Cancel() end
         draftTimer = C_Timer.NewTimer(2, function()
+            local cur = Editor.cur
+            if cur and SameBody(body, cur.body) and name == cur.name and Editor.selectedIcon == cur.icon then
+                MF.db.char.draft = nil  -- nothing unsaved
+                return
+            end
             MF.db.char.draft = {
                 name = name, body = body,
                 icon = Editor.selectedIcon,
