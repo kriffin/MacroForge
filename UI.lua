@@ -500,7 +500,7 @@ StaticPopupDialogs["MACROFORGE_EMPTY_TRASH"] = {
     OnAccept = function()
         local H = MF:GetModule("History")
         if H then H:EmptyTrash() end
-        UI:ShowEmpty()
+        UI:CloseDetail("trash")
     end,
     timeout = 0,
     whileDead = true,
@@ -647,6 +647,9 @@ local function CreateToolbar()
     end
 end
 
+-- Defined in the Onboarding section below
+local OnMainShown, CreateHelpButton
+
 function UI:CreateMainFrame()
     if frame then return end
     frame = CreateFrame("Frame", FRAME_NAME, UIParent, "PortraitFrameFlatTemplate")
@@ -686,10 +689,19 @@ function UI:CreateMainFrame()
     -- Keys reach this frame when no text field has the focus; the editor's
     -- and the search box's fields forward their Ctrl shortcuts to HandleKey.
     -- SetPropagateKeyboardInput is blocked in combat: keys then just propagate.
+    -- A handled key stops propagating for that key only: propagation is
+    -- restored on the next frame, so combat (where it can't be changed)
+    -- never starts with the game's keys swallowed.
     frame:EnableKeyboard(true)
+    frame:SetPropagateKeyboardInput(true)
     frame:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end
-        self:SetPropagateKeyboardInput(not UI:HandleKey(key))
+        if UI:HandleKey(key) then
+            self:SetPropagateKeyboardInput(false)
+            C_Timer.After(0, function()
+                if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+            end)
+        end
     end)
 
     local resize = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")
@@ -741,7 +753,7 @@ local function RenderDetail()
     detailHost:ReleaseChildren()
     if detail.kind == "set" then
         local P = MF:GetModule("Profiles")
-        if not P:GetSets()[detail.id] then return UI:ShowEmpty() end
+        if not P:GetSets()[detail.id] then return UI:CloseDetail() end
         MF:GetModule("Sets"):BuildDetail(detailHost, detail.id)
     elseif detail.kind == "sets" then
         MF:GetModule("Sets"):BuildOverview(detailHost)
@@ -749,7 +761,7 @@ local function RenderDetail()
         local H = MF:GetModule("History")
         local scope, key = detail.id:match("^(%a+):(.*)$")
         local d = H:GetDeletedEntry(scope, key)
-        if not d then return UI:ShowEmpty() end
+        if not d then return UI:CloseDetail() end
         local scroll = AceGUI:Create("ScrollFrame")
         scroll:SetFullWidth(true)
         scroll:SetFullHeight(true)
@@ -835,7 +847,7 @@ StaticPopupDialogs["MACROFORGE_WHATS_NEW"] = {
     preferredIndex = 3,
 }
 
-local function OnMainShown()
+function OnMainShown()
     local db = OnboardingDB()
     if db.whatsNew ~= WHATS_NEW_ID then
         db.whatsNew = WHATS_NEW_ID
@@ -851,7 +863,7 @@ function UI:ResetTips()
     self:ShowTip("list")
 end
 
-local function CreateHelpButton()
+function CreateHelpButton()
     local help = CreateFrame("Button", nil, frame)
     help:SetSize(22, 22)
     help:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -26, 0)
@@ -930,6 +942,18 @@ function UI:ShowEditorContent(shown)
         detailHost.frame:Hide()
     end
     if emptyState then emptyState:SetShown(not shown and not detail) end
+end
+
+-- Closes the detail view (optionally only of that kind) without touching
+-- the editor and its unsaved changes
+function UI:CloseDetail(kind)
+    if detail and (not kind or detail.kind == kind) then
+        detail = nil
+        if detailHost then detailHost.frame:Hide() end
+        local E = MF:GetModule("Editor")
+        if emptyState then emptyState:SetShown(not (E and (E.cur or E.isNew))) end
+    end
+    self:Refresh()
 end
 
 function UI:ShowEmpty()

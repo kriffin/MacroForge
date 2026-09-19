@@ -1003,18 +1003,23 @@ end
 ---------------------------------------------------
 -- Save
 ---------------------------------------------------
+-- Returns true when the macro was written (or queued until combat ends);
+-- on failure the edits and the draft are kept.
 function Editor:Save(noReopen)
+    if not nameWidget or not (self.cur or self.isNew) then return false end
     local name = nameWidget:GetText()
     local body = bodyWidget:GetText()
-    if not name or name == "" then MF:Print(MF.C.red .. L["EMPTY_NAME"] .. "|r"); return end
+    if not name or name == "" then MF:Print(MF.C.red .. L["EMPTY_NAME"] .. "|r"); return false end
 
     local icon = self.selectedIcon or 134400
     local P = MF:GetModule("Profiles")
     if self.isNew then
-        if P then P:CreateNewMacro(name, icon, body, self.newPerChar) end
+        -- nil out of combat = refused (slot limit); in combat it is queued
+        local created = P and P:CreateNewMacro(name, icon, body, self.newPerChar)
+        if not created and not InCombatLockdown() then return false end
     else
         if not self.cur or not self.cur.index then
-            MF:Print(MF.C.red .. L["MISSING_INDEX"] .. "|r"); return
+            MF:Print(MF.C.red .. L["MISSING_INDEX"] .. "|r"); return false
         end
         -- Nothing can move macro slots during combat, so the index stays valid
         local cur = self.cur
@@ -1036,7 +1041,7 @@ function Editor:Save(noReopen)
     -- (a new macro gets a slot, a renamed one may move)
     self.baseline = { name = name, body = body, icon = icon }
     self:OnChanged()
-    if noReopen then return end
+    if noReopen then return true end
     local scope = self.isNew and (self.newPerChar and "character" or "account") or self.cur.scope
     C_Timer.After(0.3, function()
         local P = MF:GetModule("Profiles")
@@ -1046,6 +1051,7 @@ function Editor:Save(noReopen)
         end
         if saved then Editor:Open(saved, true) else Editor:Clear() end
     end)
+    return true
 end
 
 ---------------------------------------------------
@@ -1068,7 +1074,8 @@ StaticPopupDialogs["MACROFORGE_UNSAVED"] = {
     button1 = L["SAVE_BTN"],
     button2 = L["UNSAVED_STAY"],
     button3 = L["UNSAVED_DISCARD"],
-    OnAccept = function(_, proceed) Editor:Save(true); proceed() end,
+    -- A failed save (empty name, slot limit) keeps the user on the macro
+    OnAccept = function(_, proceed) if Editor:Save(true) then proceed() end end,
     OnAlt = function(_, proceed) proceed() end,
     timeout = 0,
     whileDead = true,
@@ -1120,6 +1127,7 @@ end
 -- Undo / Redo
 ---------------------------------------------------
 function Editor:Undo()
+    if not bodyWidget then return end
     if #undoStack < 2 then
         MF:Print(MF.C.grey .. L["NOTHING_TO_UNDO"] .. "|r")
         return
@@ -1141,6 +1149,7 @@ function Editor:Undo()
 end
 
 function Editor:Redo()
+    if not bodyWidget then return end
     if #redoStack == 0 then
         MF:Print(MF.C.grey .. L["NOTHING_TO_REDO"] .. "|r")
         return

@@ -139,8 +139,10 @@ function MF:OnEnable()
     self:Print(MF.C.cyan .. spec .. MF.C.r)
 end
 
+-- PLAYER_SPECIALIZATION_CHANGED passes a unit; ACTIVE_TALENT_GROUP_CHANGED
+-- passes (current, previous) group numbers, not a unit
 function MF:OnSpecChanged(event, unit)
-    if unit and unit ~= "player" then return end
+    if event == "PLAYER_SPECIALIZATION_CHANGED" and unit ~= "player" then return end
     self:Debug("spec", "%s", event)
     self:SendMessage("MF_SPEC_CHANGED")
 end
