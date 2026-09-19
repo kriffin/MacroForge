@@ -12,6 +12,8 @@ MF.Profiles = {}
 local MacroConsts = Constants and Constants.MacroConsts
 local MAX_ACCOUNT_MACROS = MacroConsts and MacroConsts.MAX_ACCOUNT_MACROS or 120
 local MAX_CHARACTER_MACROS = MacroConsts and MacroConsts.MAX_CHARACTER_MACROS or 18
+MF.Profiles.MAX_ACCOUNT_MACROS = MAX_ACCOUNT_MACROS
+MF.Profiles.MAX_CHARACTER_MACROS = MAX_CHARACTER_MACROS
 
 ---------------------------------------------------
 -- Spec Detection

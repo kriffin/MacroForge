@@ -404,6 +404,25 @@ local function CreateEditor()
     end)
     btnGroup:AddChild(btnDrag)
 
+    local btnHistory = gui:Create("Button")
+    btnHistory:SetText(L["HISTORY_BTN"])
+    btnHistory:SetWidth(110)
+    btnHistory:SetCallback("OnClick", function()
+        local H = MF:GetModule("History")
+        if H and Editor.cur and Editor.cur.index then
+            H:OpenBrowser(Editor.cur)
+        else
+            MF:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
+        end
+    end)
+    btnHistory:SetCallback("OnEnter", function(w)
+        GameTooltip:SetOwner(w.frame, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["HISTORY_DESC"], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    btnHistory:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+    btnGroup:AddChild(btnHistory)
+
     mainCol:AddChild(btnGroup)
 
     -------------------------------------------------

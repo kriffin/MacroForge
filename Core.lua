@@ -42,7 +42,7 @@ local DB_DEFAULTS = {
         fontSize = 13,
         fontName = "Friz Quadrata TT",
         maxBackups = 3,
-        maxHistory = 10,
+        maxHistory = 20,
         autocomplete = true,
         showMinimapButton = true,
         syntaxColors = true,
@@ -53,10 +53,11 @@ local DB_DEFAULTS = {
         -- Per-character data
         profiles = {},
         backups = {},
-        history = {},
+        revisions = {},  -- character macro versions, keyed by name (History.lua)
         draft = nil,
     },
     global = {
+        revisions = {},  -- account macro versions, keyed by name
         -- Minimap button position (shared across profiles)
         minimap = { hide = false, minimapPos = 220 },
     },
@@ -118,6 +119,13 @@ end
 function MF:OnEnable()
     -- Register WoW events via AceEvent
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", "OnSpecChanged")
+    self:RegisterEvent("UPDATE_MACROS", "OnMacrosUpdated")
+    -- UPDATE_MACROS normally fires once macros are loaded; this covers a
+    -- login where it fired before the addon was enabled.
+    C_Timer.After(5, function()
+        local numAccount, numCharacter = GetNumMacros()
+        if numAccount + numCharacter > 0 then self:OnMacrosUpdated() end
+    end)
 
     -- Signal login via AceEvent message
     self:SendMessage("MF_LOGIN")
@@ -130,6 +138,10 @@ end
 
 function MF:OnSpecChanged()
     self:SendMessage("MF_SPEC_CHANGED")
+end
+
+function MF:OnMacrosUpdated()
+    self:SendMessage("MF_MACROS_UPDATED")
 end
 
 ---------------------------------------------------
@@ -258,10 +270,13 @@ function MF:HandleSlash(msg)
         local H = self:GetModule("History")
         local E = self:GetModule("Editor")
         if H and E and E.cur and E.cur.index then
-            H:OpenBrowser(E.cur.index)
+            H:OpenBrowser(E.cur)
         else
             self:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
         end
+    elseif cmd == "trash" then
+        local H = self:GetModule("History")
+        if H then H:OpenTrash() end
     elseif cmd == "send" then
         local S = self:GetModule("Share")
         if S and S.OpenSend then S:OpenSend() end
@@ -291,6 +306,7 @@ function MF:PrintHelp()
         { "/mf export", L["HELP_EXPORT"] },
         { "/mf duplicates", L["HELP_DUPLICATES"] },
         { "/mf history", L["HELP_HISTORY"] },
+        { "/mf trash", L["HELP_TRASH"] },
         { "/mf send", "Send macro to player (AceComm)" },
         { "/mf settings", L["HELP_SETTINGS"] },
     }

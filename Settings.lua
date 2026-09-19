@@ -135,7 +135,7 @@ function Settings:GetOptionsTable()
                 type = "range",
                 name = L["OPT_MAX_HISTORY"],
                 order = 22,
-                min = 3, max = 30, step = 1,
+                min = 3, max = 50, step = 1,
                 get = function() return MF.db.profile.maxHistory end,
                 set = function(_, v) MF.db.profile.maxHistory = v end,
             },
@@ -174,7 +174,8 @@ function Settings:GetOptionsTable()
                 name = L["PURGE_HISTORY"],
                 order = 33,
                 func = function()
-                    if MF.db and MF.db.char then MF.db.char.history = {} end
+                    local H = MF:GetModule("History")
+                    if MF.db and H then H:Purge() end
                     MF:Print(MF.C.green .. L["HISTORY_PURGED"] .. "|r")
                 end,
                 width = "half",

@@ -352,6 +352,15 @@ function UI:CreateMainFrame()
         end
     end)
 
+    local btnTrash = CreateFrame("Button", nil, f.frame, "UIPanelButtonTemplate")
+    btnTrash:SetSize(100, 22)
+    btnTrash:SetPoint("LEFT", btnImport, "RIGHT", 4, 0)
+    btnTrash:SetText(L["TRASH"])
+    btnTrash:SetScript("OnClick", function()
+        local H = MF:GetModule("History")
+        if H then H:OpenTrash() end
+    end)
+
     -- Hide the status bar entirely so it doesn't overlap buttons
     -- statusbg is the parent of statustext (not stored on widget directly)
     if f.statustext then
