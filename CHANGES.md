@@ -64,6 +64,14 @@ a popup with arbitrary content.
 - Comm: whisper only, size-capped, one popup at a time.
 - Share codes: size-capped before and after decompression.
 
+#### Dynamic "?" icons stay dynamic
+
+A macro with the `?` icon and `#showtooltip` shows the icon of the spell it
+casts. `GetMacroInfo` returns that resolved icon, and MacroForge wrote it back
+on save, swap, restore or recreate: the icon was frozen on one spell.
+MacroForge now detects it (returned icon = icon of the macro's spell or item)
+and keeps `?`.
+
 #### Class templates work in every client language
 
 Template bodies held French spell names (`/cast Mur protecteur`), and several

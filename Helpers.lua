@@ -131,6 +131,38 @@ function MF.Helpers:SanitizeMacro(data)
 end
 
 ---------------------------------------------------
+-- Stored icon of a macro
+-- A macro with the "?" icon (134400) and #show/#showtooltip displays the
+-- icon of the spell or item it would use, and GetMacroInfo returns that
+-- resolved icon, not "?". Writing it back (EditMacro/CreateMacro) freezes
+-- the icon. When the returned icon is exactly the resolved one, the macro is
+-- treated as dynamic and "?" is returned. (A custom icon identical to the
+-- spell icon is also turned into "?": same look, now dynamic.)
+---------------------------------------------------
+MF.Helpers.DYNAMIC_ICON = 134400
+
+local function ResolvedMacroTexture(index)
+    local spellID = GetMacroSpell and GetMacroSpell(index)
+    if spellID and C_Spell and C_Spell.GetSpellTexture then
+        local tex = C_Spell.GetSpellTexture(spellID)
+        if tex then return tex end
+    end
+    local _, itemLink = GetMacroItem and GetMacroItem(index)
+    local itemID = itemLink and tonumber(itemLink:match("item:(%d+)"))
+    if itemID and C_Item and C_Item.GetItemIconByID then
+        return C_Item.GetItemIconByID(itemID)
+    end
+    return nil
+end
+
+function MF.Helpers:StoredMacroIcon(index, icon, body)
+    if not body or not (body:match("^%s*#show") or body:match("\n%s*#show")) then return icon end
+    local resolved = ResolvedMacroTexture(index)
+    if resolved and resolved == icon then return self.DYNAMIC_ICON end
+    return icon
+end
+
+---------------------------------------------------
 -- Put a macro on the cursor (drop it on an action bar)
 ---------------------------------------------------
 function MF.Helpers:PickupMacro(index)

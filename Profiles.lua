@@ -63,7 +63,7 @@ function MF.Profiles:ReadCharacterMacros()
         if name then
             table.insert(macros, {
                 slot = i, index = idx,
-                name = name, icon = icon, body = body,
+                name = name, icon = MF.Helpers:StoredMacroIcon(idx, icon, body), body = body,
                 scope = "character",
             })
         end
@@ -79,7 +79,7 @@ function MF.Profiles:ReadAccountMacros()
         if name then
             table.insert(macros, {
                 slot = i, index = i,
-                name = name, icon = icon, body = body,
+                name = name, icon = MF.Helpers:StoredMacroIcon(i, icon, body), body = body,
                 scope = "account",
             })
         end
