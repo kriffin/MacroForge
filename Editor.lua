@@ -168,7 +168,7 @@ local function CreateEditor()
     -- Name
     nameWidget = gui:Create("EditBox")
     nameWidget:SetLabel(L["MACRO_NAME_LABEL"])
-    nameWidget:SetWidth(600)
+    nameWidget:SetWidth(280)
     nameWidget:SetMaxLetters(16)
     nameWidget:DisableButton(true)
     nameWidget:SetCallback("OnTextChanged", function() Editor:OnChanged() end)
@@ -177,35 +177,76 @@ local function CreateEditor()
     mainCol:AddChild(nameRow)
 
     ---------------------------------------------------
-    -- Editor action bar (contextual buttons above body)
+    -- Toolbar: compact icon buttons (tooltip = label + help) + dropdowns
     ---------------------------------------------------
-    local editorBar = gui:Create("SimpleGroup")
-    editorBar:SetFullWidth(true)
-    editorBar:SetLayout("Flow")
+    local toolbar = gui:Create("SimpleGroup")
+    toolbar:SetFullWidth(true)
+    toolbar:SetLayout("Flow")
 
-    -- + Insert spell
-    local btnInsert = gui:Create("Button")
-    btnInsert:SetText(L["INSERT_SPELL_BTN"])
-    btnInsert:SetWidth(120)
-    btnInsert:SetCallback("OnClick", function()
+    local function ToolButton(icon, title, desc, onClick)
+        local b = gui:Create("Icon")
+        b:SetImage("Interface\\Icons\\" .. icon)
+        b:SetImageSize(22, 22)
+        b:SetWidth(30)
+        b:SetHeight(30)
+        b:SetCallback("OnClick", onClick)
+        b:SetCallback("OnEnter", function(w)
+            GameTooltip:SetOwner(w.frame, "ANCHOR_TOP")
+            GameTooltip:AddLine((title:gsub("^%+%s*", "")), 1, 1, 1)
+            if desc then GameTooltip:AddLine(desc, nil, nil, nil, true) end
+            GameTooltip:Show()
+        end)
+        b:SetCallback("OnLeave", GameTooltip_Hide)
+        toolbar:AddChild(b)
+        return b
+    end
+    local function Spacer(width)
+        local sp = gui:Create("Label")
+        sp:SetWidth(width)
+        sp:SetText(" ")
+        toolbar:AddChild(sp)
+    end
+
+    ToolButton("INV_Misc_Book_09", L["INSERT_SPELL_BTN"], L["TOOL_SPELL_DESC"], function()
         local CP = MF:GetModule("CommandPalette")
         if CP then CP:OpenSpells() end
     end)
-    editorBar:AddChild(btnInsert)
-
-    -- + Insert command
-    local btnInsertCmd = gui:Create("Button")
-    btnInsertCmd:SetText(L["INSERT_CMD_BTN"])
-    btnInsertCmd:SetWidth(140)
-    btnInsertCmd:SetCallback("OnClick", function()
+    ToolButton("INV_Misc_Note_01", L["INSERT_CMD_BTN"], L["TOOL_CMD_DESC"], function()
         local CP = MF:GetModule("CommandPalette")
         if CP then CP:OpenCommands() end
     end)
-    editorBar:AddChild(btnInsertCmd)
+    ToolButton("INV_Misc_Gear_01", L["BUILDER"], L["TOOLS_BUILDER_DESC"], function()
+        local B = MF:GetModule("Builder")
+        if B then B:Toggle() end
+    end)
+    ToolButton("Ability_Warrior_Cleave", L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], function()
+        Editor:Shorten()
+    end)
+    Spacer(8)
+    ToolButton("INV_Scroll_03", L["COPY_BTN"], L["TOOL_COPY_DESC"], function() Editor:OpenCopy() end)
+    ToolButton("INV_Letter_15", L["IMPORT_BTN"], L["TOOL_IMPORT_DESC"], function() Editor:OpenImport() end)
+    ToolButton("INV_Letter_18", L["EXPORT_BTN"], L["TOOL_EXPORT_DESC"], function() Editor:OpenExport() end)
+    Spacer(8)
+    ToolButton("INV_Misc_PocketWatch_01", L["HISTORY_BTN"], L["HISTORY_DESC"], function()
+        local H = MF:GetModule("History")
+        if H and Editor.cur and Editor.cur.index then
+            H:OpenBrowser(Editor.cur)
+        else
+            MF:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
+        end
+    end)
+    ToolButton("Ability_Hunter_Pathfinding", L["DRAG_TO_BAR_BTN"], L["TOOL_DRAG_DESC"], function()
+        if Editor.cur and Editor.cur.index then
+            MF.Helpers:PickupMacro(Editor.cur.index)
+        elseif Editor.isNew then
+            MF:Print(MF.C.yellow .. L["SAVE_FIRST_DRAG"] .. "|r")
+        end
+    end)
+    Spacer(8)
 
     -- Snippets dropdown
     local snippetDD = gui:Create("Dropdown")
-    snippetDD:SetWidth(160)
+    snippetDD:SetWidth(150)
     local sList, sOrder = {}, {}
     sList[""] = L["INSERT_SNIPPET_LABEL"]
     table.insert(sOrder, "")
@@ -225,18 +266,11 @@ local function CreateEditor()
             snippetDD:SetValue("")
         end
     end)
-    editorBar:AddChild(snippetDD)
-
-    -- Raccourcir
-    local btnShorten = gui:Create("Button")
-    btnShorten:SetText(L["SHORTEN_BTN"])
-    btnShorten:SetWidth(95)
-    btnShorten:SetCallback("OnClick", function() Editor:Shorten() end)
-    editorBar:AddChild(btnShorten)
+    toolbar:AddChild(snippetDD)
 
     -- Font size dropdown
     local fontDD = gui:Create("Dropdown")
-    fontDD:SetWidth(80)
+    fontDD:SetWidth(70)
     local fList, fOrder = {}, {}
     for sz = 12, 20 do
         local key = tostring(sz)
@@ -250,26 +284,57 @@ local function CreateEditor()
         currentFontSize = sz
         Editor:ApplyFontSize(sz)
     end)
-    editorBar:AddChild(fontDD)
+    toolbar:AddChild(fontDD)
 
-    -- Annuler
-    local btnCancel = gui:Create("Button")
-    btnCancel:SetText(L["CANCEL_BTN"])
-    btnCancel:SetWidth(80)
-    btnCancel:SetCallback("OnClick", function() Editor:Revert() end)
-    editorBar:AddChild(btnCancel)
+    mainCol:AddChild(toolbar)
 
-    mainCol:AddChild(editorBar)
+    ---------------------------------------------------
+    -- Two columns: code (left) | analysis + detected spells (right)
+    ---------------------------------------------------
+    local columns = gui:Create("SimpleGroup")
+    columns:SetFullWidth(true)
+    columns:SetLayout("Flow")
 
-    -- Body
+    local leftCol = gui:Create("SimpleGroup")
+    leftCol:SetRelativeWidth(0.6)
+    leftCol:SetLayout("List")
+    columns:AddChild(leftCol)
+
+    local rightCol = gui:Create("SimpleGroup")
+    rightCol:SetRelativeWidth(0.39)
+    rightCol:SetLayout("List")
+    columns:AddChild(rightCol)
+
+    -- Body (the label carries the live n/255 counter)
     bodyWidget = gui:Create("MultiLineEditBox")
     bodyWidget:SetLabel(L["MACRO_BODY_LABEL"])
     bodyWidget:SetFullWidth(true)
-    bodyWidget:SetNumLines(12)
+    bodyWidget:SetNumLines(14)
     bodyWidget:SetMaxLetters(255)
     bodyWidget:DisableButton(true)
     bodyWidget:SetCallback("OnTextChanged", function() Editor:OnChanged() end)
-    mainCol:AddChild(bodyWidget)
+    leftCol:AddChild(bodyWidget)
+
+    -- Primary actions under the code
+    local actions = gui:Create("SimpleGroup")
+    actions:SetFullWidth(true)
+    actions:SetLayout("Flow")
+    local btnSave = gui:Create("Button")
+    btnSave:SetText(L["SAVE_BTN"])
+    btnSave:SetWidth(130)
+    btnSave:SetCallback("OnClick", function() Editor:Save() end)
+    actions:AddChild(btnSave)
+    local btnCancel = gui:Create("Button")
+    btnCancel:SetText(L["CANCEL_BTN"])
+    btnCancel:SetWidth(110)
+    btnCancel:SetCallback("OnClick", function() Editor:Revert() end)
+    actions:AddChild(btnCancel)
+    local shortcuts = gui:Create("Label")
+    shortcuts:SetWidth(200)
+    shortcuts:SetFontObject(GameFontDisableSmall)
+    shortcuts:SetText("  " .. L["EDITOR_SHORTCUTS_HINT"])
+    actions:AddChild(shortcuts)
+    leftCol:AddChild(actions)
 
     -- Inline syntax highlighting: overlay a colored FontString on the EditBox
     C_Timer.After(0.05, function()
@@ -352,119 +417,40 @@ local function CreateEditor()
         end
     end)
 
-    -- Section: Fichier (save / share / actions)
-    local fileHeading = gui:Create("Heading")
-    fileHeading:SetFullWidth(true)
-    fileHeading:SetText("|cffffff33" .. L["FILE_HEADING"] .. "|r")
-    mainCol:AddChild(fileHeading)
-
-    local btnGroup = gui:Create("SimpleGroup")
-    btnGroup:SetFullWidth(true)
-    btnGroup:SetLayout("Flow")
-
-    local btnSave = gui:Create("Button")
-    btnSave:SetText(L["SAVE_BTN"])
-    btnSave:SetWidth(120)
-    btnSave:SetCallback("OnClick", function() Editor:Save() end)
-    btnGroup:AddChild(btnSave)
-
-    local btnCopy = gui:Create("Button")
-    btnCopy:SetText(L["COPY_BTN"])
-    btnCopy:SetWidth(75)
-    btnCopy:SetCallback("OnClick", function() Editor:OpenCopy() end)
-    btnGroup:AddChild(btnCopy)
-
-    local btnImport = gui:Create("Button")
-    btnImport:SetText(L["IMPORT_BTN"])
-    btnImport:SetWidth(85)
-    btnImport:SetCallback("OnClick", function() Editor:OpenImport() end)
-    btnGroup:AddChild(btnImport)
-
-    local btnExport = gui:Create("Button")
-    btnExport:SetText(L["EXPORT_BTN"])
-    btnExport:SetWidth(85)
-    btnExport:SetCallback("OnClick", function() Editor:OpenExport() end)
-    btnGroup:AddChild(btnExport)
-
-    -- Drag to action bar button
-    local btnDrag = gui:Create("Button")
-    btnDrag:SetText(L["DRAG_TO_BAR_BTN"])
-    btnDrag:SetWidth(120)
-    btnDrag:SetCallback("OnClick", function()
-        if Editor.cur and Editor.cur.index then
-            MF.Helpers:PickupMacro(Editor.cur.index)
-        elseif Editor.isNew then
-            MF:Print(MF.C.yellow .. L["SAVE_FIRST_DRAG"] .. "|r")
-        end
-    end)
-    btnGroup:AddChild(btnDrag)
-
-    local btnHistory = gui:Create("Button")
-    btnHistory:SetText(L["HISTORY_BTN"])
-    btnHistory:SetWidth(110)
-    btnHistory:SetCallback("OnClick", function()
-        local H = MF:GetModule("History")
-        if H and Editor.cur and Editor.cur.index then
-            H:OpenBrowser(Editor.cur)
-        else
-            MF:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
-        end
-    end)
-    btnHistory:SetCallback("OnEnter", function(w)
-        GameTooltip:SetOwner(w.frame, "ANCHOR_TOP")
-        GameTooltip:AddLine(L["HISTORY_DESC"], 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    btnHistory:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-    btnGroup:AddChild(btnHistory)
-
-    mainCol:AddChild(btnGroup)
-
     -------------------------------------------------
-    -- ANALYSIS — Errors + Explanation below editor
+    -- Right column: errors, explanation, detected spells
     -------------------------------------------------
     local analysisHeading = gui:Create("Heading")
     analysisHeading:SetFullWidth(true)
     analysisHeading:SetText("|cffffff33" .. L["ANALYSIS_HEADING"] .. "|r")
-    mainCol:AddChild(analysisHeading)
-
-    -- Hint text at top
-    local hintLabel = gui:Create("Label")
-    hintLabel:SetFullWidth(true)
-    hintLabel:SetFontObject(GameFontNormalSmall)
-    hintLabel:SetText(MF.C.grey .. L["ANALYSIS_LIVE_HINT"] .. "|r")
-    mainCol:AddChild(hintLabel)
+    rightCol:AddChild(analysisHeading)
 
     -- Errors display (hidden when clean)
     errorsLabel = gui:Create("Label")
     errorsLabel:SetFullWidth(true)
     errorsLabel:SetFontObject(GameFontNormalSmall)
     errorsLabel:SetText("")
-    mainCol:AddChild(errorsLabel)
+    rightCol:AddChild(errorsLabel)
 
     -- Algorithmic explanation
     explainLabel = gui:Create("Label")
     explainLabel:SetFullWidth(true)
-    explainLabel:SetFontObject(GameFontNormal)
+    explainLabel:SetFontObject(GameFontHighlightSmall)
     explainLabel:SetText("")
-    mainCol:AddChild(explainLabel)
+    rightCol:AddChild(explainLabel)
 
-    -- Spell/Item icons row (native Blizzard tooltips)
+    -- Spell/Item icons row (native Blizzard tooltips on hover)
     local spellHeading = gui:Create("Heading")
     spellHeading:SetFullWidth(true)
     spellHeading:SetText("|cffffff33" .. L["DETECTED_SPELLS_HEADING"] .. "|r")
-    mainCol:AddChild(spellHeading)
-
-    local spellHint = gui:Create("Label")
-    spellHint:SetFullWidth(true)
-    spellHint:SetFontObject(GameFontNormalSmall)
-    spellHint:SetText(MF.C.grey .. L["SPELL_ICON_HINT"] .. "|r")
-    mainCol:AddChild(spellHint)
+    rightCol:AddChild(spellHeading)
 
     spellIconGroup = gui:Create("SimpleGroup")
     spellIconGroup:SetFullWidth(true)
     spellIconGroup:SetLayout("Flow")
-    mainCol:AddChild(spellIconGroup)
+    rightCol:AddChild(spellIconGroup)
+
+    mainCol:AddChild(columns)
 
     f:AddChild(mainCol)
 

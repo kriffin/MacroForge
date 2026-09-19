@@ -675,3 +675,13 @@ L["EDITOR_EMPTY_STATE"] = "Choisis une macro a gauche, ou cree-en une nouvelle."
 L["UNSAVED_PROMPT"] = "%s a des modifications non enregistrees."
 L["UNSAVED_STAY"] = "Continuer"
 L["UNSAVED_DISCARD"] = "Abandonner"
+
+-- Editor toolbar
+L["TOOL_SPELL_DESC"] = "Parcourir le grimoire et inserer un nom de sort."
+L["TOOL_CMD_DESC"] = "Parcourir les commandes par categorie et en inserer une."
+L["TOOL_SHORTEN_DESC"] = "Compresser la macro pour gagner des caracteres (255 max)."
+L["TOOL_COPY_DESC"] = "Afficher le texte de la macro pour le copier (Ctrl+C)."
+L["TOOL_IMPORT_DESC"] = "Coller un texte de macro dans l'editeur."
+L["TOOL_EXPORT_DESC"] = "Obtenir un code de partage pour un autre joueur."
+L["TOOL_DRAG_DESC"] = "Mettre la macro sur le curseur, puis cliquer un emplacement de barre."
+L["EDITOR_SHORTCUTS_HINT"] = "Ctrl+S enregistrer, Ctrl+Z annuler"

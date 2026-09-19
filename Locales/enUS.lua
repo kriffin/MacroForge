@@ -675,3 +675,13 @@ L["EDITOR_EMPTY_STATE"] = "Select a macro on the left, or create a new one."
 L["UNSAVED_PROMPT"] = "%s has unsaved changes."
 L["UNSAVED_STAY"] = "Keep editing"
 L["UNSAVED_DISCARD"] = "Discard"
+
+-- Editor toolbar
+L["TOOL_SPELL_DESC"] = "Browse your spellbook and insert a spell name."
+L["TOOL_CMD_DESC"] = "Browse slash commands by category and insert one."
+L["TOOL_SHORTEN_DESC"] = "Compress the macro to save characters (255 max)."
+L["TOOL_COPY_DESC"] = "Show the macro text to copy it (Ctrl+C)."
+L["TOOL_IMPORT_DESC"] = "Paste macro text into the editor."
+L["TOOL_EXPORT_DESC"] = "Get a share code for another player."
+L["TOOL_DRAG_DESC"] = "Put the macro on the cursor, then click an action bar slot."
+L["EDITOR_SHORTCUTS_HINT"] = "Ctrl+S save, Ctrl+Z undo"
