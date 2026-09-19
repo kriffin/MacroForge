@@ -220,6 +220,7 @@ function MF:HandleSlash(msg)
     elseif cmd == "load" then if P then P:LoadCurrentProfile() end
     elseif cmd == "backup" then if P then P:CreateBackup() end
     elseif cmd == "restore" then if P then P:RestoreBackup(tonumber(arg) or 1) end
+    elseif cmd == "backups" then if P then P:ListBackups() end
     elseif cmd == "list" then if P then P:ListProfiles() end
     elseif cmd == "autoswap" then if P then P:ToggleAutoSwap() end
     elseif cmd == "analyze" then self:SendMessage("MF_ANALYZE_ALL")
@@ -278,7 +279,8 @@ function MF:PrintHelp()
         { "/mf save", L["HELP_SAVE"] },
         { "/mf load", L["HELP_LOAD"] },
         { "/mf backup", L["HELP_BACKUP"] },
-        { "/mf restore [1-3]", L["HELP_RESTORE"] },
+        { "/mf backups", L["HELP_BACKUPS"] },
+        { "/mf restore [n]", L["HELP_RESTORE"] },
         { "/mf autoswap", L["HELP_AUTOSWAP"] },
         { "/mf analyze", L["HELP_ANALYZE"] },
         { "/mf builder", L["HELP_BUILDER"] },

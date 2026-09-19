@@ -45,6 +45,10 @@ L["MACROS_SKIPPED_LIMIT"] = "%d macro(s) non creee(s) : limite d'emplacements at
 L["BACKUP_CREATED"] = "Backup cree"
 L["BACKUP_RESTORED"] = "Backup restaure du %s"
 L["BACKUP_NOT_FOUND"] = "Backup #%d non trouve."
+L["BACKUP_COUNTS"] = "%d perso, %d compte"
+L["BACKUP_NONE"] = "Aucun backup. /mf backup"
+L["BACKUP_AUTO_TAG"] = "(auto)"
+L["HELP_BACKUPS"] = "Lister les backups"
 
 -- Macros
 L["MACRO_CREATED"] = "Macro creee: %s"

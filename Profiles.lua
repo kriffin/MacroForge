@@ -230,6 +230,7 @@ function MF.Profiles:LoadCurrentProfile()
     end
 
     MF:RunOutOfCombat("load", function()
+        self:CreateBackup(true)
         local success, count = self:WriteCharacterMacros(profile.macros)
         if success then
             MF:Print(MF.C.green .. L["PROFILE_LOADED"] .. "|r → "
@@ -265,6 +266,7 @@ function MF.Profiles:OnSpecChanged()
         local specName = self:GetSpecName(specID)
         C_Timer.After(1, function()
             MF:RunOutOfCombat("load", function()
+                self:CreateBackup(true)
                 local success, count = self:WriteCharacterMacros(profile.macros)
                 if success then
                     MF:Print(MF.C.green .. L["PROFILE_AUTOSWAP"] .. "|r → "
@@ -285,31 +287,64 @@ end
 ---------------------------------------------------
 -- Backup / Restore (uses AceDB char namespace)
 ---------------------------------------------------
-function MF.Profiles:CreateBackup()
-    local charMacros = self:ReadCharacterMacros()
-    local accountMacros = self:ReadAccountMacros()
+-- Automatic backups (taken before any overwrite) rotate on their own quota,
+-- so a few spec swaps never push the manual ones out.
+local MAX_AUTO_BACKUPS = 5
 
+local function CopyMacros(macros)
+    local out = {}
+    for _, m in ipairs(macros) do
+        table.insert(out, { name = m.name, icon = m.icon, body = m.body })
+    end
+    return out
+end
+
+function MF.Profiles:CreateBackup(auto)
     local backup = {
         timestamp = date("%Y-%m-%d %H:%M:%S"),
-        character = {},
-        account = {},
+        auto = auto or nil,
+        character = CopyMacros(self:ReadCharacterMacros()),
+        account = CopyMacros(self:ReadAccountMacros()),
     }
-    for _, m in ipairs(charMacros) do
-        table.insert(backup.character, { name = m.name, icon = m.icon, body = m.body })
+    if #backup.character == 0 and #backup.account == 0 then return end
+
+    local backups = MF.db.char.backups
+    table.insert(backups, 1, backup)
+
+    -- Drop the oldest entries beyond each quota (list is newest first)
+    local maxManual = MF.db.profile.maxBackups or 3
+    local nAuto, nManual = 0, 0
+    for i = 1, #backups do
+        if backups[i].auto then nAuto = nAuto + 1 else nManual = nManual + 1 end
     end
-    for _, m in ipairs(accountMacros) do
-        table.insert(backup.account, { name = m.name, icon = m.icon, body = m.body })
+    for i = #backups, 1, -1 do
+        if backups[i].auto and nAuto > MAX_AUTO_BACKUPS then
+            table.remove(backups, i); nAuto = nAuto - 1
+        elseif not backups[i].auto and nManual > maxManual then
+            table.remove(backups, i); nManual = nManual - 1
+        end
     end
 
-    local maxBackups = MF.db.profile.maxBackups or 3
-    table.insert(MF.db.char.backups, 1, backup)
-    while #MF.db.char.backups > maxBackups do
-        table.remove(MF.db.char.backups)
+    if not auto then
+        MF:Print(MF.C.green .. L["BACKUP_CREATED"] .. "|r — "
+            .. format(L["BACKUP_COUNTS"], #backup.character, #backup.account)
+            .. " (" .. MF.C.grey .. backup.timestamp .. "|r)")
     end
+end
 
-    MF:Print(MF.C.green .. L["BACKUP_CREATED"] .. "|r — "
-        .. #backup.character .. " perso, " .. #backup.account .. " compte ("
-        .. MF.C.grey .. backup.timestamp .. "|r)")
+function MF.Profiles:ListBackups()
+    local C = MF.C
+    MF:Print(C.gold .. "═══ Backups ═══|r")
+    local backups = MF.db.char.backups or {}
+    if #backups == 0 then
+        MF:Print(C.grey .. L["BACKUP_NONE"] .. "|r")
+        return
+    end
+    for i, b in ipairs(backups) do
+        MF:Print(C.cyan .. "#" .. i .. "|r " .. C.grey .. b.timestamp .. "|r — "
+            .. format(L["BACKUP_COUNTS"], #(b.character or {}), #(b.account or {}))
+            .. (b.auto and (" " .. C.grey .. L["BACKUP_AUTO_TAG"] .. "|r") or ""))
+    end
 end
 
 function MF.Profiles:RestoreBackup(index)
@@ -320,11 +355,18 @@ function MF.Profiles:RestoreBackup(index)
     end
     local backup = MF.db.char.backups[index]
     MF:RunOutOfCombat("load", function()
-        local success, count = self:WriteCharacterMacros(backup.character)
-        if success then
-            MF:Print(MF.C.green .. format(L["BACKUP_RESTORED"], MF.C.grey .. backup.timestamp .. "|r")
-                .. " (" .. count .. " macros)")
+        self:CreateBackup(true)
+        local counts = {}
+        -- An empty scope in the backup is skipped rather than wiping that scope
+        for _, scope in ipairs({ "character", "account" }) do
+            local list = backup[scope]
+            if list and #list > 0 then
+                local success, count = self:WriteMacros(scope, list)
+                counts[scope] = success and count or 0
+            end
         end
+        MF:Print(MF.C.green .. format(L["BACKUP_RESTORED"], MF.C.grey .. backup.timestamp .. "|r")
+            .. " (" .. format(L["BACKUP_COUNTS"], counts.character or 0, counts.account or 0) .. ")")
     end)
 end
 

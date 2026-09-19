@@ -45,6 +45,10 @@ L["MACROS_SKIPPED_LIMIT"] = "%d macro(s) not created: slot limit reached (%d)."
 L["BACKUP_CREATED"] = "Backup created"
 L["BACKUP_RESTORED"] = "Backup restored from %s"
 L["BACKUP_NOT_FOUND"] = "Backup #%d not found."
+L["BACKUP_COUNTS"] = "%d character, %d account"
+L["BACKUP_NONE"] = "No backup. /mf backup"
+L["BACKUP_AUTO_TAG"] = "(auto)"
+L["HELP_BACKUPS"] = "List backups"
 
 -- Macros
 L["MACRO_CREATED"] = "Macro created: %s"
