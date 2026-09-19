@@ -330,10 +330,10 @@ function MF:PrintHelp()
         { "/mf duplicates", L["HELP_DUPLICATES"] },
         { "/mf history", L["HELP_HISTORY"] },
         { "/mf trash", L["HELP_TRASH"] },
-        { "/mf send", "Send macro to player (AceComm)" },
+        { "/mf send", L["HELP_SEND"] },
         { "/mf settings", L["HELP_SETTINGS"] },
-        { "/mf log [n|clear]", "Show the last n log lines" },
-        { "/mf debug [on|off]", "Verbose log (echoed to chat)" },
+        { "/mf log [n|clear]", L["HELP_LOG"] },
+        { "/mf debug [on|off]", L["HELP_DEBUG"] },
     }
     for _, v in ipairs(cmds) do
         self:Print(c.cyan .. v[1] .. "|r - " .. v[2])

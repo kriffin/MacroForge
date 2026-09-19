@@ -3,6 +3,7 @@
 -- Dynamic spell/command/condition validation
 ---------------------------------------------------
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
+local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local A = {}
 
 -- Colors for syntax highlighting
@@ -341,7 +342,7 @@ function A:ValidateCondition(cond, args)
     if ctype == nil then
         -- Unknown condition — find best match
         local best = self:FindBestCondition(rawCond)
-        local msg = MF.C.red .. "Condition invalide: " .. cond .. "|r"
+        local msg = MF.C.red .. L["ANALYZER_INVALID_CONDITION"]:format(cond) .. "|r"
         if best and best ~= "" then
             msg = msg .. "  " .. MF.C.green .. "-> " .. best .. "|r"
         end
@@ -351,38 +352,38 @@ function A:ValidateCondition(cond, args)
     -- Check if arguments are required/valid
     if #args == 0 then
         if ctype ~= CTYPE_NONE and not OPTIONAL_CONDS[rawCond] and cond:sub(1,2) ~= "no" then
-            return false, MF.C.yellow .. "Argument manquant: " .. cond .. "|r"
+            return false, MF.C.yellow .. L["ANALYZER_MISSING_ARG"]:format(cond) .. "|r"
         end
         return true, nil
     end
 
     -- Validate argument types
     if ctype == CTYPE_NONE then
-        return false, MF.C.yellow .. "Pas d'argument attendu: " .. cond .. "|r"
+        return false, MF.C.yellow .. L["ANALYZER_NO_ARG_EXPECTED"]:format(cond) .. "|r"
     elseif ctype == CTYPE_NUMERIC or ctype == CTYPE_NUMERIC_SLASH then
         for _, a in ipairs(args) do
             local clean = a:gsub("/", "")
             if not tonumber(clean) then
-                return false, MF.C.red .. "Argument numerique attendu: " .. cond .. ":" .. a .. "|r"
+                return false, MF.C.red .. L["ANALYZER_NUMERIC_ARG_EXPECTED"]:format(cond, a) .. "|r"
             end
         end
     elseif ctype == CTYPE_MOD_KEYS then
         for _, a in ipairs(args) do
             local key = a:gsub(":", ""):gsub(" ", ""):lower()
             if not VALID_MOD_KEYS[key] then
-                return false, MF.C.yellow .. "Touche inconnue: " .. a .. "|r"
+                return false, MF.C.yellow .. L["ANALYZER_UNKNOWN_KEY"]:format(a) .. "|r"
             end
         end
     elseif ctype == CTYPE_MOUSEBUTTONS then
         for _, a in ipairs(args) do
             if not VALID_BUTTONS[a:lower()] then
-                return false, MF.C.yellow .. "Bouton inconnu: " .. a .. "|r"
+                return false, MF.C.yellow .. L["ANALYZER_UNKNOWN_BUTTON"]:format(a) .. "|r"
             end
         end
     elseif ctype == CTYPE_PARTY_RAID then
         for _, a in ipairs(args) do
             if not VALID_GROUP[a:lower()] then
-                return false, MF.C.yellow .. "Valeur invalide: " .. a .. " (party/raid)" .. "|r"
+                return false, MF.C.yellow .. L["ANALYZER_INVALID_GROUP_VALUE"]:format(a) .. "|r"
             end
         end
     end
@@ -481,16 +482,16 @@ function A:Analyze(body, name)
 
     local r = { issues = {}, spells = {}, score = 100 }
     if not body or body == "" then
-        self:AddIssue(r, "WARN", 0, "Macro vide.")
+        self:AddIssue(r, "WARN", 0, L["ANALYZER_EMPTY_MACRO"])
         return r
     end
     if name and #name > 16 then
-        self:AddIssue(r, "ERR", 0, "Nom trop long (" .. #name .. "/16).", { fixType="name", fix=name:sub(1,16) })
+        self:AddIssue(r, "ERR", 0, L["ANALYZER_NAME_TOO_LONG"]:format(#name, 16), { fixType="name", fix=name:sub(1,16) })
     end
     if #body > 255 then
-        self:AddIssue(r, "ERR", 0, "Body trop long (" .. #body .. "/255).")
+        self:AddIssue(r, "ERR", 0, L["ANALYZER_BODY_TOO_LONG"]:format(#body, 255))
     elseif #body > 240 then
-        self:AddIssue(r, "WARN", 0, "Body presque plein (" .. #body .. "/255).")
+        self:AddIssue(r, "WARN", 0, L["ANALYZER_BODY_ALMOST_FULL"]:format(#body, 255))
     end
 
     -- Check matched brackets
@@ -500,8 +501,8 @@ function A:Analyze(body, name)
         if c == "[" then ob = ob + 1 elseif c == "]" then cb = cb + 1 end
         if c == "(" then op = op + 1 elseif c == ")" then cp = cp + 1 end
     end
-    if ob ~= cb then self:AddIssue(r, "ERR", 0, "Crochets: " .. ob .. " [ vs " .. cb .. " ]") end
-    if op ~= cp then self:AddIssue(r, "WARN", 0, "Parentheses: " .. op .. " ( vs " .. cp .. " )") end
+    if ob ~= cb then self:AddIssue(r, "ERR", 0, L["ANALYZER_BRACKETS_MISMATCH"]:format(ob, cb)) end
+    if op ~= cp then self:AddIssue(r, "WARN", 0, L["ANALYZER_PARENS_MISMATCH"]:format(op, cp)) end
 
     local ln = 0
     for line in body:gmatch("[^\n]+") do
@@ -532,7 +533,7 @@ function A:AnalyzeLine(line, ln, r)
     -- Command validation with "did you mean"
     if not self:IsKnownCommand(cmd) then
         local best, dist = self:FindBestMatch(cmd:sub(2):lower())
-        local msg = "Commande inconnue: " .. cmd
+        local msg = L["ANALYZER_UNKNOWN_COMMAND"]:format(cmd)
         if best and best ~= "" and dist <= 4 then
             msg = msg .. "  -> /" .. best
         end
@@ -573,7 +574,7 @@ function A:AnalyzeCastLine(text, ln, r)
                         if spellPart ~= "" and not tonumber(spellPart) then
                             local check = self:CheckSpell(spellPart)
                             if check == false then
-                                self:AddIssue(r, "INFO", ln, "Non verifie: " .. spellPart, { fixType = "spell" })
+                                self:AddIssue(r, "INFO", ln, L["ANALYZER_UNVERIFIED"]:format(spellPart), { fixType = "spell" })
                             elseif check and check.type then
                                 table.insert(r.spells, { name = spellPart, type = check.type, icon = check.icon })
                             end
@@ -593,7 +594,7 @@ function A:ValidateConditions(condBlock, ln, r)
             if phrase:match("^@") then
                 local target = phrase:sub(2)
                 if target == "" then
-                    self:AddIssue(r, "WARN", ln, "Cible vide: @")
+                    self:AddIssue(r, "WARN", ln, L["ANALYZER_EMPTY_TARGET"])
                 end
             else
                 -- condition:args
@@ -641,21 +642,21 @@ function A:OnInitialize()
         local P = MF:GetModule("Profiles")
         if not P then return end
         local macros = P:ReadCharacterMacros()
-        MF.Helpers:Print(MF.C.gold .. "=== Analyse ===" .. MF.C.r)
+        MF.Helpers:Print(MF.C.gold .. L["ANALYZER_HEADER"] .. MF.C.r)
         local total = 0
         for _, m in ipairs(macros) do
             local res = self:Analyze(m.body, m.name)
             if #res.issues > 0 then
                 MF.Helpers:Print(self:ScoreColor(res.score) .. res.score .. "%|r "
-                    .. MF.C.white .. m.name .. "|r - " .. #res.issues .. " pb")
+                    .. MF.C.white .. m.name .. "|r - " .. L["ANALYZER_ISSUES_SHORT"]:format(#res.issues))
                 for _, iss in ipairs(res.issues) do
                     MF.Helpers:Print("  " .. self:FmtSev(iss.severity) .. " " .. iss.message)
                 end
                 total = total + #res.issues
             end
         end
-        if total == 0 then MF.Helpers:Print(MF.C.green .. "Toutes valides!|r")
-        else MF.Helpers:Print(MF.C.orange .. total .. " probleme(s).|r") end
+        if total == 0 then MF.Helpers:Print(MF.C.green .. L["ANALYZER_ALL_VALID"] .. "|r")
+        else MF.Helpers:Print(MF.C.orange .. L["ANALYZER_TOTAL_ISSUES"]:format(total) .. "|r") end
     end)
 end
 

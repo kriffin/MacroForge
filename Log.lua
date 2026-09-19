@@ -12,6 +12,7 @@
 -- also echoes every entry to the chat frame.
 ---------------------------------------------------
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
+local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 
 local MAX_LINES = 2000
 local LEVELS = { DEBUG = 1, INFO = 2, WARN = 3, ERROR = 4 }
@@ -63,7 +64,7 @@ function MF:Debug(category, msg, ...) self:Log("DEBUG", category, msg, ...) end
 
 function MF:SetDebug(enabled)
     Store().debug = enabled or nil
-    self:Print("Debug log: " .. (enabled and "|cff00ff88ON|r" or "|cffff4444OFF|r"))
+    self:Print(format(L["LOG_DEBUG_STATE"], enabled and ("|cff00ff88" .. L["STATE_ON"] .. "|r") or ("|cffff4444" .. L["STATE_OFF"] .. "|r")))
 end
 
 function MF:IsDebug()
@@ -75,12 +76,12 @@ function MF:PrintLog(arg)
     local log = Store()
     if arg == "clear" then
         wipe(log.lines)
-        self:Print("Log cleared.")
+        self:Print(L["LOG_CLEARED"])
         return
     end
     local n = tonumber(arg) or 20
     local lines = log.lines
-    self:Print(format("Log: %d lines, session #%d, debug %s", #lines, log.session, log.debug and "ON" or "OFF"))
+    self:Print(format(L["LOG_STATUS"], #lines, log.session, log.debug and L["STATE_ON"] or L["STATE_OFF"]))
     for i = math.max(1, #lines - n + 1), #lines do
         print("|cff888888" .. lines[i] .. "|r")
     end

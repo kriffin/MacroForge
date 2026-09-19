@@ -203,7 +203,7 @@ function Settings:GetOptionsTable()
             -- Version
             version = {
                 type = "description",
-                name = MF.C.grey .. "MacroForge v" .. (MF.VERSION or "7.0") .. " — by Antigravity|r",
+                name = MF.C.grey .. format(L["SETTINGS_VERSION_LINE"], MF.VERSION or "7.0") .. "|r",
                 order = 50,
                 fontSize = "small",
             },

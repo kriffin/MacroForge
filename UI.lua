@@ -21,7 +21,7 @@ searchQuery = ""
 ---------------------------------------------------
 local function ShowContextMenu(macro)
     MenuUtil.CreateContextMenu(UIParent, function(_, rootDescription)
-        rootDescription:CreateTitle(macro.name or "Macro")
+        rootDescription:CreateTitle(macro.name or L["MACRO_FALLBACK_NAME"])
 
         rootDescription:CreateButton("|cff00ccff" .. L["EDIT"] .. "|r", function()
             local E = MF:GetModule("Editor")

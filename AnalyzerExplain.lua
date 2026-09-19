@@ -4,76 +4,77 @@
 -- Extracted from Analyzer.lua for maintainability
 ---------------------------------------------------
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
+local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local A = MF:GetModule("Analyzer")
 if not A then return end
 
 ---------------------------------------------------
 -- Condition translation dictionary (for explain)
 ---------------------------------------------------
-local COND_FR = {
-    help = "allie", harm = "hostile", exists = "cible existante",
-    dead = "mort", nodead = "vivant",
-    combat = "en combat", nocombat = "hors combat",
-    stealth = "furtivement", nostealth = "pas en furtivite",
-    swimming = "nage", noswimming = "pas en nage",
-    flying = "en vol", noflying = "pas en vol",
-    mounted = "sur monture", nomounted = "pas sur monture",
-    indoors = "en interieur", outdoors = "en exterieur",
-    channeling = "canalisation", nochanneling = "pas de canalisation",
-    mod = "modificateur", nomod = "sans modificateur",
-    modifier = "modificateur", nomodifier = "sans modificateur",
-    group = "en groupe", nogroup = "pas en groupe",
-    raid = "en raid", pet = "familier actif", nopet = "pas de familier",
-    talent = "talent actif", known = "connu",
-    equipped = "equipe", worn = "equipe",
-    spec = "spe", form = "forme", stance = "posture",
+local COND_TEXT = {
+    help = L["EXPLAIN_COND_HELP"], harm = L["EXPLAIN_COND_HARM"], exists = L["EXPLAIN_COND_EXISTS"],
+    dead = L["EXPLAIN_COND_DEAD"], nodead = L["EXPLAIN_COND_NODEAD"],
+    combat = L["EXPLAIN_COND_COMBAT"], nocombat = L["EXPLAIN_COND_NOCOMBAT"],
+    stealth = L["EXPLAIN_COND_STEALTH"], nostealth = L["EXPLAIN_COND_NOSTEALTH"],
+    swimming = L["EXPLAIN_COND_SWIMMING"], noswimming = L["EXPLAIN_COND_NOSWIMMING"],
+    flying = L["EXPLAIN_COND_FLYING"], noflying = L["EXPLAIN_COND_NOFLYING"],
+    mounted = L["EXPLAIN_COND_MOUNTED"], nomounted = L["EXPLAIN_COND_NOMOUNTED"],
+    indoors = L["EXPLAIN_COND_INDOORS"], outdoors = L["EXPLAIN_COND_OUTDOORS"],
+    channeling = L["EXPLAIN_COND_CHANNELING"], nochanneling = L["EXPLAIN_COND_NOCHANNELING"],
+    mod = L["EXPLAIN_COND_MOD"], nomod = L["EXPLAIN_COND_NOMOD"],
+    modifier = L["EXPLAIN_COND_MOD"], nomodifier = L["EXPLAIN_COND_NOMOD"],
+    group = L["EXPLAIN_COND_GROUP"], nogroup = L["EXPLAIN_COND_NOGROUP"],
+    raid = L["EXPLAIN_COND_RAID"], pet = L["EXPLAIN_COND_PET"], nopet = L["EXPLAIN_COND_NOPET"],
+    talent = L["EXPLAIN_COND_TALENT"], known = L["EXPLAIN_COND_KNOWN"],
+    equipped = L["EXPLAIN_COND_EQUIPPED"], worn = L["EXPLAIN_COND_EQUIPPED"],
+    spec = L["EXPLAIN_COND_SPEC"], form = L["EXPLAIN_COND_FORM"], stance = L["EXPLAIN_COND_STANCE"],
 }
 
 ---------------------------------------------------
 -- Command verb translation (for explain)
 ---------------------------------------------------
 local CMD_VERB = {
-    ["/cast"] = "Lancer", ["/use"] = "Utiliser",
-    ["/castsequence"] = "Sequence",
-    ["/castrandom"] = "Au hasard", ["/userandom"] = "Au hasard",
-    ["/startattack"] = "Lancer l'attaque auto",
-    ["/stopattack"] = "Arreter l'attaque auto",
-    ["/stopcasting"] = "Interrompre l'incantation",
-    ["/cancelaura"] = "Annuler l'aura", ["/cancelform"] = "Annuler la forme",
-    ["/dismount"] = "Descendre de monture",
-    ["/target"] = "Cibler", ["/targetexact"] = "Cibler (exact)",
-    ["/targetenemy"] = "Cibler le prochain ennemi",
-    ["/targetenemyplayer"] = "Cibler le prochain ennemi joueur",
-    ["/targetfriend"] = "Cibler le prochain allie",
-    ["/targetfriendplayer"] = "Cibler le prochain allie joueur",
-    ["/targetparty"] = "Cibler un membre du groupe",
-    ["/targetraid"] = "Cibler un membre du raid",
-    ["/targetlastenemy"] = "Re-cibler dernier ennemi",
-    ["/targetlastfriend"] = "Re-cibler dernier allie",
-    ["/targetlasttarget"] = "Re-cibler derniere cible",
-    ["/cleartarget"] = "Effacer la cible",
-    ["/clearfocus"] = "Effacer le focus",
-    ["/focus"] = "Definir le focus",
-    ["/assist"] = "Assister (cibler la cible de)",
-    ["/equip"] = "Equiper", ["/equipset"] = "Charger set",
-    ["/petattack"] = "Familier: attaquer",
-    ["/petfollow"] = "Familier: suivre",
-    ["/petstay"] = "Familier: rester",
-    ["/petpassive"] = "Familier: passif",
-    ["/petdefensive"] = "Familier: defensif",
-    ["/stopmacro"] = "Arreter la macro",
-    ["/click"] = "Simuler clic sur",
-    ["/run"] = "Script Lua", ["/script"] = "Script Lua",
-    ["/say"] = "Dire", ["/s"] = "Dire",
-    ["/yell"] = "Crier", ["/y"] = "Crier",
-    ["/emote"] = "Emote", ["/e"] = "Emote",
-    ["/party"] = "Dire au groupe", ["/p"] = "Dire au groupe",
-    ["/raid"] = "Dire au raid", ["/ra"] = "Dire au raid",
-    ["/rw"] = "Alerte raid",
-    ["/whisper"] = "Chuchoter a", ["/w"] = "Chuchoter a",
-    ["/leavevehicle"] = "Quitter le vehicule",
-    ["/stopspelltarget"] = "Annuler ciblage sort",
-    ["/cancelqueuedspell"] = "Annuler sort en file",
+    ["/cast"] = L["EXPLAIN_VERB_CAST"], ["/use"] = L["EXPLAIN_VERB_USE"],
+    ["/castsequence"] = L["EXPLAIN_VERB_CASTSEQUENCE"],
+    ["/castrandom"] = L["EXPLAIN_VERB_RANDOM"], ["/userandom"] = L["EXPLAIN_VERB_RANDOM"],
+    ["/startattack"] = L["EXPLAIN_VERB_STARTATTACK"],
+    ["/stopattack"] = L["EXPLAIN_VERB_STOPATTACK"],
+    ["/stopcasting"] = L["EXPLAIN_VERB_STOPCASTING"],
+    ["/cancelaura"] = L["EXPLAIN_VERB_CANCELAURA"], ["/cancelform"] = L["EXPLAIN_VERB_CANCELFORM"],
+    ["/dismount"] = L["EXPLAIN_VERB_DISMOUNT"],
+    ["/target"] = L["EXPLAIN_VERB_TARGET"], ["/targetexact"] = L["EXPLAIN_VERB_TARGETEXACT"],
+    ["/targetenemy"] = L["EXPLAIN_VERB_TARGETENEMY"],
+    ["/targetenemyplayer"] = L["EXPLAIN_VERB_TARGETENEMYPLAYER"],
+    ["/targetfriend"] = L["EXPLAIN_VERB_TARGETFRIEND"],
+    ["/targetfriendplayer"] = L["EXPLAIN_VERB_TARGETFRIENDPLAYER"],
+    ["/targetparty"] = L["EXPLAIN_VERB_TARGETPARTY"],
+    ["/targetraid"] = L["EXPLAIN_VERB_TARGETRAID"],
+    ["/targetlastenemy"] = L["EXPLAIN_VERB_TARGETLASTENEMY"],
+    ["/targetlastfriend"] = L["EXPLAIN_VERB_TARGETLASTFRIEND"],
+    ["/targetlasttarget"] = L["EXPLAIN_VERB_TARGETLASTTARGET"],
+    ["/cleartarget"] = L["EXPLAIN_VERB_CLEARTARGET"],
+    ["/clearfocus"] = L["EXPLAIN_VERB_CLEARFOCUS"],
+    ["/focus"] = L["EXPLAIN_VERB_FOCUS"],
+    ["/assist"] = L["EXPLAIN_VERB_ASSIST"],
+    ["/equip"] = L["EXPLAIN_VERB_EQUIP"], ["/equipset"] = L["EXPLAIN_VERB_EQUIPSET"],
+    ["/petattack"] = L["EXPLAIN_VERB_PETATTACK"],
+    ["/petfollow"] = L["EXPLAIN_VERB_PETFOLLOW"],
+    ["/petstay"] = L["EXPLAIN_VERB_PETSTAY"],
+    ["/petpassive"] = L["EXPLAIN_VERB_PETPASSIVE"],
+    ["/petdefensive"] = L["EXPLAIN_VERB_PETDEFENSIVE"],
+    ["/stopmacro"] = L["EXPLAIN_VERB_STOPMACRO"],
+    ["/click"] = L["EXPLAIN_VERB_CLICK"],
+    ["/run"] = L["EXPLAIN_VERB_SCRIPT"], ["/script"] = L["EXPLAIN_VERB_SCRIPT"],
+    ["/say"] = L["EXPLAIN_VERB_SAY"], ["/s"] = L["EXPLAIN_VERB_SAY"],
+    ["/yell"] = L["EXPLAIN_VERB_YELL"], ["/y"] = L["EXPLAIN_VERB_YELL"],
+    ["/emote"] = L["EXPLAIN_VERB_EMOTE"], ["/e"] = L["EXPLAIN_VERB_EMOTE"],
+    ["/party"] = L["EXPLAIN_VERB_PARTY"], ["/p"] = L["EXPLAIN_VERB_PARTY"],
+    ["/raid"] = L["EXPLAIN_VERB_RAID"], ["/ra"] = L["EXPLAIN_VERB_RAID"],
+    ["/rw"] = L["EXPLAIN_VERB_RAIDWARNING"],
+    ["/whisper"] = L["EXPLAIN_VERB_WHISPER"], ["/w"] = L["EXPLAIN_VERB_WHISPER"],
+    ["/leavevehicle"] = L["EXPLAIN_VERB_LEAVEVEHICLE"],
+    ["/stopspelltarget"] = L["EXPLAIN_VERB_STOPSPELLTARGET"],
+    ["/cancelqueuedspell"] = L["EXPLAIN_VERB_CANCELQUEUEDSPELL"],
 }
 
 local function TranslateConditions(condStr)
@@ -82,15 +83,15 @@ local function TranslateConditions(condStr)
         token = token:match("^%s*(.-)%s*$")
         local at = token:match("^@(.+)")
         if at then
-            table.insert(parts, "cible=" .. at)
+            table.insert(parts, L["EXPLAIN_TARGET_EQ"]:format(at))
         else
             local key, val = token:match("^([^:]+):?(.*)$")
             if key then
                 key = key:lower()
                 if val and val ~= "" then
-                    table.insert(parts, (COND_FR[key] or key) .. ":" .. val)
+                    table.insert(parts, (COND_TEXT[key] or key) .. ":" .. val)
                 else
-                    table.insert(parts, COND_FR[key] or key)
+                    table.insert(parts, COND_TEXT[key] or key)
                 end
             end
         end
@@ -106,9 +107,9 @@ function A:ExplainLine(line)
     local ttip = line:match("^#showtooltip%s*(.*)")
     if ttip then
         ttip = ttip:match("^%s*(.-)%s*$")
-        return ttip == "" and "Icone/tooltip: automatique" or ("Icone/tooltip: " .. ttip)
+        return ttip == "" and L["EXPLAIN_SHOWTOOLTIP_AUTO"] or L["EXPLAIN_SHOWTOOLTIP"]:format(ttip)
     end
-    if line:match("^#show") then return "Icone: automatique" end
+    if line:match("^#show") then return L["EXPLAIN_SHOW_AUTO"] end
     if line:match("^#") then return nil end
 
     local cmd = line:match("^(/[%a]+)")
@@ -129,10 +130,10 @@ function A:ExplainLine(line)
             end
 
             -- Parse conditions before spell list
-            local condText, actualSpells = "", spellList or rest
+            local condText, actualSpells = nil, spellList or rest
             local condPart, afterCond = actualSpells:match("^(%b[])%s*(.*)")
             if condPart then
-                condText = "SI " .. TranslateConditions(condPart:sub(2, -2)) .. ": "
+                condText = TranslateConditions(condPart:sub(2, -2))
                 actualSpells = afterCond
             end
 
@@ -142,15 +143,15 @@ function A:ExplainLine(line)
                 local resets = {}
                 for r in resetStr:gmatch("[^/]+") do
                     r = r:lower()
-                    if r == "combat" then table.insert(resets, "fin combat")
-                    elseif r == "target" then table.insert(resets, "changement cible")
+                    if r == "combat" then table.insert(resets, L["EXPLAIN_RESET_COMBAT"])
+                    elseif r == "target" then table.insert(resets, L["EXPLAIN_RESET_TARGET"])
                     elseif r:match("^%d+$") then table.insert(resets, r .. "s")
                     elseif r == "shift" then table.insert(resets, "Shift")
                     elseif r == "alt" then table.insert(resets, "Alt")
                     elseif r == "ctrl" then table.insert(resets, "Ctrl")
                     else table.insert(resets, r) end
                 end
-                table.insert(parts, MF.C.yellow .. "Reset: " .. table.concat(resets, ", ") .. "|r")
+                table.insert(parts, MF.C.yellow .. L["EXPLAIN_RESET"]:format(table.concat(resets, ", ")) .. "|r")
             end
 
             -- List spells in sequence
@@ -163,7 +164,8 @@ function A:ExplainLine(line)
                 end
             end
 
-            return condText .. "Sequence:\n    " .. table.concat(parts, "\n    ")
+            local seqText = L["EXPLAIN_SEQUENCE"] .. "\n    " .. table.concat(parts, "\n    ")
+            return condText and L["EXPLAIN_IF_THEN"]:format(condText, seqText) or seqText
         end
 
         -- Regular /cast or /use
@@ -179,8 +181,8 @@ function A:ExplainLine(line)
                 end
                 local spell = rem:match("^%s*(.-)%s*$")
                 if #allConds > 0 then
-                    local ct = table.concat(allConds, " OU ")
-                    table.insert(segments, spell ~= "" and ("SI " .. ct .. ": " .. verb .. " '" .. spell .. "'") or ("SI " .. ct .. ": " .. verb))
+                    local ct = table.concat(allConds, L["EXPLAIN_OR"])
+                    table.insert(segments, L["EXPLAIN_IF_THEN"]:format(ct, spell ~= "" and (verb .. " '" .. spell .. "'") or verb))
                 elseif spell ~= "" then
                     table.insert(segments, verb .. " '" .. spell .. "'")
                 end
@@ -194,7 +196,7 @@ function A:ExplainLine(line)
 end
 
 function A:ExplainBody(body)
-    if not body or body == "" then return MF.C.grey .. "Macro vide.|r" end
+    if not body or body == "" then return MF.C.grey .. L["ANALYZER_EMPTY_MACRO"] .. "|r" end
     local steps, n = {}, 0
     for line in body:gmatch("[^\n]+") do
         local explained = self:ExplainLine(line)
@@ -209,5 +211,5 @@ function A:ExplainBody(body)
             end
         end
     end
-    return #steps == 0 and (MF.C.grey .. "Aucune action detectee.|r") or table.concat(steps, "\n")
+    return #steps == 0 and (MF.C.grey .. L["EXPLAIN_NO_ACTION"] .. "|r") or table.concat(steps, "\n")
 end

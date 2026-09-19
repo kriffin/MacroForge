@@ -125,7 +125,7 @@ function Detector:OpenBrowser()
             local info = gui:Create("Label")
             info:SetWidth(280)
             info:SetFontObject(GameFontNormal)
-            info:SetText(scope .. "|r " .. MF.C.white .. (macro.name or "(Sans nom)") .. "|r " ..
+            info:SetText(scope .. "|r " .. MF.C.white .. (macro.name or L["MACRO_UNNAMED"]) .. "|r " ..
                 MF.C.grey .. "#" .. (macro.index or "?") .. "|r")
             row:AddChild(info)
 

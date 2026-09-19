@@ -19,7 +19,7 @@ local state = {}
 -- Data tables
 ---------------------------------------------------
 local TARGETS = {
-    { value = "",             label = "(aucune)" },
+    { value = "",             label = L["BUILDER_NONE"] },
     { value = "player",       label = "@player" },
     { value = "target",       label = "@target" },
     { value = "targettarget", label = "@targettarget" },
@@ -37,49 +37,49 @@ local TARGETS = {
 }
 
 local CONDITIONS = {
-    { value = "",              label = "(aucune)",       hasArg = false, desc = "Aucune condition" },
-    { value = "help",          label = "help (allie)",   hasArg = false, desc = "Vrai si la cible est amicale" },
-    { value = "harm",          label = "harm (ennemi)",  hasArg = false, desc = "Vrai si la cible est hostile" },
-    { value = "exists",        label = "exists",         hasArg = false, desc = "Vrai si la cible existe" },
-    { value = "dead",          label = "dead",           hasArg = false, desc = "Vrai si la cible est morte" },
-    { value = "nodead",        label = "nodead (vivant)",hasArg = false, desc = "Vrai si la cible est vivante" },
-    { value = "combat",        label = "combat",         hasArg = false, desc = "Vrai si vous etes en combat" },
-    { value = "nocombat",      label = "nocombat",       hasArg = false, desc = "Vrai si vous n'etes pas en combat" },
-    { value = "stealth",       label = "stealth",        hasArg = false, desc = "Vrai si vous etes en camouflage" },
-    { value = "nostealth",     label = "nostealth",      hasArg = false, desc = "Vrai si vous n'etes pas en camouflage" },
-    { value = "mod",           label = "mod (modifieur)",hasArg = true, argType = "mod", desc = "Vrai si une touche modifieur est enfoncee (Shift/Ctrl/Alt)" },
-    { value = "nomod",         label = "nomod",          hasArg = false, desc = "Vrai si aucune touche modifieur n'est enfoncee" },
-    { value = "mounted",       label = "mounted",        hasArg = false, desc = "Vrai si vous etes sur une monture" },
-    { value = "nomounted",     label = "nomounted",      hasArg = false, desc = "Vrai si vous n'etes pas sur une monture" },
-    { value = "flying",        label = "flying",         hasArg = false, desc = "Vrai si vous etes en vol" },
-    { value = "noflying",      label = "noflying",       hasArg = false, desc = "Vrai si vous n'etes pas en vol" },
-    { value = "swimming",      label = "swimming",       hasArg = false, desc = "Vrai si vous nagez" },
-    { value = "indoors",       label = "indoors",        hasArg = false, desc = "Vrai si vous etes en interieur" },
-    { value = "outdoors",      label = "outdoors",       hasArg = false, desc = "Vrai si vous etes en exterieur" },
-    { value = "channeling",    label = "channeling",     hasArg = true, argType = "text", desc = "Vrai si vous canalisez un sort (optionnel: nom du sort)" },
-    { value = "nochanneling",  label = "nochanneling",   hasArg = false, desc = "Vrai si vous ne canalisez pas" },
-    { value = "known",         label = "known",          hasArg = true, argType = "text", desc = "Vrai si le sort/talent est connu" },
-    { value = "noknown",       label = "noknown",        hasArg = true, argType = "text", desc = "Vrai si le sort/talent n'est pas connu" },
-    { value = "spec",          label = "spec",           hasArg = true, argType = "num4", desc = "Vrai si vous etes dans la specialisation N (1-4)" },
-    { value = "talent",        label = "talent",         hasArg = true, argType = "numslash", desc = "Vrai si le talent tier/colonne est actif" },
-    { value = "pvptalent",     label = "pvptalent",      hasArg = true, argType = "numslash", desc = "Vrai si le talent PvP tier/colonne est actif" },
-    { value = "form",          label = "form/stance",    hasArg = true, argType = "num7", desc = "Vrai si vous etes dans la forme/posture N (0=aucune)" },
-    { value = "group",         label = "group",          hasArg = true, argType = "group", desc = "Vrai si vous etes en groupe (party/raid)" },
-    { value = "pet",           label = "pet (familier)", hasArg = false, desc = "Vrai si votre familier est actif" },
-    { value = "nopet",         label = "nopet",          hasArg = false, desc = "Vrai si votre familier n'est pas actif" },
-    { value = "btn",           label = "btn (bouton)",   hasArg = true, argType = "btn", desc = "Vrai si le bouton de souris specifie a ete utilise" },
-    { value = "bar",           label = "bar",            hasArg = true, argType = "num7", desc = "Vrai si la barre d'action N est active" },
-    { value = "bonusbar",      label = "bonusbar",       hasArg = true, argType = "num7", desc = "Vrai si la barre bonus N est active" },
-    { value = "worn",          label = "worn/equipped",  hasArg = true, argType = "text", desc = "Vrai si l'objet ou type d'objet est equipe" },
-    { value = "advflyable",    label = "advflyable",     hasArg = false, desc = "Vrai si le vol dynamique est disponible ici" },
-    { value = "vehicleui",     label = "vehicleui",      hasArg = false, desc = "Vrai si l'interface vehicule est affichee" },
-    { value = "canexitvehicle",label = "canexitvehicle", hasArg = false, desc = "Vrai si vous pouvez quitter le vehicule" },
-    { value = "petbattle",     label = "petbattle",      hasArg = false, desc = "Vrai si vous etes en combat de mascottes" },
-    { value = "cursor",        label = "cursor",         hasArg = false, desc = "Vrai si quelque chose est sur le curseur" },
+    { value = "",              label = L["BUILDER_NONE"],       hasArg = false, desc = L["BUILDER_DESC_NONE"] },
+    { value = "help",          label = L["BUILDER_LABEL_HELP"],   hasArg = false, desc = L["BUILDER_DESC_HELP"] },
+    { value = "harm",          label = L["BUILDER_LABEL_HARM"],  hasArg = false, desc = L["BUILDER_DESC_HARM"] },
+    { value = "exists",        label = "exists",         hasArg = false, desc = L["BUILDER_DESC_EXISTS"] },
+    { value = "dead",          label = "dead",           hasArg = false, desc = L["BUILDER_DESC_DEAD"] },
+    { value = "nodead",        label = L["BUILDER_LABEL_NODEAD"],hasArg = false, desc = L["BUILDER_DESC_NODEAD"] },
+    { value = "combat",        label = "combat",         hasArg = false, desc = L["BUILDER_DESC_COMBAT"] },
+    { value = "nocombat",      label = "nocombat",       hasArg = false, desc = L["BUILDER_DESC_NOCOMBAT"] },
+    { value = "stealth",       label = "stealth",        hasArg = false, desc = L["BUILDER_DESC_STEALTH"] },
+    { value = "nostealth",     label = "nostealth",      hasArg = false, desc = L["BUILDER_DESC_NOSTEALTH"] },
+    { value = "mod",           label = L["BUILDER_LABEL_MOD"],hasArg = true, argType = "mod", desc = L["BUILDER_DESC_MOD"] },
+    { value = "nomod",         label = "nomod",          hasArg = false, desc = L["BUILDER_DESC_NOMOD"] },
+    { value = "mounted",       label = "mounted",        hasArg = false, desc = L["BUILDER_DESC_MOUNTED"] },
+    { value = "nomounted",     label = "nomounted",      hasArg = false, desc = L["BUILDER_DESC_NOMOUNTED"] },
+    { value = "flying",        label = "flying",         hasArg = false, desc = L["BUILDER_DESC_FLYING"] },
+    { value = "noflying",      label = "noflying",       hasArg = false, desc = L["BUILDER_DESC_NOFLYING"] },
+    { value = "swimming",      label = "swimming",       hasArg = false, desc = L["BUILDER_DESC_SWIMMING"] },
+    { value = "indoors",       label = "indoors",        hasArg = false, desc = L["BUILDER_DESC_INDOORS"] },
+    { value = "outdoors",      label = "outdoors",       hasArg = false, desc = L["BUILDER_DESC_OUTDOORS"] },
+    { value = "channeling",    label = "channeling",     hasArg = true, argType = "text", desc = L["BUILDER_DESC_CHANNELING"] },
+    { value = "nochanneling",  label = "nochanneling",   hasArg = false, desc = L["BUILDER_DESC_NOCHANNELING"] },
+    { value = "known",         label = "known",          hasArg = true, argType = "text", desc = L["BUILDER_DESC_KNOWN"] },
+    { value = "noknown",       label = "noknown",        hasArg = true, argType = "text", desc = L["BUILDER_DESC_NOKNOWN"] },
+    { value = "spec",          label = "spec",           hasArg = true, argType = "num4", desc = L["BUILDER_DESC_SPEC"] },
+    { value = "talent",        label = "talent",         hasArg = true, argType = "numslash", desc = L["BUILDER_DESC_TALENT"] },
+    { value = "pvptalent",     label = "pvptalent",      hasArg = true, argType = "numslash", desc = L["BUILDER_DESC_PVPTALENT"] },
+    { value = "form",          label = "form/stance",    hasArg = true, argType = "num7", desc = L["BUILDER_DESC_FORM"] },
+    { value = "group",         label = "group",          hasArg = true, argType = "group", desc = L["BUILDER_DESC_GROUP"] },
+    { value = "pet",           label = L["BUILDER_LABEL_PET"], hasArg = false, desc = L["BUILDER_DESC_PET"] },
+    { value = "nopet",         label = "nopet",          hasArg = false, desc = L["BUILDER_DESC_NOPET"] },
+    { value = "btn",           label = L["BUILDER_LABEL_BTN"],   hasArg = true, argType = "btn", desc = L["BUILDER_DESC_BTN"] },
+    { value = "bar",           label = "bar",            hasArg = true, argType = "num7", desc = L["BUILDER_DESC_BAR"] },
+    { value = "bonusbar",      label = "bonusbar",       hasArg = true, argType = "num7", desc = L["BUILDER_DESC_BONUSBAR"] },
+    { value = "worn",          label = "worn/equipped",  hasArg = true, argType = "text", desc = L["BUILDER_DESC_WORN"] },
+    { value = "advflyable",    label = "advflyable",     hasArg = false, desc = L["BUILDER_DESC_ADVFLYABLE"] },
+    { value = "vehicleui",     label = "vehicleui",      hasArg = false, desc = L["BUILDER_DESC_VEHICLEUI"] },
+    { value = "canexitvehicle",label = "canexitvehicle", hasArg = false, desc = L["BUILDER_DESC_CANEXITVEHICLE"] },
+    { value = "petbattle",     label = "petbattle",      hasArg = false, desc = L["BUILDER_DESC_PETBATTLE"] },
+    { value = "cursor",        label = "cursor",         hasArg = false, desc = L["BUILDER_DESC_CURSOR"] },
 }
 
 local MOD_KEYS = {
-    { value = "",      label = "(tout)" },
+    { value = "",      label = L["BUILDER_ANY"] },
     { value = "shift", label = "shift" },
     { value = "ctrl",  label = "ctrl" },
     { value = "alt",   label = "alt" },
@@ -257,7 +257,7 @@ local function CreateBuilderFrame()
                     argDD:SetValue("")
                     argDD.frame:Show()
                 elseif entry.argType == "group" then
-                    argDD:SetList({ [""] = "(tout)", party = "party", raid = "raid" }, { "", "party", "raid" })
+                    argDD:SetList({ [""] = L["BUILDER_ANY"], party = "party", raid = "raid" }, { "", "party", "raid" })
                     argDD:SetValue("")
                     argDD.frame:Show()
                 elseif entry.argType == "num4" then
@@ -273,10 +273,10 @@ local function CreateBuilderFrame()
                     argDD:SetValue("")
                     argDD.frame:Show()
                 elseif entry.argType == "numslash" then
-                    argEB:SetLabel("tier/col (ex: 1/2)")
+                    argEB:SetLabel(L["BUILDER_ARG_TIERCOL"])
                     argEB.frame:Show()
                 else -- text
-                    argEB:SetLabel("Valeur")
+                    argEB:SetLabel(L["BUILDER_ARG_VALUE"])
                     argEB.frame:Show()
                 end
             end
@@ -332,13 +332,13 @@ local function CreateBuilderFrame()
     btnGrp:AddChild(btnInsert)
 
     local btnCopy = gui:Create("Button")
-    btnCopy:SetText("Copier")
+    btnCopy:SetText(L["COPY"])
     btnCopy:SetWidth(100)
     btnCopy:SetCallback("OnClick", function()
         local cond = BuildCondString()
         if cond ~= "" then
             -- No clipboard in WoW, print it
-            MF.Helpers:Print(MF.C.cyan .. "Condition: " .. MF.C.white .. cond .. MF.C.r)
+            MF.Helpers:Print(MF.C.cyan .. L["BUILDER_COPY_PRINT"] .. " " .. MF.C.white .. cond .. MF.C.r)
         end
     end)
     btnGrp:AddChild(btnCopy)
@@ -367,7 +367,7 @@ function Builder:UpdatePreview()
         -- Colorize the preview
         local An = MF:GetModule("Analyzer")
         if An then
-            local colored = An:ColorizeLine("/cast " .. cond .. " Sort")
+            local colored = An:ColorizeLine("/cast " .. cond .. " " .. L["BUILDER_PREVIEW_SPELL"])
             self.previewLabel:SetText(colored)
         else
             self.previewLabel:SetText(MF.C.cyan .. cond .. MF.C.r)

@@ -124,7 +124,7 @@ function Share:OpenExport(name, icon, body)
     local infoLbl = AceGUI:Create("Label")
     infoLbl:SetFullWidth(true)
     infoLbl:SetFontObject(GameFontNormal)
-    infoLbl:SetText(MF.C.gold .. name .. "|r — " .. MF.C.grey .. #body .. " chars|r")
+    infoLbl:SetText(MF.C.gold .. name .. "|r — " .. MF.C.grey .. format(L["SHARE_CHARS"], #body) .. "|r")
     f:AddChild(infoLbl)
 
     local helpLbl = AceGUI:Create("Label")
@@ -184,7 +184,7 @@ function Share:OpenImport()
 
     local pvHeading = AceGUI:Create("Heading")
     pvHeading:SetFullWidth(true)
-    pvHeading:SetText("Apercu")
+    pvHeading:SetText(L["BUILDER_PREVIEW"])
     f:AddChild(pvHeading)
 
     local pvLabel = AceGUI:Create("Label")
@@ -206,7 +206,7 @@ function Share:OpenImport()
                 pvLabel:SetText(MF.C.gold .. macro.name .. "|r\n" .. colored)
             else
                 decodedMacro = nil
-                pvLabel:SetText(MF.C.red .. (err or "Erreur") .. "|r")
+                pvLabel:SetText(MF.C.red .. (err or L["SHARE_ERROR"]) .. "|r")
             end
         else
             decodedMacro = nil

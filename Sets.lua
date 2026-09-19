@@ -94,7 +94,7 @@ local function BuildSetGroup(P, name, specChoices)
     grp:SetLayout("Flow")
     grp:SetTitle(MF.C.white .. name .. "|r"
         .. (isActive and ("  " .. MF.C.green .. L["SET_ACTIVE_TAG"] .. "|r") or "")
-        .. "  " .. MF.C.grey .. #(set.macros or {}) .. " macros"
+        .. "  " .. MF.C.grey .. format(L["MACROS_N"], #(set.macros or {}))
         .. (set.updated and (" — " .. date("%Y-%m-%d %H:%M", set.updated)) or "") .. "|r")
 
     local summary = AceGUI:Create("Label")
@@ -159,7 +159,7 @@ local function Build(f)
     info:SetText(format(L["SET_INFO"],
         MF.C.cyan .. P:GetSpecName(specID) .. "|r",
         active and (MF.C.green .. active .. "|r") or (MF.C.grey .. L["SET_NO_ACTIVE"] .. "|r"),
-        MF.db.profile.autoSwap and (MF.C.green .. "ON|r") or (MF.C.red .. "OFF|r")))
+        MF.db.profile.autoSwap and (MF.C.green .. L["STATE_ON"] .. "|r") or (MF.C.red .. L["STATE_OFF"] .. "|r")))
     f:AddChild(info)
 
     local nameEB = AceGUI:Create("EditBox")

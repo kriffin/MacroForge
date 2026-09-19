@@ -44,11 +44,11 @@ function MF.Profiles:GetCurrentSpecID()
 end
 
 function MF.Profiles:GetSpecName(specID)
-    if not specID then return "Inconnue" end
+    if not specID then return L["SPEC_UNKNOWN"] end
     local group = type(specID) == "string" and specID:match("^group(%d+)$")
     if group then return format(L["SPEC_GROUP"], tonumber(group)) end
     local _, name = GetSpecializationInfoByID(specID)
-    return name or "Inconnue"
+    return name or L["SPEC_UNKNOWN"]
 end
 
 ---------------------------------------------------
@@ -291,7 +291,7 @@ function MF.Profiles:SaveSet(name, silent)
     MF:Log("INFO", "sets", "saved %s (%d macros)%s", name, #macros, silent and " [auto]" or "")
     if not silent then
         MF:Print(MF.C.green .. L["SET_SAVED"] .. "|r → " .. MF.C.cyan .. name .. "|r ("
-            .. #macros .. " macros)")
+            .. format(L["MACROS_N"], #macros) .. ")")
     end
     self:RefreshUI()
     return set
@@ -313,7 +313,7 @@ function MF.Profiles:ApplySet(name, reasonMsg)
         if success then
             MF.db.char.activeSet = name
             MF:Print(MF.C.green .. (reasonMsg or L["SET_APPLIED"]) .. "|r → "
-                .. MF.C.cyan .. name .. "|r (" .. count .. " macros)")
+                .. MF.C.cyan .. name .. "|r (" .. format(L["MACROS_N"], count) .. ")")
         end
         self:RefreshUI()
     end)
@@ -392,7 +392,7 @@ end
 
 function MF.Profiles:ListProfiles()
     local C = MF.C
-    MF:Print(C.gold .. "═══ Sets ═══|r")
+    MF:Print(C.gold .. "═══ " .. L["SETS"] .. " ═══|r")
     local names = self:GetSetNames()
     if #names == 0 then
         MF:Print(C.grey .. L["SET_NONE"] .. "|r")
@@ -404,7 +404,7 @@ function MF.Profiles:ListProfiles()
         local specs = self:GetSetSpecNames(name)
         MF:Print(C.cyan .. name .. "|r"
             .. (name == active and (" " .. C.green .. L["SET_ACTIVE_TAG"] .. "|r") or "")
-            .. " — " .. #set.macros .. " macros"
+            .. " — " .. format(L["MACROS_N"], #set.macros)
             .. (#specs > 0 and (" — " .. C.yellow .. table.concat(specs, ", ") .. "|r") or ""))
     end
 end
@@ -510,7 +510,7 @@ end
 
 function MF.Profiles:ListBackups()
     local C = MF.C
-    MF:Print(C.gold .. "═══ Backups ═══|r")
+    MF:Print(C.gold .. "═══ " .. L["BACKUPS"] .. " ═══|r")
     local backups = MF.db.char.backups or {}
     if #backups == 0 then
         MF:Print(C.grey .. L["BACKUP_NONE"] .. "|r")

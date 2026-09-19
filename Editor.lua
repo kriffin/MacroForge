@@ -53,19 +53,19 @@ local draftTimer
 ---------------------------------------------------
 local SNIPPETS = {
     { label = "#showtooltip",           text = "#showtooltip\n" },
-    { label = "#showtooltip Sort",      text = "#showtooltip " },
-    { label = "/cast [cond] Sort",      text = "/cast " },
-    { label = "/use [cond] Objet",      text = "/use " },
+    { label = "#showtooltip " .. L["SNIPPET_SPELL"], text = "#showtooltip " },
+    { label = "/cast [cond] " .. L["SNIPPET_SPELL"], text = "/cast " },
+    { label = "/use [cond] " .. L["SNIPPET_ITEM"], text = "/use " },
     { label = "/castsequence reset=",   text = "/castsequence reset=target " },
     { label = "/stopcasting",           text = "/stopcasting\n" },
     { label = "/stopattack",            text = "/stopattack\n" },
     { label = "/startattack",           text = "/startattack\n" },
-    { label = "/cancelaura Sort",       text = "/cancelaura " },
+    { label = "/cancelaura " .. L["SNIPPET_SPELL"], text = "/cancelaura " },
     { label = "/cancelform",            text = "/cancelform\n" },
     { label = "/dismount",              text = "/dismount\n" },
     { label = "/target @focus",         text = "/target [@focus] " },
     { label = "/stopmacro [cond]",      text = "/stopmacro " },
-    { label = "/click BoutonSecure",    text = "/click " },
+    { label = "/click " .. L["SNIPPET_SECURE_BUTTON"], text = "/click " },
     { label = "/run Script()",          text = "/run " },
     { label = "[mod:shift]",            text = "[mod:shift] " },
     { label = "[mod:ctrl]",             text = "[mod:ctrl] " },
@@ -737,8 +737,8 @@ function Editor:Open(macro)
     wipe(undoStack); wipe(redoStack)
     lastSnapshot = nil
 
-    local dn = macro.name or "(Sans nom)"
-    if dn:match("^%s*$") then dn = MF.Helpers:ParseShowTooltip(macro.body) or "(Sans nom)" end
+    local dn = macro.name or L["MACRO_UNNAMED"]
+    if dn:match("^%s*$") then dn = MF.Helpers:ParseShowTooltip(macro.body) or L["MACRO_UNNAMED"] end
     dn = dn:match("^([^\n]+)") or dn
 
     local scope = macro.scope == "character" and MF.C.cyan .. L["CHARACTER_SCOPE"] or MF.C.yellow .. L["ACCOUNT_SCOPE"]
