@@ -14,6 +14,15 @@ local MF = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME,
 )
 _G.MacroForge = MF  -- Global ref for Bindings.lua
 
+-- 12.x dropped the global SetDesaturation(texture, bool); AceGUI still calls
+-- it (CheckBox:SetValue), which made the Blizzard options panel error out and
+-- render empty. Restore it for every addon that uses the same libraries.
+if not _G.SetDesaturation then
+    function _G.SetDesaturation(texture, desaturate)
+        if texture and texture.SetDesaturated then texture:SetDesaturated(desaturate) end
+    end
+end
+
 -- Locale
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 MF.L = L

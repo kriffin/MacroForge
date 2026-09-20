@@ -120,8 +120,13 @@ function Settings:GetOptionsTable()
                 type = "select",
                 name = L["OPT_FONT"],
                 order = 12,
-                dialogControl = "LSM30_Font",
-                values = LSM:HashTable("font"),
+                -- A plain select: the LSM30_Font control needs
+                -- AceGUI-3.0-SharedMediaWidgets, which we do not embed
+                values = function()
+                    local fonts = {}
+                    for _, name in ipairs(LSM:List("font")) do fonts[name] = name end
+                    return fonts
+                end,
                 get = function() return MF.db.profile.fontName end,
                 set = function(_, v) MF.db.profile.fontName = v end,
             },
