@@ -1,236 +1,122 @@
 <p align="center">
-  <img src="icons/MacroForge_128x128.png" alt="MacroForge Icon" width="128" height="128" />
-</p>
-
-<h1 align="center">MacroForge</h1>
-
-<p align="center">
-  <strong>The macro editor that WoW should have shipped with.</strong><br/>
-  <sub>Write smarter macros, faster — with real-time analysis, autocomplete, syntax highlighting,<br/>and a full toolkit built for serious players.</sub>
+  <img src="docs/assets/thumbnail.png" alt="MacroForge — every macro checked, sorted, never lost" width="820">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/WoW-Retail_12.0-148EFF?style=for-the-badge&logoColor=white" alt="WoW Retail" />
-  <img src="https://img.shields.io/badge/Version-7.2.0-FFD700?style=for-the-badge" alt="Version" />
-  <img src="https://img.shields.io/badge/Ace3-Framework-00CCFF?style=for-the-badge" alt="Ace3" />
-  <img src="https://img.shields.io/github/license/kriffin/MacroForge?style=for-the-badge&color=44CC88" alt="License" />
+  <a href="https://www.curseforge.com/wow/addons/macroforge"><img src="https://img.shields.io/badge/CurseForge-MacroForge-F16436?style=for-the-badge" alt="CurseForge"></a>
+  <img src="https://img.shields.io/badge/Retail-12.1.0-148EFF?style=for-the-badge" alt="Retail 12.1.0">
+  <img src="https://img.shields.io/badge/WoW%20Forever-1.60.1-FFD700?style=for-the-badge" alt="WoW Forever 1.60.1">
+  <img src="https://img.shields.io/badge/License-MIT-44CC88?style=for-the-badge" alt="MIT">
 </p>
 
-<p align="center">
-  <a href="#-installation">📦 Install</a> •
-  <a href="#-features-at-a-glance">✨ Features</a> •
-  <a href="#-slash-commands">📝 Commands</a> •
-  <a href="#-screenshots">🖼️ Screenshots</a>
-</p>
+## Your macro is broken. You will find out mid-pull.
+
+No syntax check. No spell verification. No history. Blizzard's macro frame is a text box, and it has been for twenty years.
+
+**MacroForge is the editor that should have shipped with the game.** It checks every line as you type, tells you what your macro would do *right now*, keeps every version you ever saved, and swaps whole macro sets when you change spec — without emptying your action bars.
+
+![Editor: code, analysis and detected spells](docs/assets/shots/editor.png)
 
 ---
 
-## 💡 Why MacroForge?
+## It catches the mistake before the boss does
 
-WoW's built-in macro editor is a **plain text box**. No syntax checking. No autocomplete. No way to know if your macro is broken until you press it mid-pull and nothing happens.
+- **Live analysis** — every command, condition and spell checked against your own spellbook
+- **"Did you mean…?"** — `/csatsequence` becomes `/castsequence`, a misspelt spell gets the closest match
+- **Plain-English explanation** of every line, right next to the code
+- **Test button** — resolves the macro against your current state: which clause fires, on which target, or nothing at all. Hold Shift to test your Shift branch
+- **Live 255-character counter**, with the shortener one click away
 
-**MacroForge changes that.**
+## One window, built for speed
 
-It gives you a **real** editor — syntax highlighting, live error detection, spell verification from your spellbook, intelligent autocomplete, one-click templates for every class, and a visual condition builder that makes `[mod:shift,@focus,harm,nodead]` feel effortless.
+Search by name **or content**. Filter to what is broken, what sits on a bar, what nobody uses. Drag a macro straight onto your action bars. Right-click for duplicate, share, move between Character and Account, or its full history.
 
-Whether you're a **Mythic raider** optimizing cooldown sequencing, a **PvP player** chaining arena macros, a **healer** perfecting mouseover casts, or someone writing their very first `/cast` — MacroForge has your back.
+`Ctrl+S` save · `Ctrl+Z` undo · `Ctrl+F` search · `↑ ↓` walk the list · `Del` delete
 
-> **TL;DR** — It's like having an IDE for WoW macros. Inside WoW.
+![The MacroForge window](docs/assets/shots/window.png)
 
----
+## Your macros follow your spec
 
-## ✨ Features at a Glance
+Save your character macros as a **set** — Raid, M+, PvP, whatever you run. Bind it to a spec. Change spec, and the right set is in place before the pull. Macros that exist in both sets **keep their action bar slots**, and anything you changed is saved into the set before it swaps.
 
-| Feature | Description |
-|---------|-------------|
-| 🔍 **Real-Time Analyzer** | Live validation of commands, conditions & spell names as you type |
-| 🎨 **Syntax Highlighting** | Color-coded commands, conditions, spells, items & errors |
-| ⌨️ **Smart Autocomplete** | Context-aware suggestions for `/commands`, `[conditions]` & spells |
-| 🧩 **Condition Builder** | Visual dropdown UI to compose conditions — no syntax memorization |
-| 📋 **40+ Templates** | Ready-to-use macros for every class, role & situation |
-| ✂️ **Macro Shortener** | Compress macros to save characters (255 limit) intelligently |
-| 🔗 **Share & Send** | Export/import codes + send macros directly to online players |
-| 📖 **Spell Browser** | Full spellbook with icons — search and insert any spell instantly |
-| 🎯 **Command Palette** | All slash commands categorized and searchable |
-| 💾 **Macro Sets** | Named sets (Raid, M+, PvP…) bound to specs, auto-swapped on spec change without emptying your action bars |
-| 🔄 **Revisions & Trash** | Every version of every macro — even edits made in Blizzard's editor — plus a trash to recreate deleted macros |
-| 🛟 **Backups** | Manual backups + automatic ones before any overwrite |
-| 🔎 **Duplicate Detector** | Find and clean up duplicate macros |
-| 🌐 **Localization** | English & French |
+![Sets bound to specs](docs/assets/shots/sets.png)
 
----
+## Nothing is ever lost
 
-## 🖼️ Screenshots
+- **Every version of every macro** is kept — including the edits you make in Blizzard's own frame
+- Deleted a macro? It is in the **Trash**, body intact, one click from coming back
+- **Automatic backup** before every set swap or restore
+- Unsaved changes are marked, and MacroForge asks before dropping them
 
-<table>
-  <tr>
-    <td align="center"><strong>📋 Macro Manager</strong></td>
-    <td align="center"><strong>✏️ Smart Editor</strong></td>
-  </tr>
-  <tr>
-    <td><img src="screenshots/main_list.png" alt="Main macro list with icons and previews" width="340"/></td>
-    <td><img src="screenshots/editor.png" alt="Editor with syntax highlighting and analysis" width="480"/></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>🔮 Spell Browser</strong></td>
-    <td align="center"><strong>⚡ Command Palette</strong></td>
-  </tr>
-  <tr>
-    <td><img src="screenshots/spells.png" alt="Searchable spell and item browser" width="340"/></td>
-    <td><img src="screenshots/commands.png" alt="Full slash command reference" width="340"/></td>
-  </tr>
-</table>
+![Trash: recreate a deleted macro](docs/assets/shots/trash.png)
+
+## Also in the box
+
+**50+ class templates** — interrupt chains, stealth openers, defensive stacks, mouseover heals, arena targeting. Spell names are resolved from spell IDs, so they are always in the client's language.
+
+**Audit** — one panel listing every macro that needs attention, worst first.
+
+**Share** — export a macro as a short code (LibDeflate + AceSerializer), or send it straight to another MacroForge user in game.
+
+**Condition builder** — build `[@mouseover,harm,nodead]` from dropdowns instead of memorising it.
 
 ---
 
-## 🔍 Deep Dive
+## Install
 
-### Real-Time Macro Analyzer
+**With the CurseForge app** — search for *MacroForge*, or use the [project page](https://www.curseforge.com/wow/addons/macroforge).
 
-Your macros are validated **live** — every command, condition, and spell is checked against WoW's slash command database and your actual spellbook.
-
-- **Instant error detection** — Unknown commands, invalid conditions, and unverified spells are flagged immediately
-- **"Did you mean?"** — Typo in `/csatsequence`? MacroForge suggests `/castsequence` via Levenshtein fuzzy matching
-- **Macro health score** — Each macro gets a 0–100% quality rating so you spot problems at a glance
-- **Line-by-line explanations** — Plain-English breakdown of what each line actually does
-
-### Context-Aware Autocomplete
-
-MacroForge knows *where* your cursor is and suggests accordingly:
+**By hand** — download a [release](https://github.com/kriffin/MacroForge/releases) and drop the `MacroForge` folder into:
 
 ```
-/           → slash commands with categories
-[           → conditions (@target, help, harm, mod:shift…)
-/cast [...]  → spells from YOUR spellbook, with icons
+World of Warcraft/_retail_/Interface/AddOns/        # Retail 12.x
+World of Warcraft/_classic_beta_/Interface/AddOns/  # WoW Forever
 ```
 
-Navigate with **↑ ↓ Tab Enter** — full keyboard control, no mouse needed.
+Then type `/mf` in game, or click the minimap button.
 
-### Visual Condition Builder
+| Command | What it does |
+|---|---|
+| `/mf` | Open / close MacroForge |
+| `/mf sets` | Macro sets |
+| `/mf audit` | Check every macro |
+| `/mf templates` | Class templates |
+| `/mf import` · `/mf export` | Share codes |
+| `/mf backups` · `/mf restore [n]` | Backups |
+| `/mf trash` | Deleted macros |
+| `/mf history` | Versions of the open macro |
+| `/mf log [n]` · `/mf debug` | Debug log |
+| `/mf help` | Everything else |
 
-Build complex condition blocks visually:
+---
 
-```
-Target:     [@mouseover]     ← dropdown
-Condition:  [help]           ← dropdown  
-Condition:  [nodead]         ← dropdown
-Modifier:   [mod:shift]      ← dropdown + sub-dropdown
+## Development
 
-Preview:    [@mouseover,help,nodead,mod:shift]
-```
-
-One click to insert directly into your macro. Supports **all** WoW conditionals — targets, modifiers, stances, specs, talents, forms, groups, buttons, and more.
-
-### 40+ Class Templates
-
-Every template is battle-tested and organized by role:
-
-| Category | Examples |
-|----------|----------|
-| **Universal** | Mouseover cast, modifier combos, mount macro, trinket usage, cast sequences |
-| **Interrupt** | Focus > Mouseover > Target priority chains for every class |
-| **Offensive** | Stealth openers, burst sequencing, startattack combos |
-| **Defensive** | Bubble+cancel, Evasion/Cloak combos, defensive CD stacking |
-| **CC** | Smart CC (stealth=Cheap Shot, else Blind), Polymorph focus, trap @cursor |
-| **Healer** | Mouseover heal chains, smart dispels, emergency self-heal |
-| **Tank** | Mouseover taunt, defensive modifier macros |
-| **PvP** | Arena1/2/3 targeting, PvP trinket |
-
-Auto-detects your class and highlights relevant templates alongside universal ones.
-
-### Macro Shortener
-
-Hitting the **255-character limit**? One click to compress:
-
-```diff
-- /castsequence [mod:shift] reset=target Spell One, Spell Two, Spell Three
-+ /castse [mod:shift]reset=target Spell One,Spell Two,Spell Three
-  ↳ Saved 14 characters
+```bash
+git clone https://github.com/kriffin/MacroForge.git
+ln -s "$PWD/MacroForge" "/path/to/World of Warcraft/_retail_/Interface/AddOns/MacroForge"
+bash tests/run.sh          # headless tests against a fake WoW API
+luac -p $(git ls-files '*.lua')
 ```
 
-Uses shortest command aliases, strips whitespace inside conditions, removes redundant spaces — all while respecting WoW's syntax specification. **Only safe transformations are applied.**
+| Path | |
+|---|---|
+| `Core.lua` | addon bootstrap, AceDB, slash commands, out-of-combat queue |
+| `UI.lua` | main window: tabs, macro list, home and detail views |
+| `Editor.lua` | editor pane: toolbar, code box, analysis, undo/redo |
+| `Profiles.lua` | macro read/write, sets, backups |
+| `History.lua` | revisions and trash |
+| `Analyzer.lua` · `AnalyzerExplain.lua` | validation and explanations |
+| `Templates.lua` · `Builder.lua` · `Share.lua` | templates, condition builder, share codes |
+| `tests/` | fake WoW API + 11 headless tests |
+| `docs/CURSEFORGE.md` | source of the CurseForge project page |
 
-### Share, Import & Send
+CI runs the syntax check, the tests, luacheck and a locale-key check on every push. Tagging `vX.Y.Z` builds the zip with the BigWigs packager and publishes it.
 
-- **Export** → Generates a compressed code string (LibDeflate + AceSerializer) for Discord, forums, guild chat
-- **Import** → Paste a code, get a live preview with syntax highlighting, create or edit in one click
-- **Direct send** → Type a player name, macro arrives as an in-game popup via AceComm
-- **Legacy support** → Reads MF5, MF6, and MF7 format codes
+Built on [Ace3](https://www.wowace.com/projects/ace3), [LibDeflate](https://github.com/SafeteeWoW/LibDeflate), LibDataBroker + LibDBIcon and LibSharedMedia.
 
----
+## License
 
-## 📦 Installation
+[MIT](LICENSE) — use it, fork it, improve it.
 
-1. **Download** the [latest release](https://github.com/kriffin/MacroForge/releases) or clone:
-   ```bash
-   git clone https://github.com/kriffin/MacroForge.git
-   ```
-2. **Copy** the `MacroForge` folder into:
-   ```
-   World of Warcraft/_retail_/Interface/AddOns/
-   ```
-3. **Reload** — restart WoW or type `/reload` in-game
-
-> **Tip:** Type `/mf` in chat to open MacroForge. That's it.
-
----
-
-## 📝 Slash Commands
-
-| Command | Description |
-|---------|-------------|
-| `/mf` | Toggle the main window |
-| `/mf analyze` | Run analysis on all macros |
-| `/mf builder` | Open the visual condition builder |
-| `/mf commands` | Open the slash command palette |
-| `/mf templates` | Browse macro templates |
-| `/mf share` | Export the current macro |
-| `/mf import` | Import a macro from a code |
-| `/mf send` | Send a macro to another player |
-| `/mf duplicates` | Detect duplicate macros |
-| `/mf sets` | Manage macro sets |
-| `/mf save [set]` / `load [set]` | Save/apply a set (default: the set of the current spec) |
-| `/mf list` | List sets |
-| `/mf backup` / `backups` / `restore [n]` | Create, list, restore backups (character + account) |
-| `/mf history` / `trash` | Versions of the open macro / deleted macros |
-| `/mf settings` | Open settings panel |
-| `/mf help` | Show all commands |
-
----
-
-## ⚙️ Configuration
-
-MacroForge integrates into WoW's **Interface → AddOns** settings panel, or access via `/mf settings`:
-
-- **Editor font & size** — LibSharedMedia support for custom fonts
-- **Syntax coloring** — Toggle color-coded highlighting
-- **Auto-save drafts** — Never lose work in progress
-- **Sound effects** — Audio feedback for actions
-- **Minimap button** — Show/hide toggle
-- **Keybindings** — Bind keys to toggle editor, builder, etc.
-- **Backup depth** — Configure max backup & history slots
-
----
-
-## 🏗️ Built With
-
-| Library | Purpose |
-|---------|---------|
-| [Ace3](https://www.wowace.com/projects/ace3) | Full addon framework — AceAddon, AceDB, AceEvent, AceGUI, AceConfig, AceConsole, AceComm, AceSerializer, AceHook, AceTimer, AceLocale |
-| [LibDeflate](https://github.com/SafeteeWoW/LibDeflate) | Data compression for sharing codes |
-| [LibDataBroker](https://github.com/tekkub/libdatabroker-1-1) + [LibDBIcon](https://www.wowace.com/projects/libdbicon-1-0) | Minimap button integration |
-| [LibSharedMedia](https://www.wowace.com/projects/libsharedmedia-3-0) | Custom font support |
-
----
-
-## 📄 License
-
-[MIT](LICENSE) — Use it, fork it, improve it.
-
----
-
-<p align="center">
-  <img src="icons/MacroForge_64x64.png" alt="MacroForge" width="48" /><br/>
-  <strong>Stop writing macros blind. Start forging them.</strong><br/>
-  <sub>Made with ❤️ by kriffin</sub>
-</p>
+<sub>World of Warcraft and its logos are trademarks of Blizzard Entertainment. MacroForge is fan-made and not affiliated with Blizzard.</sub>
