@@ -10,7 +10,7 @@ Images live in the repo (docs/assets, screenshots): update them there and the
 page follows. CurseForge ignores align="center", so nothing relies on it.
 -->
 
-![MacroForge — never press a broken macro again](https://github.com/kriffin/MacroForge/raw/main/docs/assets/banner.png)
+![MacroForge — every macro checked, sorted, never lost](https://github.com/kriffin/MacroForge/raw/main/docs/assets/thumbnail.png)
 
 ## Your macro is broken. You will find out mid-pull.
 
