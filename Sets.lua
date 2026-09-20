@@ -259,19 +259,16 @@ function Sets:BuildOverview(container)
 end
 
 -- One set: info line + its group (summary, bound specs, actions)
+-- Added straight to the container: a ScrollFrame gets no height in the
+-- pane's Flow layout, and one set never needs to scroll
 function Sets:BuildDetail(container, name)
     local P = MF:GetModule("Profiles")
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetLayout("List")
-    container:AddChild(scroll)
     local hint = AceGUI:Create("Label")
     hint:SetFullWidth(true)
     hint:SetFontObject(GameFontNormalSmall)
     hint:SetText(MF.C.grey .. L["SET_HINT"] .. "|r")
-    scroll:AddChild(hint)
-    scroll:AddChild(BuildSetGroup(P, name, P:GetSpecChoices()))
+    container:AddChild(hint)
+    container:AddChild(BuildSetGroup(P, name, P:GetSpecChoices()))
 end
 
 function Sets:ConfirmApply(name)

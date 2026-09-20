@@ -686,6 +686,13 @@ function UI:CreateMainFrame()
 
     RestoreGeometry()
 
+    -- The flat template's own background does not cover the whole panel once
+    -- the portrait border is swapped in: paint an opaque one behind everything
+    local bg = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+    bg:SetPoint("TOPLEFT", 4, -22)
+    bg:SetPoint("BOTTOMRIGHT", -4, 4)
+    bg:SetColorTexture(0.05, 0.05, 0.07, 0.95)
+
     -- Keys reach this frame when no text field has the focus; the editor's
     -- and the search box's fields forward their Ctrl shortcuts to HandleKey.
     -- SetPropagateKeyboardInput is blocked in combat: keys then just propagate.
@@ -762,12 +769,7 @@ local function RenderDetail()
         local scope, key = detail.id:match("^(%a+):(.*)$")
         local d = H:GetDeletedEntry(scope, key)
         if not d then return UI:CloseDetail() end
-        local scroll = AceGUI:Create("ScrollFrame")
-        scroll:SetFullWidth(true)
-        scroll:SetFullHeight(true)
-        scroll:SetLayout("List")
-        detailHost:AddChild(scroll)
-        scroll:AddChild(H:BuildTrashGroup(d))
+        detailHost:AddChild(H:BuildTrashGroup(d))
     end
     detailHost.frame:Show()
     emptyState:Hide()

@@ -198,7 +198,18 @@ local function CreateEditor()
     local function Fit()
         f:SetWidth(pane:GetWidth())
         f:SetHeight(pane:GetHeight() - TOOLBAR_HEIGHT)
+        -- Grow the code box with the window: name row, counter, buttons and
+        -- margins take about 150px, a line is ~14px at the default size
+        if bodyWidget then
+            local lines = math.max(8, math.floor((pane:GetHeight() - 190) / 14))
+            if lines ~= bodyWidget.mfLines then
+                bodyWidget.mfLines = lines
+                bodyWidget:SetNumLines(lines)
+                f:DoLayout()
+            end
+        end
     end
+    Editor.FitPane = Fit
     pane:HookScript("OnSizeChanged", Fit)
     Fit()
 
@@ -284,14 +295,18 @@ local function CreateEditor()
     columns:SetFullWidth(true)
     columns:SetLayout("Flow")
 
+    -- Flow centers a row's children on alignoffset (height/2 by default):
+    -- zero it so both columns start at the top of the row
     local leftCol = gui:Create("SimpleGroup")
     leftCol:SetRelativeWidth(0.6)
     leftCol:SetLayout("List")
+    leftCol.alignoffset = 0
     columns:AddChild(leftCol)
 
     local rightCol = gui:Create("SimpleGroup")
     rightCol:SetRelativeWidth(0.39)
     rightCol:SetLayout("List")
+    rightCol.alignoffset = 0
     columns:AddChild(rightCol)
 
     -- Body (the label carries the live n/255 counter)
@@ -303,6 +318,7 @@ local function CreateEditor()
     bodyWidget:DisableButton(true)
     bodyWidget:SetCallback("OnTextChanged", function() Editor:OnChanged() end)
     leftCol:AddChild(bodyWidget)
+    if Editor.FitPane then Editor.FitPane() end
 
     -- Primary actions under the code
     local actions = gui:Create("SimpleGroup")
