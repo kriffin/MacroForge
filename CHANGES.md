@@ -1,6 +1,6 @@
 # Changes
 
-## 7.2.0 — Unreleased
+## 7.2.0 — 2026-09-20
 
 Safer macro writes, full revisions and named macro sets.
 

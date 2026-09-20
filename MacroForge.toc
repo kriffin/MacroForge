@@ -1,8 +1,8 @@
 ## Interface: 120001, 120005, 120100, 16001
 ## Title: |cff00ccffMacro|r|cffffd700Forge|r
-## Notes: Editeur de macros intelligent - Creer, editer, analyser, templates multi-classe, auto-completion, condition builder, palette de sorts, partage, historique, doublons, undo/redo, auto-save, keybindings.
+## Notes: Editeur de macros complet - une fenetre unique (liste + editeur), analyse temps reel, auto-completion, sets de macros lies aux spes, revisions et corbeille, templates, partage.
 ## Author: Antigravity
-## Version: 7.1.0
+## Version: 7.2.0
 ## SavedVariables: MacroForgeDB, MacroForgeLog
 ## IconTexture: Interface\Icons\Trade_Engineering
 

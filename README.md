@@ -11,7 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/WoW-Retail_12.0-148EFF?style=for-the-badge&logoColor=white" alt="WoW Retail" />
-  <img src="https://img.shields.io/badge/Version-7.1.0-FFD700?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-7.2.0-FFD700?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Ace3-Framework-00CCFF?style=for-the-badge" alt="Ace3" />
   <img src="https://img.shields.io/github/license/kriffin/MacroForge?style=for-the-badge&color=44CC88" alt="License" />
 </p>
