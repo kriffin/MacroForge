@@ -1,5 +1,22 @@
 # Changes
 
+## 7.2.1 — 2026-09-20
+
+Fixes found while testing 7.2 in game:
+
+- The window painted no background of its own: the game world showed through it.
+- Clicking a set (or a deleted macro) opened an empty pane.
+- The editor's analysis column floated in the middle of the row instead of
+  starting at the top, and the code box did not grow with the window.
+- Typing in the editor reached the game: the character moved and keybinds
+  fired. Keys are swallowed again while a field has the focus.
+- Two macros with the same name (or none) swapped revisions as soon as one was
+  deleted, so the Trash showed the wrong body.
+- `#showtooltip` on its own line reported the next line as its spell.
+- The Blizzard options panel was empty: AceGUI calls `SetDesaturation`, dropped
+  in 12.x, and the font option needed a control we do not embed.
+- New macros start unnamed (a single space) instead of refusing to save.
+
 ## 7.2.0 — 2026-09-20
 
 Safer macro writes, full revisions and named macro sets.
