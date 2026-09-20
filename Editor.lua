@@ -83,21 +83,10 @@ local SNIPPETS = {
 }
 
 ---------------------------------------------------
--- Toolbar (native): icon buttons for what you insert, one menu for the rest
--- Interface icons only: a spell icon would look like a macro action.
--- Atlases differ between flavors, so each button falls back to a texture.
+-- Toolbar (native): Blizzard text buttons for what you insert, one menu
+-- for the rest. Text over icons: an icon for "insert command" is a guess.
 ---------------------------------------------------
 local TOOLBAR_HEIGHT = 34
-
-local function SetButtonIcon(button, atlases, texture)
-    for _, atlas in ipairs(atlases) do
-        if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
-            button:SetAtlas(atlas)
-            return
-        end
-    end
-    button:SetIcon(texture)
-end
 
 local function CreateToolbar(pane)
     local toolbar = CreateFrame("Frame", nil, pane)
@@ -106,12 +95,18 @@ local function CreateToolbar(pane)
     toolbar:SetHeight(TOOLBAR_HEIGHT - 4)
 
     local last
-    local function IconButton(atlases, texture, title, tip, onClick)
-        local b = CreateFrame("Button", nil, toolbar, "SquareIconButtonTemplate")
-        b:SetSize(28, 28)
-        SetButtonIcon(b, atlases, texture)
-        b:SetTooltipInfo(title:gsub("^%+%s*", ""), tip)
+    local function TextButton(label, tipTitle, tipText, width, onClick)
+        local b = CreateFrame("Button", nil, toolbar, "UIPanelButtonTemplate")
+        b:SetSize(width, 24)
+        b:SetText(label)
         b:SetScript("OnClick", onClick)
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:AddLine(tipTitle, 1, 1, 1)
+            if tipText then GameTooltip:AddLine(tipText, nil, nil, nil, true) end
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", GameTooltip_Hide)
         if last then
             b:SetPoint("LEFT", last, "RIGHT", 4, 0)
         else
@@ -121,29 +116,25 @@ local function CreateToolbar(pane)
         return b
     end
 
-    IconButton({ "UI-HUD-MicroMenu-SpellbookAbilities-Up", "spellbook-icon-spellbook" },
-        "Interface\\Spellbook\\Spellbook-Icon", L["INSERT_SPELL_BTN"], L["TOOL_SPELL_DESC"], function()
-            local CP = MF:GetModule("CommandPalette")
-            if CP then CP:OpenSpells() end
-        end)
-    IconButton({ "chatframe-button-icon-speech", "UI-HUD-Chat-Icon" },
-        "Interface\\ChatFrame\\UI-ChatIcon-Chat-Up", L["INSERT_CMD_BTN"], L["TOOL_CMD_DESC"], function()
-            local CP = MF:GetModule("CommandPalette")
-            if CP then CP:OpenCommands() end
-        end)
-    IconButton({ "Waypoint-MapPin-Untracked", "worldquest-questmarker-questbang" },
-        "Interface\\Buttons\\UI-OptionsButton", L["BUILDER"], L["TOOLS_BUILDER_DESC"], function()
-            local B = MF:GetModule("Builder")
-            if B then B:Toggle() end
-        end)
-    IconButton({ "transmog-icon-revert", "UI-HUD-ActionBar-PageDownArrow-Up" },
-        "Interface\\Buttons\\UI-MinusButton-Up", L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], function()
-            Editor:Shorten()
-        end)
+    TextButton(L["TOOLBAR_SPELL"], L["INSERT_SPELL_BTN"], L["TOOL_SPELL_DESC"], 84, function()
+        local CP = MF:GetModule("CommandPalette")
+        if CP then CP:OpenSpells() end
+    end)
+    TextButton(L["TOOLBAR_CMD"], L["INSERT_CMD_BTN"], L["TOOL_CMD_DESC"], 104, function()
+        local CP = MF:GetModule("CommandPalette")
+        if CP then CP:OpenCommands() end
+    end)
+    TextButton(L["TOOLBAR_COND"], L["BUILDER"], L["TOOLS_BUILDER_DESC"], 104, function()
+        local B = MF:GetModule("Builder")
+        if B then B:Toggle() end
+    end)
+    TextButton(L["SHORTEN_BTN"], L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], 100, function()
+        Editor:Shorten()
+    end)
 
     -- Everything else: one menu, so the bar stays readable
     local more = CreateFrame("Button", nil, toolbar, "UIPanelButtonTemplate")
-    more:SetSize(110, 24)
+    more:SetSize(90, 24)
     more:SetPoint("LEFT", last, "RIGHT", 10, 0)
     more:SetText(L["MORE_BTN"])
     more:SetScript("OnClick", function(self)
