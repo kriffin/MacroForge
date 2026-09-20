@@ -381,7 +381,7 @@ local function InitTrashRow(btn, node)
     local d = node:GetData().trash
     local last = d.entry.versions[#d.entry.versions]
     local icon = (last.icon and last.icon ~= 0) and last.icon or 134400
-    InitDetailRow(btn, icon, d.key,
+    InitDetailRow(btn, icon, MF:GetModule("History"):EntryLabel(d.scope, d.key),
         format(L["TRASH_DELETED_AT"], date("%Y-%m-%d %H:%M", d.entry.deleted)),
         MF.C.grey .. (d.scope == "character" and L["SCOPE_CHAR"] or L["SCOPE_ACCOUNT"]) .. "|r",
         "trash", d.scope .. ":" .. d.key)
@@ -678,7 +678,8 @@ function UI:CreateMainFrame()
         UI:Refresh()
         C_Timer.After(0.3, OnMainShown)
     end)
-    frame:SetScript("OnHide", function()
+    frame:SetScript("OnHide", function(self)
+        if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
         local E = MF:GetModule("Editor")
         if E and E.OnHostHidden then E:OnHostHidden() end
@@ -696,19 +697,32 @@ function UI:CreateMainFrame()
     -- Keys reach this frame when no text field has the focus; the editor's
     -- and the search box's fields forward their Ctrl shortcuts to HandleKey.
     -- SetPropagateKeyboardInput is blocked in combat: keys then just propagate.
-    -- A handled key stops propagating for that key only: propagation is
-    -- restored on the next frame, so combat (where it can't be changed)
-    -- never starts with the game's keys swallowed.
+    -- Keys must not reach the game while a field has the focus (otherwise
+    -- typing in the editor moves the character and fires keybinds), nor when
+    -- a shortcut was handled. Everything else propagates.
     frame:EnableKeyboard(true)
     frame:SetPropagateKeyboardInput(true)
     frame:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end
-        if UI:HandleKey(key) then
-            self:SetPropagateKeyboardInput(false)
+        local handled = UI:HandleKey(key)
+        local typing = GetCurrentKeyBoardFocus() ~= nil
+        self:SetPropagateKeyboardInput(not (handled or typing))
+        if not typing then
+            -- Give the keys back right away: combat (where this cannot be
+            -- changed) must never start with the game's keys swallowed
             C_Timer.After(0, function()
-                if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+                if not InCombatLockdown() and not GetCurrentKeyBoardFocus() then
+                    self:SetPropagateKeyboardInput(true)
+                end
             end)
         end
+    end)
+    -- Entering combat with a focused field would freeze the keys: drop focus
+    frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+    frame:SetScript("OnEvent", function(self)
+        local focus = GetCurrentKeyBoardFocus()
+        if focus and focus.ClearFocus then focus:ClearFocus() end
+        pcall(self.SetPropagateKeyboardInput, self, true)
     end)
 
     local resize = CreateFrame("Button", nil, frame, "PanelResizeButtonTemplate")

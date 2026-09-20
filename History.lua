@@ -21,6 +21,7 @@ local History = {}
 local MAX_DELETED = 50
 local SCOPES = { "character", "account" }
 
+local claims = {}        -- claims[scope][macroIndex] = entry key, rebuilt on each scan
 local ready = false      -- macros are only reliable once the client loaded them
 local scanPending = false
 local nextReason         -- reason tag for the next scan (e.g. a set swap)
@@ -39,11 +40,9 @@ end
 
 -- Current macros of a scope, each tagged with its revision key
 function History:KeyedMacros(scope)
-    local P = MF:GetModule("Profiles")
-    local out, counts = {}, {}
-    for _, m in ipairs(P:ReadMacros(scope)) do
-        counts[m.name] = (counts[m.name] or 0) + 1
-        m.key = counts[m.name] == 1 and m.name or (m.name .. "#" .. counts[m.name])
+    local out = {}
+    for _, m in ipairs(MF:GetModule("Profiles"):ReadMacros(scope)) do
+        m.key = claims[scope] and claims[scope][m.index]
         table.insert(out, m)
     end
     return out
@@ -83,51 +82,61 @@ end
 ---------------------------------------------------
 -- Scan: diff the live macros against the store
 ---------------------------------------------------
+-- Entries are claimed by content first, then by name: two macros with the
+-- same name (or no name at all) used to swap histories as soon as one was
+-- deleted, because the key was just "name" plus its rank in the slot order.
+local function UniqueKey(store, name)
+    local base = name ~= "" and name or "?"
+    if not store[base] then return base end
+    local n = 2
+    while store[base .. "#" .. n] do n = n + 1 end
+    return base .. "#" .. n
+end
+
+local function ClaimEntry(store, taken, macro)
+    local byName, byBody
+    for key, entry in pairs(store) do
+        if not taken[key] then
+            local last = LastVersion(entry)
+            local sameName = (entry.name or key) == macro.name
+            local sameBody = last and last.body == macro.body
+            if sameName and sameBody then return key end       -- exact match wins
+            if sameName and not byName then byName = key end
+            if sameBody and not byBody then byBody = key end
+        end
+    end
+    return byName or byBody                                     -- name kept, or renamed
+end
+
 function History:Scan(scope, reason)
     local store = self:Store(scope)
-    local seen, appeared = {}, {}
+    local taken, scopeClaims = {}, {}
+    claims[scope] = scopeClaims
 
-    for _, m in ipairs(self:KeyedMacros(scope)) do
-        seen[m.key] = true
-        local entry = store[m.key]
-        if entry then
-            entry.deleted, entry.deletedReason = nil, nil
-            Record(entry, m, reason)
+    for _, macro in ipairs(MF:GetModule("Profiles"):ReadMacros(scope)) do
+        local key = ClaimEntry(store, taken, macro)
+        if key then
+            store[key].deleted, store[key].deletedReason = nil, nil
         else
-            table.insert(appeared, m)
+            key = UniqueKey(store, macro.name)
+            store[key] = { versions = {} }
         end
+        taken[key] = true
+        scopeClaims[macro.index] = key
+        store[key].name = macro.name
+        Record(store[key], macro, reason)
     end
 
-    local vanished = {}
+    local vanished = 0
     for key, entry in pairs(store) do
-        if not seen[key] and not entry.deleted then table.insert(vanished, key) end
-    end
-
-    -- A macro that vanished while another with the same body appeared was
-    -- renamed: its versions follow the new name.
-    for _, m in ipairs(appeared) do
-        local from
-        for i, key in ipairs(vanished) do
-            local last = LastVersion(store[key])
-            if last and last.body == m.body then from = i; break end
+        if not taken[key] and not entry.deleted then
+            entry.deleted, entry.deletedReason = time(), reason
+            vanished = vanished + 1
         end
-        if from then
-            local oldKey = table.remove(vanished, from)
-            store[m.key], store[oldKey] = store[oldKey], nil
-        else
-            store[m.key] = { versions = {} }
-        end
-        Record(store[m.key], m, reason)
-    end
-
-    for _, key in ipairs(vanished) do
-        store[key].deleted = time()
-        store[key].deletedReason = reason
     end
     PruneDeleted(store)
-    if #appeared > 0 or #vanished > 0 then
-        MF:Debug("history", "%s scan: %d appeared, %d deleted%s", scope, #appeared, #vanished,
-            reason and (" [" .. reason .. "]") or "")
+    if vanished > 0 then
+        MF:Debug("history", "%s scan: %d deleted%s", scope, vanished, reason and (" [" .. reason .. "]") or "")
     end
 end
 
@@ -196,10 +205,8 @@ end
 -- Revision key of a macro as returned by Profiles:Read*Macros
 function History:KeyFor(macro)
     if not macro or not macro.scope then return nil end
-    for _, m in ipairs(self:KeyedMacros(macro.scope)) do
-        if m.index == macro.index then return m.key end
-    end
-    return macro.name
+    self:ScanAll()
+    return claims[macro.scope] and claims[macro.scope][macro.index] or macro.name
 end
 
 -- A macro moving to the other scope keeps its versions
@@ -207,8 +214,8 @@ function History:MoveEntry(macro, toScope)
     if not MF.db then return end
     local key = self:KeyFor(macro)
     local from, to = self:Store(macro.scope), self:Store(toScope)
-    if key and from[key] and not to[macro.name] then
-        to[macro.name], from[key] = from[key], nil
+    if key and from[key] then
+        to[UniqueKey(to, macro.name)], from[key] = from[key], nil
     end
 end
 
@@ -338,7 +345,7 @@ function History:BuildTrashGroup(d, onDone)
     local grp = AceGUI:Create("InlineGroup")
     grp:SetFullWidth(true)
     grp:SetLayout("Flow")
-    grp:SetTitle(MF.C.white .. d.key .. "|r  "
+    grp:SetTitle(MF.C.white .. self:EntryLabel(d.scope, d.key) .. "|r  "
         .. MF.C.cyan .. (d.scope == "character" and L["SCOPE_CHAR"] or L["SCOPE_ACCOUNT"]) .. "|r  "
         .. MF.C.grey .. format(L["TRASH_DELETED_AT"], date("%Y-%m-%d %H:%M", d.entry.deleted)) .. "|r"
         .. ReasonTag(d.entry.deletedReason))
@@ -368,6 +375,17 @@ function History:BuildTrashGroup(d, onDone)
 end
 
 -- Deleted entry by scope + key, or nil once recreated / pruned
+-- What to show for an entry: its macro name, or the spell of #showtooltip
+function History:EntryLabel(scope, key)
+    local entry = self:Store(scope)[key]
+    local last = entry and LastVersion(entry)
+    local name = entry and entry.name or key
+    if name and name:match("^%s*$") then
+        name = (last and MF.Helpers:ParseShowTooltip(last.body)) or L["MACRO_UNNAMED"]
+    end
+    return name
+end
+
 function History:GetDeletedEntry(scope, key)
     local entry = MF.db and self:Store(scope)[key]
     if entry and entry.deleted and LastVersion(entry) then

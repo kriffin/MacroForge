@@ -46,7 +46,8 @@ end
 
 function MF.Helpers:ParseShowTooltip(body)
     if not body then return nil end
-    local s = body:match("#showtooltip%s+(.+)")
+    -- Same line only: "#showtooltip\n/use Sap" shows no spell, it is automatic
+    local s = body:match("#showtooltip[ \t]+([^\n]+)")
     return s and s:match("^%s*(.-)%s*$") or nil
 end
 
