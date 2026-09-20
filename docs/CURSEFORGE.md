@@ -10,8 +10,6 @@ Images live in the repo (docs/assets, screenshots): update them there and the
 page follows. CurseForge ignores align="center", so nothing relies on it.
 -->
 
-![MacroForge — every macro checked, sorted, never lost](https://github.com/kriffin/MacroForge/raw/main/docs/assets/thumbnail.png)
-
 ## Your macro is broken. You will find out mid-pull.
 
 No syntax check. No spell verification. No history. Blizzard's macro frame is a text box, and it has been for twenty years.
