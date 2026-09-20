@@ -735,3 +735,10 @@ L["TOOL_TEST_DESC"] = "Show what this macro would do right now (hold Shift/Ctrl/
 L["TEST_TITLE"] = "Right now"
 L["TEST_NOTHING"] = "nothing"
 L["TEST_HINT"] = "Depends on your target, the unit under your cursor and the keys you hold."
+
+-- List filters
+L["FILTER_ALL"] = "All"
+L["FILTER_ISSUES"] = "With issues"
+L["FILTER_ONBARS"] = "On a bar"
+L["FILTER_UNUSED"] = "Not on a bar"
+L["FILTER_NO_MATCH"] = "No macro matches this filter."

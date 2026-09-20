@@ -735,3 +735,10 @@ L["TOOL_TEST_DESC"] = "Montre ce que la macro ferait maintenant (garde Maj/Ctrl/
 L["TEST_TITLE"] = "Maintenant"
 L["TEST_NOTHING"] = "rien"
 L["TEST_HINT"] = "Depend de ta cible, de l'unite sous le curseur et des touches enfoncees."
+
+-- List filters
+L["FILTER_ALL"] = "Toutes"
+L["FILTER_ISSUES"] = "Avec problemes"
+L["FILTER_ONBARS"] = "Sur une barre"
+L["FILTER_UNUSED"] = "Hors barre"
+L["FILTER_NO_MATCH"] = "Aucune macro ne correspond a ce filtre."

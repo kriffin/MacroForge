@@ -26,11 +26,12 @@ local AceGUI = LibStub("AceGUI-3.0")
 local frame, scrollBox, searchBox, editorPane, emptyState, detailHost
 local detail  -- { kind = "set" | "sets" | "trash", id = ... } shown in the right pane
 local searchQuery = ""
+local activeFilter = "all"   -- all | issues | onbars | unused
 local visibleMacros = {}  -- list order of the macros currently shown (keyboard navigation)
 local collapsed = {}
 local TABS = { "macros", "sets", "trash" }
 local activeTab = "macros"
-local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary, sidebarInset
+local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary, sidebarInset, filterButton
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -147,6 +148,34 @@ end
 ---------------------------------------------------
 -- Data
 ---------------------------------------------------
+-- Macro indexes currently sitting on an action bar
+local function MacrosOnBars()
+    local onBars = {}
+    for slot = 1, 180 do
+        local actionType, id = GetActionInfo(slot)
+        if actionType == "macro" and id then onBars[id] = true end
+    end
+    return onBars
+end
+
+local FILTERS = {
+    { key = "all", label = "FILTER_ALL" },
+    { key = "issues", label = "FILTER_ISSUES" },
+    { key = "onbars", label = "FILTER_ONBARS" },
+    { key = "unused", label = "FILTER_UNUSED" },
+}
+
+local function PassesFilter(macro, analysis, onBars)
+    if activeFilter == "issues" then
+        return analysis and analysis.issues and #analysis.issues > 0
+    elseif activeFilter == "onbars" then
+        return onBars[macro.index] or false
+    elseif activeFilter == "unused" then
+        return not onBars[macro.index]
+    end
+    return true
+end
+
 local function MatchesSearch(macro)
     if searchQuery == "" then return true end
     local q = searchQuery:lower()
@@ -167,6 +196,8 @@ end
 local function BuildMacrosProvider(dataProvider)
     local P = MF:GetModule("Profiles")
     local An = MF:GetModule("Analyzer")
+    local onBars = (activeFilter == "onbars" or activeFilter == "unused") and MacrosOnBars() or {}
+    local any = false
     local numAccount, numCharacter = GetNumMacros()
     local limits = {
         character = { count = numCharacter, max = P.MAX_CHARACTER_MACROS },
@@ -177,12 +208,14 @@ local function BuildMacrosProvider(dataProvider)
             header = scope, count = limits[scope].count, max = limits[scope].max,
         })
         for _, macro in ipairs(P:ReadMacros(scope)) do
-            if MatchesSearch(macro) then
-                header:Insert({ macro = macro, analysis = An and An:Analyze(macro.body, macro.name) })
+            local analysis = An and An:Analyze(macro.body, macro.name)
+            if MatchesSearch(macro) and PassesFilter(macro, analysis, onBars) then
+                header:Insert({ macro = macro, analysis = analysis })
+                any = true
             end
         end
         -- A search always expands the groups so matches are visible
-        local isCollapsed = searchQuery == "" and collapsed[scope] or false
+        local isCollapsed = (searchQuery == "" and activeFilter == "all") and collapsed[scope] or false
         header:SetCollapsed(isCollapsed, false, true)
         if not isCollapsed then
             for _, child in ipairs(header:GetNodes()) do
@@ -190,7 +223,7 @@ local function BuildMacrosProvider(dataProvider)
             end
         end
     end
-    return true
+    return any
 end
 
 local function BuildSetsProvider(dataProvider)
@@ -522,6 +555,10 @@ local function UpdateTabButtons()
         tab:SetText(labels[TABS[i]])
         PanelTemplates_TabResize(tab, 0)
     end
+    for _, f in ipairs(FILTERS) do
+        if f.key == activeFilter then filterButton:SetText(L[f.label]) end
+    end
+    filterButton:SetShown(activeTab == "macros")
     for i, def in ipairs(TAB_BUTTONS[activeTab]) do
         local btn = i == 1 and btnPrimary or btnSecondary
         btn:SetShown(def and true or false)
@@ -563,7 +600,7 @@ local function CreateSidebar()
     searchBox = CreateFrame("EditBox", nil, frame, "SearchBoxTemplate")
     searchBox:SetHeight(20)
     searchBox:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -60)
-    searchBox:SetWidth(SIDEBAR_WIDTH - 10)
+    searchBox:SetWidth(SIDEBAR_WIDTH - 98)
     searchBox:HookScript("OnTextChanged", function(self)
         searchQuery = (self:GetText() or ""):match("^%s*(.-)%s*$")
         UI:Refresh()
@@ -579,6 +616,21 @@ local function CreateSidebar()
         self:ClearFocus()
         local E = MF:GetModule("Editor")
         if visibleMacros[1] and E and not E.cur then E:Open(visibleMacros[1]) end
+    end)
+
+    -- Filter (Macros tab): all / with issues / on a bar / unused
+    filterButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    filterButton:SetSize(88, 22)
+    filterButton:SetPoint("LEFT", searchBox, "RIGHT", 10, 0)
+    filterButton:SetScript("OnClick", function(self)
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            for _, f in ipairs(FILTERS) do
+                root:CreateRadio(L[f.label], function() return activeFilter == f.key end, function()
+                    activeFilter = f.key
+                    UI:Refresh()
+                end)
+            end
+        end)
     end)
 
     local inset = CreateFrame("Frame", nil, frame, "InsetFrameTemplate")
@@ -1158,7 +1210,8 @@ function UI:Refresh()
     if not frame or not frame:IsShown() then return end
     local dataProvider, any = BuildDataProvider()
     scrollBox:SetDataProvider(dataProvider, ScrollBoxConstants.RetainScrollPosition)
-    listEmptyText:SetText(any and "" or L[EMPTY_TEXT[activeTab]])
+    listEmptyText:SetText(any and ""
+        or (activeTab == "macros" and activeFilter ~= "all" and L["FILTER_NO_MATCH"] or L[EMPTY_TEXT[activeTab]]))
     UpdateTabButtons()
     if detail then RenderDetail() end
 end
