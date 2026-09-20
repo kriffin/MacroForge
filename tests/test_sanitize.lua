@@ -1,0 +1,15 @@
+local W = dofile(ROOT .. "/tests/wow_stub.lua")
+dofile(ROOT .. "/Helpers.lua")
+local H = MF.Helpers
+local m = assert(H:SanitizeMacro({ name = "  |cffff0000Évocation longue du nom|r ", body = "/cast X\r\n/cast Y\1", icon = "134400" }))
+assert(m.name == "cffff0000Évocati", "[" .. m.name .. "]")  -- 16 chars, É kept whole
+assert(m.body == "/cast X\n/cast Y", m.body)
+assert(m.icon == 134400)
+assert(H:SanitizeMacro({ name = "a", body = string.rep("é", 255) }))
+assert(not H:SanitizeMacro({ name = "a", body = string.rep("x", 256) }))
+assert(not H:SanitizeMacro({ name = "", body = "x" }))
+assert(not H:SanitizeMacro({ name = {}, body = "x" }))
+assert(not H:SanitizeMacro("str"))
+assert(H:SanitizeMacro({ name = "a", body = "", icon = "x|t" }).icon == 134400)
+assert(H:SanitizeMacro({ name = "a", body = "|cff00ff00|Hitem:1|h[x]|h|r" }).body:find("|H", 1, true), "links in body kept")
+print("sanitize ok")

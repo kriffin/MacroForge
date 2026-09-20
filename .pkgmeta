@@ -1,0 +1,12 @@
+package-as: MacroForge
+
+enable-nolib-creation: no
+
+ignore:
+  - screenshots
+  - docs
+  - tools
+  - tests
+  - .github
+  - .luacheckrc
+  - CHANGES.md
