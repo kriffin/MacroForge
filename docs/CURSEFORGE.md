@@ -1,155 +1,122 @@
 <!--
 CurseForge project page for MacroForge (project 1494025).
-The upload API cannot edit descriptions: paste this into
-authors.curseforge.com → MacroForge → Description, in Markdown mode.
+The upload API cannot edit descriptions: paste everything below this comment
+into authors.curseforge.com → MacroForge → Description, in Markdown mode.
 
 Summary line (max ~120 chars):
-  A real macro editor: live error checking, autocomplete, templates, spec-based macro sets and a full history.
+  Never press a broken macro again: live error checking, autocomplete, templates, spec sets and a full history.
 
-Images are served from the GitHub repo, so updating a screenshot there
-updates the page. Keep them under screenshots/ with these names.
+Images live in the repo (docs/assets, screenshots): update them there and the
+page follows. CurseForge ignores align="center", so nothing relies on it.
 -->
 
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/icons/MacroForge_128x128.png" width="112" height="112" alt="MacroForge">
-</p>
+![MacroForge — never press a broken macro again](https://github.com/kriffin/MacroForge/raw/main/docs/assets/banner.png)
 
-<h1 align="center">MacroForge</h1>
-<p align="center"><b>The macro editor WoW should have shipped with.</b></p>
+## Your macro is broken. You will find out mid-pull.
 
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/docs/assets/wow-midnight.png" width="200" alt="World of Warcraft: Midnight">
-  &nbsp;&nbsp;&nbsp;
-  <img src="https://github.com/kriffin/MacroForge/raw/main/docs/assets/wow-forever.png" width="240" alt="World of Warcraft: Forever">
-</p>
+No syntax check. No spell verification. No history. Blizzard's macro frame is a text box, and it has been for twenty years.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Retail-12.1.0-148EFF?style=for-the-badge" alt="Retail 12.1.0">
-  <img src="https://img.shields.io/badge/WoW%20Forever-1.60.1-FFD700?style=for-the-badge" alt="WoW Forever 1.60.1">
-  <img src="https://img.shields.io/badge/English%20%C2%B7%20Francais-00CCFF?style=for-the-badge" alt="English and French">
-  <img src="https://img.shields.io/badge/License-MIT-44CC88?style=for-the-badge" alt="MIT">
-</p>
+**MacroForge is the editor that should have shipped with the game.** It checks every line as you type, tells you what your macro would do *right now*, keeps every version you ever saved, and swaps whole macro sets when you change spec — without emptying your action bars.
 
-Write, check and organize your macros in **one window**: live error checking, autocomplete, class templates, macro sets that follow your spec, and a history that means you never lose a macro again.
-
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/screenshots/main-window.png" alt="The MacroForge window: macro list on the left, editor and analysis on the right">
-</p>
+![The MacroForge window](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/window.png)
 
 ---
 
-## Why MacroForge?
+## It catches the mistake before the boss does
 
-Blizzard's macro frame is a text box. You find out a macro is broken when you press it mid-pull and nothing happens.
+- **Live analysis** — every command, condition and spell checked against your own spellbook
+- **"Did you mean…?"** — `/csatsequence` becomes `/castsequence`, a misspelt spell gets the closest match
+- **Plain-English explanation** of every line, right next to the code
+- **Test button** — resolves the macro against your current state: which clause fires, on which target, or nothing at all. Hold Shift to test your Shift branch
+- **Live 255-character counter**, with the shortener one click away
 
-MacroForge tells you **while you type** — unknown spell, typo in a condition, missing bracket, 255-character limit — and keeps every version of every macro, so an edit gone wrong is one click away from undone.
-
----
-
-## The editor
-
-- **Live analysis**: every command, condition and spell checked against your spellbook, with "did you mean…?" fixes and a plain-English explanation of each line
-- **Test button**: resolves the macro against your current state and tells you which clause would fire, on which target — hold Shift to test your Shift branch
-- **Syntax highlighting**, line numbers and a live `n/255` counter
-- **Autocomplete** for `/commands`, `[conditions]` and spell names
-- **Condition builder**: pick `@mouseover`, `mod:shift`, `harm,nodead` from dropdowns
-- **Shortener**: squeezes a macro under 255 characters, safe rewrites only
-
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/screenshots/editor.png" alt="Editor: coloured code on the left, analysis and detected spells on the right">
-</p>
+![Editor: code, analysis and detected spells](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/editor.png)
 
 ---
 
-## Everything in one window
+## One window, built for speed
 
-- Search by name **or content**, and filter: with issues, on an action bar, unused
-- **Drag** a macro straight onto your bars
-- **Right-click** to duplicate, share, move between Character and Account, or open its history
-- Keyboard first: `Ctrl+S` save, `Ctrl+Z` undo, `Ctrl+F` search, `↑ ↓` to walk the list
-- A home view with your character, free slots, the macros that need attention and the ones you edited last
+Search by name **or content**. Filter to what is broken, what sits on a bar, what nobody uses. Drag a macro straight onto your action bars. Right-click for duplicate, share, move between Character and Account, or its full history.
 
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/screenshots/context-menu.png" alt="Right-click menu on a macro">
-</p>
+`Ctrl+S` save · `Ctrl+Z` undo · `Ctrl+F` search · `↑ ↓` walk the list · `Del` delete
+
+![Right-click menu](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/menu.png)
 
 ---
 
-## Macro sets that follow your spec
+## Your macros follow your spec
 
-Save your character macros as a **set** (Raid, M+, PvP…) and bind it to one or more specs. Change spec and the right set is applied. Macros that exist in both sets **keep their action bar slots**, and the edits you made are saved into the set before it swaps.
+Save your character macros as a **set** — Raid, M+, PvP, whatever you run. Bind it to a spec. Change spec, and the right set is in place before the pull.
 
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/screenshots/sets.png" alt="Sets tab: a set bound to a spec, with apply, update, rename and delete">
-</p>
+Macros that exist in both sets **keep their action bar slots**, and anything you changed is saved into the set before it swaps. No more rebuilding your bars every Tuesday.
+
+![Sets bound to specs](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/sets.png)
 
 ---
 
-## Never lose a macro
+## Nothing is ever lost
 
-- **Every version** of every macro is kept — including edits made in Blizzard's own macro frame
-- Deleted macros go to the **Trash**, ready to be recreated
-- **Automatic backup** before every set swap or restore
-- Unsaved changes are marked, and you are asked before leaving them
+- **Every version of every macro** is kept — including the edits you make in Blizzard's own frame
+- Deleted a macro? It is in the **Trash**, body intact, one click from coming back
+- An **automatic backup** is taken before every set swap or restore
+- Unsaved changes are marked, and MacroForge asks before dropping them
 
-<p align="center">
-  <img src="https://github.com/kriffin/MacroForge/raw/main/screenshots/trash.png" alt="Trash: a deleted macro with its body, Recreate and Versions">
-</p>
+![Trash: recreate a deleted macro](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/trash.png)
 
 ---
 
 ## Also in the box
 
-**50+ class templates** — interrupt chains, stealth openers, defensives, mouseover heals, arena targeting. Spell names are filled in your client's language.
+**50+ class templates** — interrupt chains, stealth openers, defensive stacks, mouseover heals, arena targeting. Spell names are filled in your client's language, so they work the moment you create them.
 
-**Audit** — one panel listing every macro the analyzer flags, worst first, with a click to fix.
+**Audit** — one panel listing every macro that needs attention, worst first, each a click away from being fixed.
 
 **Share** — export a macro as a short code for Discord, or send it straight to another MacroForge user in game.
 
+**Condition builder** — build `[@mouseover,harm,nodead]` from dropdowns instead of memorising it.
+
 ---
 
-## Getting started
+![Retail and WoW Forever](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flavors.png)
+
+## Start in ten seconds
 
 1. Install with the CurseForge app
-2. Type **`/mf`** in game (or use the minimap button)
-3. Click a macro on the left to edit it — hover the **?** in the title bar for every shortcut
+2. Type **`/mf`** in game, or click the minimap button
+3. Pick a macro on the left — hover the **?** in the title bar for every shortcut
 
 | Command | |
 |---|---|
 | `/mf` | Open / close MacroForge |
-| `/mf sets` | Manage macro sets |
+| `/mf sets` | Macro sets |
 | `/mf audit` | Check every macro |
-| `/mf templates` | Browse class templates |
+| `/mf templates` | Class templates |
 | `/mf import` | Import a share code |
-| `/mf backups` · `/mf restore [n]` | List / restore backups |
+| `/mf backups` · `/mf restore [n]` | Backups |
 | `/mf trash` | Deleted macros |
-| `/mf help` | All commands |
+| `/mf help` | Everything else |
 
 ---
 
 ## FAQ
 
-**Does MacroForge replace my macros?**
-No. It edits the same macros as Blizzard's frame; uninstall it and your macros are still there.
+**Does it replace my macros?**
+No. It edits the very same macros as Blizzard's frame. Uninstall it and every macro is still there, on the same slot.
 
 **Is it safe in combat?**
-WoW blocks macro changes in combat. MacroForge queues them and applies them when combat ends, and it never swallows your keys while you fight.
+WoW forbids macro changes in combat. MacroForge queues them and applies them the moment you leave combat, and it never swallows your keys while you fight.
 
-**My macro shows a "?" icon.**
-That is the dynamic icon: with `#showtooltip`, the icon follows the spell the macro casts. MacroForge keeps it dynamic instead of freezing it.
+**Why does my macro show a "?" icon?**
+That is the dynamic icon: with `#showtooltip` it follows the spell being cast. MacroForge keeps it dynamic instead of freezing it on one spell, the way saving from other tools does.
 
-**Where are my old spec profiles?**
-Version 7.2 turned them into sets named after each spec (Sets tab).
+**Where are my spec profiles from older versions?**
+They became sets, named after each spec, in the Sets tab.
 
-**Does it work on WoW Forever?**
-Yes — the beta client is supported alongside Retail 12.x.
+**Does it run on WoW Forever?**
+Yes. Retail 12.x and the Forever client are both supported, from the same install.
 
 ---
 
-## Feedback
-
-Found a bug or have an idea? Open an issue on [GitHub](https://github.com/kriffin/MacroForge/issues) — include the error from BugSack if you have one.
-
-MIT licensed · Built on Ace3
+Found a bug or have an idea? [Open an issue on GitHub](https://github.com/kriffin/MacroForge/issues) — include the error from BugSack if you have one. MIT licensed, built on Ace3.
 
 <sub>World of Warcraft and its logos are trademarks of Blizzard Entertainment. MacroForge is fan-made and not affiliated with Blizzard.</sub>
