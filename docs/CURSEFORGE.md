@@ -18,9 +18,15 @@ updates the page. Keep them under screenshots/ with these names.
 <p align="center"><b>The macro editor WoW should have shipped with.</b></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Retail-12.1.0-148EFF?style=for-the-badge&logoColor=white" alt="Retail 12.1.0">
+  <img src="https://github.com/kriffin/MacroForge/raw/main/docs/assets/wow-midnight.png" width="200" alt="World of Warcraft: Midnight">
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://github.com/kriffin/MacroForge/raw/main/docs/assets/wow-forever.png" width="240" alt="World of Warcraft: Forever">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Retail-12.1.0-148EFF?style=for-the-badge" alt="Retail 12.1.0">
   <img src="https://img.shields.io/badge/WoW%20Forever-1.60.1-FFD700?style=for-the-badge" alt="WoW Forever 1.60.1">
-  <img src="https://img.shields.io/badge/English%20%C2%B7%20Fran%C3%A7ais-00CCFF?style=for-the-badge" alt="English and French">
+  <img src="https://img.shields.io/badge/English%20%C2%B7%20Francais-00CCFF?style=for-the-badge" alt="English and French">
   <img src="https://img.shields.io/badge/License-MIT-44CC88?style=for-the-badge" alt="MIT">
 </p>
 
@@ -145,3 +151,5 @@ Yes — the beta client is supported alongside Retail 12.x.
 Found a bug or have an idea? Open an issue on [GitHub](https://github.com/kriffin/MacroForge/issues) — include the error from BugSack if you have one.
 
 MIT licensed · Built on Ace3
+
+<sub>World of Warcraft and its logos are trademarks of Blizzard Entertainment. MacroForge is fan-made and not affiliated with Blizzard.</sub>
