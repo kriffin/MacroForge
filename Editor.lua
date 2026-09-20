@@ -51,6 +51,8 @@ local draftTimer
 -- Marker for unsaved changes (header + list row)
 local DIRTY_MARK = "|TInterface\\COMMON\\Indicator-Yellow:14:14|t"
 Editor.DIRTY_MARK = DIRTY_MARK
+-- A macro must have a name: a single space reads as "no name" in game
+local DEFAULT_NAME = " "
 
 ---------------------------------------------------
 -- Snippets database
@@ -776,7 +778,8 @@ function Editor:OpenNew(perChar, force, onOpened)
     CreateEditor()
     self.isNew = true; self.newPerChar = perChar; self.cur = nil
     self.selectedIcon = 134400
-    self.baseline = { name = "", body = "#showtooltip\n/cast ", icon = 134400 }
+    -- Unnamed by default: WoW needs a name, a single space acts as none
+    self.baseline = { name = DEFAULT_NAME, body = "#showtooltip\n/cast ", icon = 134400 }
     MF.editingIndex = nil
 
     -- Reset undo/redo stacks
@@ -787,13 +790,13 @@ function Editor:OpenNew(perChar, force, onOpened)
     editorFrame:SetStatusText(perChar and MF.C.cyan .. L["CHARACTER_SCOPE"] .. "|r" or MF.C.yellow .. L["ACCOUNT_SCOPE"] .. "|r")
 
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
-    nameWidget:SetText("")
+    nameWidget:SetText(DEFAULT_NAME)
     bodyWidget:SetText("#showtooltip\n/cast ")
     if iconButton then iconButton:SetImage(134400) end
     self:OnChanged()
 
     -- Push initial state
-    PushUndo("", "#showtooltip\n/cast ", 134400)
+    PushUndo(DEFAULT_NAME, "#showtooltip\n/cast ", 134400)
 
     editorFrame:Show()
     local UI = MF:GetModule("UI")
@@ -1014,7 +1017,7 @@ function Editor:Save(noReopen)
     if not nameWidget or not (self.cur or self.isNew) then return false end
     local name = nameWidget:GetText()
     local body = bodyWidget:GetText()
-    if not name or name == "" then MF:Print(MF.C.red .. L["EMPTY_NAME"] .. "|r"); return false end
+    if not name or name == "" then name = DEFAULT_NAME end
 
     local icon = self.selectedIcon or 134400
     local P = MF:GetModule("Profiles")
