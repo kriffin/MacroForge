@@ -232,6 +232,31 @@ function Settings:Toggle()
     end
 end
 
+---------------------------------------------------
+-- Diagnostic: why is the Blizzard panel empty?
+-- The panel is an AceGUI widget filled on its OnShow (FeedToBlizPanel).
+-- This reports the frame state and re-runs the fill under pcall.
+---------------------------------------------------
+function Settings:Diagnose()
+    local C = MF.C
+    local panel = MF.optionsFrame
+    MF:Print(C.gold .. "MacroForge diag" .. C.r)
+    MF:Print("optionsFrame: " .. tostring(panel) .. "  categoryID: " .. tostring(MF.optionsCategoryID))
+    if not panel then return end
+    MF:Print(format("shown=%s size=%dx%d children=%d parent=%s",
+        tostring(panel:IsShown()), panel:GetWidth(), panel:GetHeight(),
+        select("#", panel:GetChildren()), tostring(panel:GetParent() and panel:GetParent():GetName())))
+
+    local widget = panel.obj
+    MF:Print("widget: " .. tostring(widget) .. "  content children: "
+        .. (widget and widget.content and select("#", widget.content:GetChildren()) or -1))
+
+    local ACD = LibStub("AceConfigDialog-3.0")
+    local ok, err = pcall(ACD.Open, ACD, "MacroForge", widget)
+    MF:Print(ok and (C.green .. "Open() ok" .. C.r) or (C.red .. "Open() error: " .. tostring(err) .. C.r))
+    MF:Print("CloseSpecialWindows: " .. type(_G.CloseSpecialWindows))
+end
+
 function Settings:OnInitialize()
     -- No-op: defaults are handled by AceDB now
 end

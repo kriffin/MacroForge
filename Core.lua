@@ -303,6 +303,9 @@ function MF:HandleSlash(msg)
         if arg == "on" or arg == "off" then self:SetDebug(arg == "on")
         else self:SetDebug(not self:IsDebug()) end
     elseif cmd == "log" then self:PrintLog(arg)
+    elseif cmd == "diag" then
+        local S = self:GetModule("Settings")
+        if S then S:Diagnose() end
     elseif cmd == "help" then self:PrintHelp()
     else
         self:Print(MF.C.red .. format(L["UNKNOWN_CMD"], cmd) .. "|r")
