@@ -83,6 +83,112 @@ local SNIPPETS = {
 }
 
 ---------------------------------------------------
+-- Toolbar (native): icon buttons for what you insert, one menu for the rest
+-- Interface icons only: a spell icon would look like a macro action.
+-- Atlases differ between flavors, so each button falls back to a texture.
+---------------------------------------------------
+local TOOLBAR_HEIGHT = 34
+
+local function SetButtonIcon(button, atlases, texture)
+    for _, atlas in ipairs(atlases) do
+        if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
+            button:SetAtlas(atlas)
+            return
+        end
+    end
+    button:SetIcon(texture)
+end
+
+local function CreateToolbar(pane)
+    local toolbar = CreateFrame("Frame", nil, pane)
+    toolbar:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -2)
+    toolbar:SetPoint("TOPRIGHT", pane, "TOPRIGHT", 0, -2)
+    toolbar:SetHeight(TOOLBAR_HEIGHT - 4)
+
+    local last
+    local function IconButton(atlases, texture, title, tip, onClick)
+        local b = CreateFrame("Button", nil, toolbar, "SquareIconButtonTemplate")
+        b:SetSize(28, 28)
+        SetButtonIcon(b, atlases, texture)
+        b:SetTooltipInfo(title:gsub("^%+%s*", ""), tip)
+        b:SetScript("OnClick", onClick)
+        if last then
+            b:SetPoint("LEFT", last, "RIGHT", 4, 0)
+        else
+            b:SetPoint("LEFT", toolbar, "LEFT", 2, 0)
+        end
+        last = b
+        return b
+    end
+
+    IconButton({ "UI-HUD-MicroMenu-SpellbookAbilities-Up", "spellbook-icon-spellbook" },
+        "Interface\\Spellbook\\Spellbook-Icon", L["INSERT_SPELL_BTN"], L["TOOL_SPELL_DESC"], function()
+            local CP = MF:GetModule("CommandPalette")
+            if CP then CP:OpenSpells() end
+        end)
+    IconButton({ "chatframe-button-icon-speech", "UI-HUD-Chat-Icon" },
+        "Interface\\ChatFrame\\UI-ChatIcon-Chat-Up", L["INSERT_CMD_BTN"], L["TOOL_CMD_DESC"], function()
+            local CP = MF:GetModule("CommandPalette")
+            if CP then CP:OpenCommands() end
+        end)
+    IconButton({ "Waypoint-MapPin-Untracked", "worldquest-questmarker-questbang" },
+        "Interface\\Buttons\\UI-OptionsButton", L["BUILDER"], L["TOOLS_BUILDER_DESC"], function()
+            local B = MF:GetModule("Builder")
+            if B then B:Toggle() end
+        end)
+    IconButton({ "transmog-icon-revert", "UI-HUD-ActionBar-PageDownArrow-Up" },
+        "Interface\\Buttons\\UI-MinusButton-Up", L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], function()
+            Editor:Shorten()
+        end)
+
+    -- Everything else: one menu, so the bar stays readable
+    local more = CreateFrame("Button", nil, toolbar, "UIPanelButtonTemplate")
+    more:SetSize(110, 24)
+    more:SetPoint("LEFT", last, "RIGHT", 10, 0)
+    more:SetText(L["MORE_BTN"])
+    more:SetScript("OnClick", function(self)
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            local snippets = root:CreateButton(L["INSERT_SNIPPET_LABEL"])
+            for _, sn in ipairs(SNIPPETS) do
+                snippets:CreateButton(sn.label, function() Editor:InsertText(sn.text) end)
+            end
+
+            local font = root:CreateButton(L["OPT_FONTSIZE"])
+            for size = 12, 20 do
+                font:CreateButton(size .. "px", function()
+                    currentFontSize = size
+                    Editor:ApplyFontSize(size)
+                end)
+            end
+
+            root:CreateDivider()
+            root:CreateButton(L["COPY_BTN"], function() Editor:OpenCopy() end)
+            root:CreateButton(L["IMPORT_BTN"], function() Editor:OpenImport() end)
+            root:CreateButton(L["EXPORT_BTN"], function() Editor:OpenExport() end)
+            root:CreateDivider()
+            root:CreateButton(L["HISTORY_BTN"], function()
+                local H = MF:GetModule("History")
+                if H and Editor.cur and Editor.cur.index then
+                    H:OpenBrowser(Editor.cur)
+                else
+                    MF:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
+                end
+            end)
+            root:CreateButton(L["DRAG_TO_BAR_BTN"], function()
+                if Editor.cur and Editor.cur.index then
+                    MF.Helpers:PickupMacro(Editor.cur.index)
+                elseif Editor.isNew then
+                    MF:Print(MF.C.yellow .. L["SAVE_FIRST_DRAG"] .. "|r")
+                end
+            end)
+        end)
+    end)
+
+    toolbar:Hide()
+    return toolbar
+end
+
+---------------------------------------------------
 -- Create Editor
 ---------------------------------------------------
 local function CreateEditor()
@@ -97,10 +203,10 @@ local function CreateEditor()
     f:SetLayout("Fill")
     f.frame:SetParent(pane)
     f.frame:ClearAllPoints()
-    f.frame:SetPoint("TOPLEFT", pane, "TOPLEFT")
+    f.frame:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -TOOLBAR_HEIGHT)
     local function Fit()
         f:SetWidth(pane:GetWidth())
-        f:SetHeight(pane:GetHeight())
+        f:SetHeight(pane:GetHeight() - TOOLBAR_HEIGHT)
     end
     pane:HookScript("OnSizeChanged", Fit)
     Fit()
@@ -109,6 +215,8 @@ local function CreateEditor()
     local header = pane:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     header:SetPoint("TOPLEFT", pane, "TOPLEFT", 4, 18)
     header:SetJustifyH("LEFT")
+
+    local toolbar = CreateToolbar(pane)
 
     -- Shim keeping the old AceGUI Frame calls working on the embedded pane
     local headerText, headerDirty = "", false
@@ -122,12 +230,14 @@ local function CreateEditor()
         SetDirty = function(_, dirty) headerDirty = dirty; RenderHeader() end,
         Show = function()
             f.frame:Show()
+            toolbar:Show()
             header:Show()
             UI:ShowEditorContent(true)
             UI:Show()
         end,
         Hide = function()
             f.frame:Hide()
+            toolbar:Hide()
             header:Hide()
             UI:ShowEditorContent(false)
         end,
@@ -175,118 +285,6 @@ local function CreateEditor()
     nameRow:AddChild(nameWidget)
 
     mainCol:AddChild(nameRow)
-
-    ---------------------------------------------------
-    -- Toolbar: compact icon buttons (tooltip = label + help) + dropdowns
-    ---------------------------------------------------
-    local toolbar = gui:Create("SimpleGroup")
-    toolbar:SetFullWidth(true)
-    toolbar:SetLayout("Flow")
-
-    local function ToolButton(icon, title, desc, onClick)
-        local b = gui:Create("Icon")
-        b:SetImage("Interface\\Icons\\" .. icon)
-        b:SetImageSize(22, 22)
-        b:SetWidth(30)
-        b:SetHeight(30)
-        b:SetCallback("OnClick", onClick)
-        b:SetCallback("OnEnter", function(w)
-            GameTooltip:SetOwner(w.frame, "ANCHOR_TOP")
-            GameTooltip:AddLine((title:gsub("^%+%s*", "")), 1, 1, 1)
-            if desc then GameTooltip:AddLine(desc, nil, nil, nil, true) end
-            GameTooltip:Show()
-        end)
-        b:SetCallback("OnLeave", GameTooltip_Hide)
-        toolbar:AddChild(b)
-        return b
-    end
-    local function Spacer(width)
-        local sp = gui:Create("Label")
-        sp:SetWidth(width)
-        sp:SetText(" ")
-        toolbar:AddChild(sp)
-    end
-
-    ToolButton("INV_Misc_Book_09", L["INSERT_SPELL_BTN"], L["TOOL_SPELL_DESC"], function()
-        local CP = MF:GetModule("CommandPalette")
-        if CP then CP:OpenSpells() end
-    end)
-    ToolButton("INV_Misc_Note_01", L["INSERT_CMD_BTN"], L["TOOL_CMD_DESC"], function()
-        local CP = MF:GetModule("CommandPalette")
-        if CP then CP:OpenCommands() end
-    end)
-    ToolButton("INV_Misc_Gear_01", L["BUILDER"], L["TOOLS_BUILDER_DESC"], function()
-        local B = MF:GetModule("Builder")
-        if B then B:Toggle() end
-    end)
-    ToolButton("Ability_Warrior_Cleave", L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], function()
-        Editor:Shorten()
-    end)
-    Spacer(8)
-    ToolButton("INV_Scroll_03", L["COPY_BTN"], L["TOOL_COPY_DESC"], function() Editor:OpenCopy() end)
-    ToolButton("INV_Letter_15", L["IMPORT_BTN"], L["TOOL_IMPORT_DESC"], function() Editor:OpenImport() end)
-    ToolButton("INV_Letter_18", L["EXPORT_BTN"], L["TOOL_EXPORT_DESC"], function() Editor:OpenExport() end)
-    Spacer(8)
-    ToolButton("INV_Misc_PocketWatch_01", L["HISTORY_BTN"], L["HISTORY_DESC"], function()
-        local H = MF:GetModule("History")
-        if H and Editor.cur and Editor.cur.index then
-            H:OpenBrowser(Editor.cur)
-        else
-            MF:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
-        end
-    end)
-    ToolButton("Ability_Hunter_Pathfinding", L["DRAG_TO_BAR_BTN"], L["TOOL_DRAG_DESC"], function()
-        if Editor.cur and Editor.cur.index then
-            MF.Helpers:PickupMacro(Editor.cur.index)
-        elseif Editor.isNew then
-            MF:Print(MF.C.yellow .. L["SAVE_FIRST_DRAG"] .. "|r")
-        end
-    end)
-    Spacer(8)
-
-    -- Snippets dropdown
-    local snippetDD = gui:Create("Dropdown")
-    snippetDD:SetWidth(150)
-    local sList, sOrder = {}, {}
-    sList[""] = L["INSERT_SNIPPET_LABEL"]
-    table.insert(sOrder, "")
-    for i, sn in ipairs(SNIPPETS) do
-        local key = tostring(i)
-        sList[key] = sn.label
-        table.insert(sOrder, key)
-    end
-    snippetDD:SetList(sList, sOrder)
-    snippetDD:SetValue("")
-    snippetDD:SetCallback("OnValueChanged", function(_, _, val)
-        if val ~= "" then
-            local idx = tonumber(val)
-            if idx and SNIPPETS[idx] then
-                Editor:InsertText(SNIPPETS[idx].text)
-            end
-            snippetDD:SetValue("")
-        end
-    end)
-    toolbar:AddChild(snippetDD)
-
-    -- Font size dropdown
-    local fontDD = gui:Create("Dropdown")
-    fontDD:SetWidth(70)
-    local fList, fOrder = {}, {}
-    for sz = 12, 20 do
-        local key = tostring(sz)
-        fList[key] = key .. "px"
-        table.insert(fOrder, key)
-    end
-    fontDD:SetList(fList, fOrder)
-    fontDD:SetValue(tostring(currentFontSize))
-    fontDD:SetCallback("OnValueChanged", function(_, _, val)
-        local sz = tonumber(val) or 13
-        currentFontSize = sz
-        Editor:ApplyFontSize(sz)
-    end)
-    toolbar:AddChild(fontDD)
-
-    mainCol:AddChild(toolbar)
 
     ---------------------------------------------------
     -- Two columns: code (left) | analysis + detected spells (right)
