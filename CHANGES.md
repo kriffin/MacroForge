@@ -121,8 +121,14 @@ position and size are remembered).
 - Unsaved changes are marked (header + row) and switching away asks
   Save / Keep editing / Discard.
 - Editor: icon toolbar with tooltips, code and analysis side by side.
+- Sidebar tabs: Macros / Sets / Trash (count in the tab), each with its
+  own buttons and empty state; the last tab is remembered.
 - Keyboard: Ctrl+S / Ctrl+Z / Ctrl+Y / Ctrl+F / Ctrl+N, Up / Down to walk
   the list, Delete, Enter to edit the code.
+- Editor toolbar: interface icons for insert spell / command / conditions
+  / shorten, everything else in a "More" menu.
+- Onboarding: a one-time "what's new" popup, HelpTip bubbles shown once
+  each, and a "?" button listing every shortcut.
 - Move a macro between Character and Account (menu, or drop it on the other
   group's header); its revisions follow.
 

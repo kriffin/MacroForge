@@ -702,7 +702,7 @@ L["TIP_LIST"] = "Drag a macro onto your action bars. Right-click a macro for mor
 L["TIP_SETS"] = "A set is a snapshot of your character macros. Bind it to specs: it is applied when you change spec. Double-click a set to apply it now."
 L["TIP_TRASH"] = "Deleted macros are kept here with their versions: you can recreate them."
 L["TIP_DIRTY"] = "Yellow dot = unsaved changes. Ctrl+S saves, Ctrl+Z undoes."
-L["WHATS_NEW"] = "|cff00ccffMacro|r|cffffd700Forge|r 7.2\n\n- One window: macros on the left, editor on the right\n- Spec profiles are now named |cffffd700Sets|r (Sets tab)\n- Every version is kept, deleted macros go to the |cffffd700Trash|r\n\nThe |cffffd700?|r button (top right) lists the shortcuts."
+L["WHATS_NEW"] = "|cff00ccffMacro|r|cffffd700Forge|r 7.2\n\n- |cffffd700One window|r: macros on the left, editor on the right, tabs for Sets and Trash\n- Spec profiles became |cffffd700Sets|r: bind one to your specs, it is applied on spec change\n- |cffffd700Every version|r of every macro is kept; deleted ones go to the Trash\n- Drag a macro to your bars, move it between Character and Account\n- Shortcuts: Ctrl+S, Ctrl+Z, Ctrl+F, arrows to walk the list\n\nThe |cffffd700?|r button (top right) lists them all."
 L["HELP_SHORTCUTS_TITLE"] = "Shortcuts"
 L["HELP_KEY_SAVE"] = "Ctrl+S  save"
 L["HELP_KEY_UNDO"] = "Ctrl+Z / Ctrl+Y  undo / redo"

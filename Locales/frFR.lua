@@ -702,7 +702,7 @@ L["TIP_LIST"] = "Glisse une macro vers tes barres d'action. Clic droit sur une m
 L["TIP_SETS"] = "Un set est une copie de tes macros perso. Lie-le a des specs : il s'applique quand tu changes de spe. Double-clic sur un set pour l'appliquer maintenant."
 L["TIP_TRASH"] = "Les macros supprimees sont gardees ici avec leurs versions : tu peux les recreer."
 L["TIP_DIRTY"] = "Pastille jaune = modifications non enregistrees. Ctrl+S enregistre, Ctrl+Z annule."
-L["WHATS_NEW"] = "|cff00ccffMacro|r|cffffd700Forge|r 7.2\n\n- Une seule fenetre : les macros a gauche, l'editeur a droite\n- Les profils par spe deviennent des |cffffd700Sets|r (onglet Sets)\n- Chaque version est gardee, les macros supprimees vont dans la |cffffd700Corbeille|r\n\nLe bouton |cffffd700?|r (en haut a droite) liste les raccourcis."
+L["WHATS_NEW"] = "|cff00ccffMacro|r|cffffd700Forge|r 7.2\n\n- |cffffd700Une seule fenetre|r : les macros a gauche, l'editeur a droite, des onglets pour les Sets et la Corbeille\n- Les profils par spe deviennent des |cffffd700Sets|r : lie-en un a tes specs, il s'applique au changement de spe\n- |cffffd700Chaque version|r de chaque macro est gardee ; les supprimees vont dans la Corbeille\n- Glisse une macro vers tes barres, deplace-la entre Perso et Compte\n- Raccourcis : Ctrl+S, Ctrl+Z, Ctrl+F, fleches pour parcourir la liste\n\nLe bouton |cffffd700?|r (en haut a droite) les liste tous."
 L["HELP_SHORTCUTS_TITLE"] = "Raccourcis"
 L["HELP_KEY_SAVE"] = "Ctrl+S  enregistrer"
 L["HELP_KEY_UNDO"] = "Ctrl+Z / Ctrl+Y  annuler / retablir"
