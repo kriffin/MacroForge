@@ -17,6 +17,7 @@ end
 local editorFrame
 local nameWidget, bodyWidget, errorsLabel, explainLabel
 local iconButton, _iconTexture
+local testLabel        -- "what would happen now" result of the Test button
 local syntaxOverlay    -- FontString overlay for inline syntax highlighting
 local lineNumOverlay   -- FontString for line numbers
 local spellIconGroup   -- Container for spell/item icons with native tooltips
@@ -132,6 +133,9 @@ local function CreateToolbar(pane)
     end)
     TextButton(L["SHORTEN_BTN"], L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], 100, function()
         Editor:Shorten()
+    end)
+    TextButton(L["TEST_BTN"], L["TEST_BTN"], L["TOOL_TEST_DESC"], 84, function()
+        Editor:RunTest()
     end)
 
     -- Everything else: one menu, so the bar stays readable
@@ -446,6 +450,13 @@ local function CreateEditor()
     explainLabel:SetText("")
     rightCol:AddChild(explainLabel)
 
+    -- What the macro would do right now (Test button)
+    testLabel = gui:Create("Label")
+    testLabel:SetFullWidth(true)
+    testLabel:SetFontObject(GameFontHighlightSmall)
+    testLabel:SetText("")
+    rightCol:AddChild(testLabel)
+
     -- Spell/Item icons row (native Blizzard tooltips on hover)
     local spellHeading = gui:Create("Heading")
     spellHeading:SetFullWidth(true)
@@ -759,6 +770,8 @@ function Editor:Open(macro, force, onOpened)
         self:OnChanged()
     end
 
+    if testLabel then testLabel:SetText("") end
+
     -- Push initial state for undo
     PushUndo(macro.name or "", macro.body or "", macro.icon or 134400)
 
@@ -1060,6 +1073,40 @@ function Editor:Save(noReopen)
         if saved then Editor:Open(saved, true) else Editor:Clear() end
     end)
     return true
+end
+
+---------------------------------------------------
+-- Test: run the conditions against the current state
+-- SecureCmdOptionParse picks the clause WoW would pick right now, so held
+-- modifiers, the current target and the unit under the cursor all count.
+---------------------------------------------------
+local TESTABLE = {
+    ["/cast"] = true, ["/use"] = true, ["/castsequence"] = true, ["/castrandom"] = true,
+    ["/target"] = true, ["/focus"] = true, ["/cancelaura"] = true, ["/stopmacro"] = true,
+    ["/petattack"] = true, ["/click"] = true, ["/startattack"] = true,
+}
+
+function Editor:RunTest()
+    if not bodyWidget or not SecureCmdOptionParse then return end
+    local lines = {}
+    for line in (bodyWidget:GetText() or ""):gmatch("[^\n]+") do
+        local cmd, rest = line:match("^%s*(/%S+)%s*(.*)$")
+        if cmd and TESTABLE[cmd:lower()] then
+            local result, target
+            if rest ~= "" then result, target = SecureCmdOptionParse(rest) end
+            if result and result ~= "" then
+                table.insert(lines, MF.C.cyan .. cmd .. "|r " .. MF.C.white .. result .. "|r"
+                    .. (target and (" " .. MF.C.grey .. "@" .. target .. "|r") or ""))
+            else
+                table.insert(lines, MF.C.cyan .. cmd .. "|r " .. MF.C.grey .. L["TEST_NOTHING"] .. "|r")
+            end
+        end
+    end
+    local text = #lines > 0 and table.concat(lines, "\n") or (MF.C.grey .. L["TEST_NOTHING"] .. "|r")
+    if testLabel then
+        testLabel:SetText("|cffffff33" .. L["TEST_TITLE"] .. "|r\n" .. text .. "\n"
+            .. MF.C.grey .. L["TEST_HINT"] .. "|r")
+    end
 end
 
 ---------------------------------------------------

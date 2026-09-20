@@ -728,3 +728,10 @@ L["HOME_RECENT"] = "Recently edited"
 L["AUDIT_TITLE"] = "Audit: %d macro(s) with issues"
 L["AUDIT_CLEAN"] = "Every macro checks out."
 L["AUDIT_BTN"] = "Audit"
+
+-- Test button
+L["TEST_BTN"] = "Test"
+L["TOOL_TEST_DESC"] = "Show what this macro would do right now (hold Shift/Ctrl/Alt to test a modifier)."
+L["TEST_TITLE"] = "Right now"
+L["TEST_NOTHING"] = "nothing"
+L["TEST_HINT"] = "Depends on your target, the unit under your cursor and the keys you hold."
