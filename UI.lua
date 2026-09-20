@@ -681,6 +681,7 @@ end
 local function CreateToolbar()
     -- Top-right shortcuts to the other windows
     local buttons = {
+        { L["HOME_BTN"], function() UI:ShowDetail("home", "home") end },
         { L["AUDIT_BTN"], function() UI:ShowDetail("audit", "all") end },
         { L["TEMPLATES"], function() local T = MF:GetModule("Templates"); if T then T:OpenBrowser() end end },
         { SETTINGS or "Settings", function() local S = MF:GetModule("Settings"); if S then S:Toggle() end end },
@@ -887,11 +888,15 @@ local function BuildHome(container)
     local active = P:GetActiveSet()
     local deleted = H and #H:GetDeleted() or 0
 
-    AddLabel(container, MF.C.gold .. L["HOME_TITLE"] .. "|r", GameFontNormalLarge)
+    local name = UnitName("player")
+    local className, classFile = UnitClass("player")
+    local color = (RAID_CLASS_COLORS and classFile and RAID_CLASS_COLORS[classFile]) or nil
+    local coloredName = color and color:WrapTextInColorCode(name) or (MF.C.white .. name .. "|r")
+    AddLabel(container, format(L["HOME_CHARACTER"], coloredName, className or "",
+        MF.C.cyan .. P:GetSpecName(P:GetCurrentSpecID()) .. "|r"), GameFontNormalLarge)
     AddLabel(container, format(L["HOME_SLOTS"],
         numCharacter, P.MAX_CHARACTER_MACROS, numAccount, P.MAX_ACCOUNT_MACROS), GameFontHighlight)
     AddLabel(container, format(L["HOME_CONTEXT"],
-        MF.C.cyan .. P:GetSpecName(P:GetCurrentSpecID()) .. "|r",
         active and (MF.C.green .. active .. "|r") or (MF.C.grey .. L["SET_NO_ACTIVE"] .. "|r"),
         #P:GetSetNames(), deleted), GameFontHighlightSmall)
 
