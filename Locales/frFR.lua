@@ -639,7 +639,7 @@ L["MACROS_N"] = "%d macros"
 L["SHARE_ERROR"] = "Erreur"
 L["SHARE_CHARS"] = "%d caracteres"
 -- Settings
-L["SETTINGS_VERSION_LINE"] = "MacroForge v%s — par Antigravity"
+L["SETTINGS_VERSION_LINE"] = "MacroForge v%s"
 -- DuplicateDetector / Editor
 L["MACRO_UNNAMED"] = "(Sans nom)"
 -- UI

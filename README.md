@@ -232,5 +232,5 @@ MacroForge integrates into WoW's **Interface → AddOns** settings panel, or acc
 <p align="center">
   <img src="icons/MacroForge_64x64.png" alt="MacroForge" width="48" /><br/>
   <strong>Stop writing macros blind. Start forging them.</strong><br/>
-  <sub>Made with ❤️ by Antigravity</sub>
+  <sub>Made with ❤️ by kriffin</sub>
 </p>
