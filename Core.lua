@@ -263,7 +263,8 @@ function MF:HandleSlash(msg)
     elseif cmd == "backups" then if P then P:ListBackups() end
     elseif cmd == "list" then if P then P:ListProfiles() end
     elseif cmd == "autoswap" then if P then P:ToggleAutoSwap() end
-    elseif cmd == "analyze" then self:SendMessage("MF_ANALYZE_ALL")
+    elseif cmd == "analyze" or cmd == "audit" then
+        if UI then UI:Show(); UI:ShowDetail("audit", "all") end
     elseif cmd == "builder" then
         local B = self:GetModule("Builder")
         if B then B:Toggle() end

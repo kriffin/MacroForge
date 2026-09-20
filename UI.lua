@@ -629,6 +629,7 @@ end
 local function CreateToolbar()
     -- Top-right shortcuts to the other windows
     local buttons = {
+        { L["AUDIT_BTN"], function() UI:ShowDetail("audit", "all") end },
         { L["TEMPLATES"], function() local T = MF:GetModule("Templates"); if T then T:OpenBrowser() end end },
         { SETTINGS or "Settings", function() local S = MF:GetModule("Settings"); if S then S:Toggle() end end },
     }
@@ -768,11 +769,172 @@ function UI:CreateMainFrame()
 end
 
 ---------------------------------------------------
+-- Home: what the right pane shows when no macro is open
+---------------------------------------------------
+local function AddHeading(container, text)
+    local h = AceGUI:Create("Heading")
+    h:SetFullWidth(true)
+    h:SetText(text)
+    container:AddChild(h)
+end
+
+local function AddLabel(container, text, font)
+    local l = AceGUI:Create("Label")
+    l:SetFullWidth(true)
+    l:SetFontObject(font or GameFontHighlight)
+    l:SetText(text)
+    container:AddChild(l)
+    return l
+end
+
+local function AddActionButton(container, text, width, onClick)
+    local b = AceGUI:Create("Button")
+    b:SetText(text)
+    b:SetWidth(width)
+    b:SetCallback("OnClick", onClick)
+    container:AddChild(b)
+end
+
+-- The macros edited most recently, newest first (from the revisions)
+local function RecentMacros(limit)
+    local H, P = MF:GetModule("History"), MF:GetModule("Profiles")
+    local rows = {}
+    for _, scope in ipairs(SCOPES) do
+        for _, macro in ipairs(P:ReadMacros(scope)) do
+            local key = H and H:KeyFor(macro)
+            local versions = key and H:GetVersions(scope, key)
+            local last = versions and versions[#versions]
+            table.insert(rows, { macro = macro, time = last and last.time or 0 })
+        end
+    end
+    table.sort(rows, function(a, b) return a.time > b.time end)
+    while #rows > limit do table.remove(rows) end
+    return rows
+end
+
+-- Macros the analyzer is not happy with
+local function ProblemMacros()
+    local An, P = MF:GetModule("Analyzer"), MF:GetModule("Profiles")
+    local rows = {}
+    if not An then return rows end
+    for _, scope in ipairs(SCOPES) do
+        for _, macro in ipairs(P:ReadMacros(scope)) do
+            local res = An:Analyze(macro.body, macro.name)
+            if res and res.issues and #res.issues > 0 then
+                table.insert(rows, { macro = macro, analysis = res })
+            end
+        end
+    end
+    table.sort(rows, function(a, b) return (a.analysis.score or 100) < (b.analysis.score or 100) end)
+    return rows
+end
+
+local function BuildHome(container)
+    local P, H = MF:GetModule("Profiles"), MF:GetModule("History")
+    local numAccount, numCharacter = GetNumMacros()
+    local active = P:GetActiveSet()
+    local deleted = H and #H:GetDeleted() or 0
+
+    AddLabel(container, MF.C.gold .. L["HOME_TITLE"] .. "|r", GameFontNormalLarge)
+    AddLabel(container, format(L["HOME_SLOTS"],
+        numCharacter, P.MAX_CHARACTER_MACROS, numAccount, P.MAX_ACCOUNT_MACROS), GameFontHighlight)
+    AddLabel(container, format(L["HOME_CONTEXT"],
+        MF.C.cyan .. P:GetSpecName(P:GetCurrentSpecID()) .. "|r",
+        active and (MF.C.green .. active .. "|r") or (MF.C.grey .. L["SET_NO_ACTIVE"] .. "|r"),
+        #P:GetSetNames(), deleted), GameFontHighlightSmall)
+
+    local actions = AceGUI:Create("SimpleGroup")
+    actions:SetFullWidth(true)
+    actions:SetLayout("Flow")
+    container:AddChild(actions)
+    AddActionButton(actions, L["SIDEBAR_NEW_CHARACTER"], 180, function()
+        MF:GetModule("Editor"):OpenNew(true)
+    end)
+    AddActionButton(actions, L["TEMPLATES"], 140, function()
+        local T = MF:GetModule("Templates")
+        if T then T:OpenBrowser() end
+    end)
+    AddActionButton(actions, L["IMPORT"], 120, function()
+        local S = MF:GetModule("Share")
+        if S then S:OpenImport() end
+    end)
+
+    local problems = ProblemMacros()
+    if #problems > 0 then
+        AddHeading(container, "|cffffff33" .. format(L["HOME_PROBLEMS"], #problems) .. "|r")
+        for i = 1, math.min(#problems, 3) do
+            local row = problems[i]
+            AddLabel(container, MF.C.red .. (row.analysis.score or 0) .. "%|r  "
+                .. MF.C.white .. DisplayName(row.macro) .. "|r  "
+                .. MF.C.grey .. (row.analysis.issues[1] and row.analysis.issues[1].message or "") .. "|r",
+                GameFontHighlightSmall)
+        end
+        AddActionButton(container, L["HOME_OPEN_AUDIT"], 220, function() UI:ShowDetail("audit", "all") end)
+    end
+
+    local recent = RecentMacros(3)
+    if #recent > 0 then
+        AddHeading(container, "|cffffff33" .. L["HOME_RECENT"] .. "|r")
+        for _, row in ipairs(recent) do
+            local macro = row.macro
+            local btn = AceGUI:Create("InteractiveLabel")
+            btn:SetFullWidth(true)
+            btn:SetFontObject(GameFontHighlight)
+            btn:SetImage((macro.displayIcon and macro.displayIcon ~= 0) and macro.displayIcon or 134400)
+            btn:SetImageSize(18, 18)
+            btn:SetText(DisplayName(macro) .. "   " .. MF.C.grey
+                .. (row.time > 0 and date("%d/%m %H:%M", row.time) or "") .. "|r")
+            btn:SetCallback("OnClick", function() MF:GetModule("Editor"):Open(macro) end)
+            container:AddChild(btn)
+        end
+    end
+end
+
+---------------------------------------------------
+-- Audit: every macro the analyzer flags, worst first
+---------------------------------------------------
+local function BuildAudit(container)
+    local rows = ProblemMacros()
+    local An = MF:GetModule("Analyzer")
+    AddLabel(container, MF.C.gold .. format(L["AUDIT_TITLE"], #rows) .. "|r", GameFontNormalLarge)
+    if #rows == 0 then
+        AddLabel(container, MF.C.green .. L["AUDIT_CLEAN"] .. "|r")
+        return
+    end
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetFullWidth(true)
+    scroll:SetHeight(math.max(200, editorPane:GetHeight() - 90))
+    scroll:SetLayout("List")
+    container:AddChild(scroll)
+    for _, row in ipairs(rows) do
+        local macro, res = row.macro, row.analysis
+        local grp = AceGUI:Create("InlineGroup")
+        grp:SetFullWidth(true)
+        grp:SetLayout("Flow")
+        grp:SetTitle(MF.C.white .. DisplayName(macro) .. "|r  "
+            .. MF.C.grey .. (macro.scope == "character" and L["SCOPE_CHAR"] or L["SCOPE_ACCOUNT"]) .. "|r  "
+            .. ((res.score or 100) < 100 and (MF.C.red .. res.score .. "%|r") or ""))
+        local lines = {}
+        for _, iss in ipairs(res.issues) do
+            table.insert(lines, An:FmtSev(iss.severity) .. " "
+                .. (iss.line > 0 and (MF.C.grey .. "L" .. iss.line .. "|r ") or "") .. iss.message)
+        end
+        AddLabel(grp, table.concat(lines, "\n"), GameFontHighlightSmall)
+        AddActionButton(grp, L["EDIT"], 110, function() MF:GetModule("Editor"):Open(macro) end)
+        scroll:AddChild(grp)
+    end
+end
+
+---------------------------------------------------
 -- Detail views in the right pane
 ---------------------------------------------------
 local function RenderDetail()
     detailHost:ReleaseChildren()
-    if detail.kind == "set" then
+    if detail.kind == "home" then
+        BuildHome(detailHost)
+    elseif detail.kind == "audit" then
+        BuildAudit(detailHost)
+    elseif detail.kind == "set" then
         local P = MF:GetModule("Profiles")
         if not P:GetSets()[detail.id] then return UI:CloseDetail() end
         MF:GetModule("Sets"):BuildDetail(detailHost, detail.id)
@@ -957,7 +1119,10 @@ function UI:ShowEditorContent(shown)
         detail = nil
         detailHost.frame:Hide()
     end
-    if emptyState then emptyState:SetShown(not shown and not detail) end
+    if emptyState then emptyState:SetShown(false) end
+    if not shown and not detail and frame and frame:IsShown() then
+        UI:ShowDetail("home", "home")
+    end
 end
 
 -- Closes the detail view (optionally only of that kind) without touching
@@ -972,13 +1137,12 @@ function UI:CloseDetail(kind)
     self:Refresh()
 end
 
+-- No macro open: the pane shows the home view
 function UI:ShowEmpty()
-    detail = nil
-    if detailHost then detailHost.frame:Hide() end
     local E = MF:GetModule("Editor")
     if E and E.Clear then E:Clear() end
     self:ShowEditorContent(false)
-    self:Refresh()
+    self:ShowDetail("home", "home")
 end
 
 function UI:IsShown()
