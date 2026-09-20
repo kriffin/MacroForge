@@ -656,6 +656,16 @@ local function CreateSidebar()
     end)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
+    -- Clicking the empty part of the list deselects: rows eat their own
+    -- clicks, so only the background reaches these frames
+    local function BackToHome(_, button)
+        if button == "LeftButton" then UI:ShowDetail("home", "home") end
+    end
+    inset:EnableMouse(true)
+    inset:SetScript("OnMouseUp", BackToHome)
+    scrollBox:EnableMouse(true)
+    scrollBox:SetScript("OnMouseUp", BackToHome)
+
     -- Shown when the active tab has no row
     listEmptyText = inset:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     listEmptyText:SetPoint("TOPLEFT", 16, -24)
