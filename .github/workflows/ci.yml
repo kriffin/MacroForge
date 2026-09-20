@@ -10,14 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Lua and luacheck
-        run: sudo apt-get update && sudo apt-get install -y lua5.3 luarocks && sudo luarocks install luacheck
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.3 liblua5.3-dev luarocks
+      - name: Install luacheck (optional)
+        continue-on-error: true
+        run: sudo luarocks --lua-version=5.3 install luacheck
       - name: Syntax check every file
         run: luac5.3 -p $(git ls-files '*.lua')
       - name: Headless tests
         run: bash tests/run.sh
-      - name: Lint (addon files only)
-        run: luacheck . || true
+      - name: Lint (addon files only, informative)
+        continue-on-error: true
+        run: luacheck .
       - name: Locales have the same keys
         run: |
           python3 - <<'PY'
