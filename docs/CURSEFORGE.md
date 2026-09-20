@@ -3,8 +3,8 @@ CurseForge project page for MacroForge (project 1494025).
 The upload API cannot edit descriptions: paste everything below this comment
 into authors.curseforge.com → MacroForge → Description, in Markdown mode.
 
-Summary line (max ~120 chars):
-  Never press a broken macro again: live error checking, autocomplete, templates, spec sets and a full history.
+Summary line (set on the General tab, max ~120 chars):
+  Never press a broken macro again: live checks, autocomplete, templates, spec sets and a full history.
 
 Images live in the repo (docs/assets, screenshots): update them there and the
 page follows. CurseForge ignores align="center", so nothing relies on it.
@@ -18,7 +18,7 @@ No syntax check. No spell verification. No history. Blizzard's macro frame is a 
 
 **MacroForge is the editor that should have shipped with the game.** It checks every line as you type, tells you what your macro would do *right now*, keeps every version you ever saved, and swaps whole macro sets when you change spec — without emptying your action bars.
 
-![The MacroForge window](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/window.png)
+![Editor: code, analysis and detected spells](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/editor.png)
 
 ---
 
@@ -30,8 +30,6 @@ No syntax check. No spell verification. No history. Blizzard's macro frame is a 
 - **Test button** — resolves the macro against your current state: which clause fires, on which target, or nothing at all. Hold Shift to test your Shift branch
 - **Live 255-character counter**, with the shortener one click away
 
-![Editor: code, analysis and detected spells](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/editor.png)
-
 ---
 
 ## One window, built for speed
@@ -39,6 +37,8 @@ No syntax check. No spell verification. No history. Blizzard's macro frame is a 
 Search by name **or content**. Filter to what is broken, what sits on a bar, what nobody uses. Drag a macro straight onto your action bars. Right-click for duplicate, share, move between Character and Account, or its full history.
 
 `Ctrl+S` save · `Ctrl+Z` undo · `Ctrl+F` search · `↑ ↓` walk the list · `Del` delete
+
+![The MacroForge window](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/window.png)
 
 ![Right-click menu](https://github.com/kriffin/MacroForge/raw/main/docs/assets/shots/menu.png)
 
@@ -85,7 +85,7 @@ Macros that exist in both sets **keep their action bar slots**, and anything you
 2. Type **`/mf`** in game, or click the minimap button
 3. Pick a macro on the left — hover the **?** in the title bar for every shortcut
 
-| Command | |
+| Command | What it does |
 |---|---|
 | `/mf` | Open / close MacroForge |
 | `/mf sets` | Macro sets |
