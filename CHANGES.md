@@ -1,5 +1,24 @@
 # Changes
 
+## 7.3.0 — 2026-09-20
+
+A home view, an audit of every macro, a Test button and list filters.
+
+- **Home**: the right pane now opens on your character (name, class, spec),
+  free slots per scope, active set, set and trash counts, the macros that need
+  attention, the ones you edited last (click to open) and New / Templates /
+  Import buttons. Come back to it with the Home button or by clicking the empty
+  part of the list.
+- **Audit**: every macro the analyzer flags, worst score first, with its issues
+  and an Edit button. Home button, the Audit button or `/mf audit`.
+- **Test** (editor): resolves the macro against your current state and says
+  which clause would fire, on which target - or that nothing would happen.
+  Hold a modifier while clicking to test it.
+- **Filters** (macro list): all, with issues, on an action bar, not on a bar.
+- New macros are unnamed by default instead of refusing to save.
+- Project: the headless tests ship in `tests/`, CI checks syntax, tests, lint
+  and locale keys, and a `.pkgmeta` lets the standard packager build the zip.
+
 ## 7.2.1 — 2026-09-20
 
 Fixes found while testing 7.2 in game:
