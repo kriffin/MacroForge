@@ -1208,6 +1208,13 @@ end
 
 function UI:Refresh()
     if not frame or not frame:IsShown() then return end
+    -- Nothing open: the pane shows the home view (the editor is built lazily,
+    -- so this is the only place that can put it up at startup)
+    local E = MF:GetModule("Editor")
+    if not detail and not (E and (E.cur or E.isNew)) then
+        return self:ShowDetail("home", "home")
+    end
+
     local dataProvider, any = BuildDataProvider()
     scrollBox:SetDataProvider(dataProvider, ScrollBoxConstants.RetainScrollPosition)
     listEmptyText:SetText(any and ""
