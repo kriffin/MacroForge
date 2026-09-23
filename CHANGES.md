@@ -12,6 +12,9 @@
   plain text of a macro copied from a guide or a forum - the name comes from
   its first line, or from the spell it casts. The preview says which one it
   read, and why it refuses anything else.
+- **Blizzard's /macro window** gets a MacroForge button next to Delete: it
+  opens the selected macro in MacroForge (what you typed there is saved
+  first), or a new macro when the tab is empty.
 
 ## 7.3.0 — 2026-09-20
 

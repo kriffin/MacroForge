@@ -1262,5 +1262,64 @@ function UI:Toggle()
     frame:SetShown(not frame:IsShown())
 end
 
+---------------------------------------------------
+-- Bridge from Blizzard's /macro window: players open it out of habit, a
+-- button there takes the selected macro (or an empty tab) to MacroForge.
+-- Blizzard_MacroUI is load-on-demand, so the button waits for it.
+---------------------------------------------------
+function UI:OpenFromMacroFrame()
+    local mf = MacroFrame
+    if not mf then return end
+    -- Keep what was typed there: Blizzard only writes on Save or on hide
+    if mf.textChanged and mf.SaveMacro and not InCombatLockdown() then mf:SaveMacro() end
+    local scope = (mf.macroBase or 0) == 0 and "account" or "character"
+    local selected = mf.GetSelectedIndex and mf:GetSelectedIndex()
+    local index = selected and mf:GetMacroDataIndex(selected)
+    HideUIPanel(mf)
+
+    local E = MF:GetModule("Editor")
+    for _, m in ipairs(MF:GetModule("Profiles"):ReadMacros(scope)) do
+        if m.index == index then return E:Open(m) end
+    end
+    E:OpenNew(scope == "character")
+end
+
+local function AddMacroFrameButton()
+    if not MacroFrame or UI.macroFrameButton then return end
+    local anchor = MacroDeleteButton or MacroFrame
+    local b = CreateFrame("Button", nil, MacroFrame, "UIPanelButtonTemplate")
+    b:SetSize(110, 22)
+    if anchor == MacroFrame then
+        b:SetPoint("BOTTOMLEFT", MacroFrame, "BOTTOMLEFT", 88, 4)
+    else
+        b:SetPoint("LEFT", anchor, "RIGHT", 4, 0)
+    end
+    b:SetText("MacroForge")
+    b:SetScript("OnClick", function() UI:OpenFromMacroFrame() end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine("MacroForge", 1, 1, 1)
+        GameTooltip:AddLine(L["MACROFRAME_OPEN_TIP"], nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    UI.macroFrameButton = b
+end
+
+if EventUtil and EventUtil.ContinueOnAddOnLoaded then
+    EventUtil.ContinueOnAddOnLoaded("Blizzard_MacroUI", AddMacroFrameButton)
+else
+    local waiter = CreateFrame("Frame")
+    waiter:RegisterEvent("ADDON_LOADED")
+    waiter:SetScript("OnEvent", function(self, _, name)
+        if name == "Blizzard_MacroUI" then
+            self:UnregisterEvent("ADDON_LOADED")
+            AddMacroFrameButton()
+        end
+    end)
+    -- Already loaded by another addon before us
+    if MacroFrame then AddMacroFrameButton() end
+end
+
 MF.UI = UI
 MF:RegisterModule("UI", UI)
