@@ -735,10 +735,11 @@ L["AUDIT_BTN"] = "Audit"
 
 -- Test button
 L["TEST_BTN"] = "Tester"
-L["TOOL_TEST_DESC"] = "Montre ce que la macro ferait maintenant (garde Maj/Ctrl/Alt enfonce pour tester un modificateur)."
+L["TEST_STOP_BTN"] = "Arrêter"
+L["TOOL_TEST_DESC"] = "Montre en direct ce que la macro ferait : change de cible, garde Maj/Ctrl/Alt enfoncé ou survole une unité, le résultat suit. Reclique pour arrêter."
 L["TEST_TITLE"] = "Maintenant"
 L["TEST_NOTHING"] = "rien"
-L["TEST_HINT"] = "Depend de ta cible, de l'unite sous le curseur et des touches enfoncees."
+L["TEST_HINT"] = "En direct : suit ta cible, l'unité sous le curseur et les touches enfoncées."
 
 -- List filters
 L["FILTER_ALL"] = "Toutes"

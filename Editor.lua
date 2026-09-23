@@ -18,6 +18,7 @@ local editorFrame
 local nameWidget, bodyWidget, errorsLabel, explainLabel
 local iconButton, _iconTexture
 local testLabel        -- "what would happen now" result of the Test button
+local testButton       -- toolbar button, reads "Stop test" while the test is live
 local syntaxOverlay    -- FontString overlay for inline syntax highlighting
 local lineNumOverlay   -- FontString for line numbers
 local spellIconGroup   -- Container for spell/item icons with native tooltips
@@ -134,7 +135,7 @@ local function CreateToolbar(pane)
     TextButton(L["SHORTEN_BTN"], L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], 100, function()
         Editor:Shorten()
     end)
-    TextButton(L["TEST_BTN"], L["TEST_BTN"], L["TOOL_TEST_DESC"], 84, function()
+    testButton = TextButton(L["TEST_BTN"], L["TEST_BTN"], L["TOOL_TEST_DESC"], 84, function()
         Editor:RunTest()
     end)
 
@@ -738,7 +739,7 @@ function Editor:Open(macro, force, onOpened)
         end
     end
 
-    if testLabel then testLabel:SetText("") end
+    self:StopTest()
 
     -- Push initial state for undo
     PushUndo(macro.name or "", macro.body or "", macro.icon or 134400)
@@ -756,6 +757,7 @@ function Editor:OpenNew(perChar, force, onOpened)
     if not force and self:IsDirty() then
         return self:ConfirmLeave(function() self:OpenNew(perChar, true, onOpened) end)
     end
+    self:StopTest()
     CreateEditor()
     self.isNew = true; self.newPerChar = perChar; self.cur = nil
     self.selectedIcon = 134400
@@ -1046,7 +1048,10 @@ function Editor:Save(noReopen)
         for _, m in ipairs(P:ReadMacros(scope)) do
             if m.name == name and m.body == body then saved = m; break end
         end
+        -- Saving keeps a live test running on the saved macro
+        local live = Editor:IsTestLive()
         if saved then Editor:Open(saved, true) else Editor:Clear() end
+        if saved and live then Editor:RunTest() end
     end)
     return true
 end
@@ -1062,8 +1067,7 @@ local TESTABLE = {
     ["/petattack"] = true, ["/click"] = true, ["/startattack"] = true,
 }
 
-function Editor:RunTest()
-    if not bodyWidget or not SecureCmdOptionParse then return end
+local function TestResult()
     local lines = {}
     for line in (bodyWidget:GetText() or ""):gmatch("[^\n]+") do
         local cmd, rest = line:match("^%s*(/%S+)%s*(.*)$")
@@ -1079,10 +1083,49 @@ function Editor:RunTest()
         end
     end
     local text = #lines > 0 and table.concat(lines, "\n") or (MF.C.grey .. L["TEST_NOTHING"] .. "|r")
-    if testLabel then
-        testLabel:SetText("|cffffff33" .. L["TEST_TITLE"] .. "|r\n" .. text .. "\n"
-            .. MF.C.grey .. L["TEST_HINT"] .. "|r")
+    return "|cffffff33" .. L["TEST_TITLE"] .. "|r\n" .. text .. "\n" .. MF.C.grey .. L["TEST_HINT"] .. "|r"
+end
+
+-- Live test: re-resolved while it is on, so changing target, holding Shift
+-- or hovering a unit shows the clause that would fire without a click. A
+-- short ticker also catches what has no event (the cursor leaving a unit,
+-- auras, range); the label is only touched when the result changes.
+local testTicker, lastTestText
+local testEvents = CreateFrame("Frame")
+testEvents:SetScript("OnEvent", function() Editor:RenderTest() end)
+local TEST_EVENTS = { "MODIFIER_STATE_CHANGED", "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED",
+    "UPDATE_MOUSEOVER_UNIT", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }
+
+function Editor:RenderTest()
+    if not testTicker or not testLabel then return end
+    if not (editorFrame and editorFrame:IsShown() and editorFrame.frame:IsVisible()) then
+        return self:StopTest()
     end
+    local text = TestResult()
+    if text ~= lastTestText then
+        lastTestText = text
+        testLabel:SetText(text)
+    end
+end
+
+function Editor:StopTest()
+    if testTicker then testTicker:Cancel(); testTicker = nil end
+    testEvents:UnregisterAllEvents()
+    lastTestText = nil
+    if testLabel then testLabel:SetText("") end
+    if testButton then testButton:SetText(L["TEST_BTN"]) end
+end
+
+function Editor:IsTestLive() return testTicker ~= nil end
+
+-- The Test button toggles the live test
+function Editor:RunTest()
+    if not bodyWidget or not SecureCmdOptionParse then return end
+    if testTicker then return self:StopTest() end
+    testTicker = C_Timer.NewTicker(0.2, function() Editor:RenderTest() end)
+    for _, ev in ipairs(TEST_EVENTS) do pcall(testEvents.RegisterEvent, testEvents, ev) end
+    if testButton then testButton:SetText(L["TEST_STOP_BTN"]) end
+    self:RenderTest()
 end
 
 ---------------------------------------------------
@@ -1143,6 +1186,7 @@ end
 function Editor:Clear()
     self.cur, self.isNew, self.baseline, self.wasDirty = nil, false, nil, false
     MF.editingIndex = nil
+    self:StopTest()
     if draftTimer then draftTimer:Cancel(); draftTimer = nil end
     if undoTimer then undoTimer:Cancel(); undoTimer = nil end
     if editorFrame then editorFrame:Hide() end
@@ -1153,6 +1197,7 @@ end
 -- Main window closed: stop the timers, keep the editor content for next open
 function Editor:OnHostHidden()
     if undoTimer then undoTimer:Cancel(); undoTimer = nil end
+    self:StopTest()
 end
 
 ---------------------------------------------------

@@ -15,6 +15,9 @@
 - **Blizzard's /macro window** gets a MacroForge button next to Delete: it
   opens the selected macro in MacroForge (what you typed there is saved
   first), or a new macro when the tab is empty.
+- **Test is live**: click it once and the result follows your target, focus,
+  the unit under your cursor, combat and the keys you hold - no more clicking
+  with Shift down. Click again (Stop test) to turn it off; saving keeps it on.
 
 ## 7.3.0 — 2026-09-20
 

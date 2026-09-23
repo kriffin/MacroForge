@@ -735,10 +735,11 @@ L["AUDIT_BTN"] = "Audit"
 
 -- Test button
 L["TEST_BTN"] = "Test"
-L["TOOL_TEST_DESC"] = "Show what this macro would do right now (hold Shift/Ctrl/Alt to test a modifier)."
+L["TEST_STOP_BTN"] = "Stop test"
+L["TOOL_TEST_DESC"] = "Show live what this macro would do: change target, hold Shift/Ctrl/Alt or hover a unit and the result follows. Click again to stop."
 L["TEST_TITLE"] = "Right now"
 L["TEST_NOTHING"] = "nothing"
-L["TEST_HINT"] = "Depends on your target, the unit under your cursor and the keys you hold."
+L["TEST_HINT"] = "Live: follows your target, the unit under your cursor and the keys you hold."
 
 -- List filters
 L["FILTER_ALL"] = "All"
