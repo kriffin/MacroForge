@@ -964,6 +964,14 @@ local function BuildHome(container)
         end
     end
 
+    local news = AceGUI:Create("InteractiveLabel")
+    news:SetFullWidth(true)
+    news:SetFontObject(GameFontHighlightSmall)
+    news:SetText("|cff33ccff" .. L["HOME_NEWS_LINK"] .. "|r")
+    news:SetHighlight("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+    news:SetCallback("OnClick", function() UI:ShowNews() end)
+    container:AddChild(news)
+
     local problems = ProblemMacros()
     if #problems > 0 then
         AddHeading(container, "|cffffff33" .. format(L["HOME_PROBLEMS"], #problems) .. "|r")
@@ -1185,11 +1193,18 @@ local function BuildNewsPage(page)
     grid:SetScript("OnSizeChanged", Layout)
     Layout()
 
-    local go = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    go:SetSize(150, 22)
-    go:SetPoint("BOTTOMRIGHT", 0, 0)
+    -- Under the features, centered: close, or replay the onboarding tips
+    local rows = math.ceil(#NEWS / 2)
+    local go = CreateFrame("Button", nil, grid, "UIPanelButtonTemplate")
+    go:SetSize(160, 24)
+    go:SetPoint("TOPLEFT", grid, "TOP", 4, -(rows * 72 + 10))
     go:SetText(L["NEWS_GO"])
     go:SetScript("OnClick", function() UI:ClosePage() end)
+    local tips = CreateFrame("Button", nil, grid, "UIPanelButtonTemplate")
+    tips:SetSize(160, 24)
+    tips:SetPoint("TOPRIGHT", grid, "TOP", -4, -(rows * 72 + 10))
+    tips:SetText(L["HELP_REPLAY_TIPS_BTN"])
+    tips:SetScript("OnClick", function() UI:ClosePage(); UI:ResetTips() end)
 end
 
 function UI:ShowNews()
@@ -1234,12 +1249,11 @@ function CreateHelpButton()
         GameTooltip:Show()
     end)
     help:SetScript("OnLeave", GameTooltip_Hide)
-    help:SetScript("OnClick", function(self)
+    -- A plain click, no context menu: MenuUtil anchored to this button
+    -- crashed the 1.60.1 client (Lua assert in Menu.lua AcquireMenu)
+    help:SetScript("OnClick", function()
         GameTooltip:Hide()
-        MenuUtil.CreateContextMenu(self, function(_, root)
-            root:CreateButton(L["NEWS_PAGE"], function() UI:ShowNews() end)
-            root:CreateButton(L["HELP_REPLAY_TIPS_BTN"], function() UI:ResetTips() end)
-        end)
+        UI:ShowNews()
     end)
 end
 
