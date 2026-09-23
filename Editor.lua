@@ -696,7 +696,7 @@ local function OfferDraft(draft)
                 iconButton:SetImage(draft.icon)
             end
             Editor:OnChanged()
-            MF:Print(MF.C.green .. L["DRAFT_RESTORED_MSG"] .. "|r")
+            MF:Notify(MF.C.green .. L["DRAFT_RESTORED_MSG"] .. "|r")
         end,
         OnCancel = function() Editor:DropDraft() end,
         timeout = 0, whileDead = true, hideOnEscape = true,
@@ -1074,6 +1074,11 @@ function Editor:Save(noReopen)
     if not name or name == "" then name = DEFAULT_NAME end
 
     local icon = self.selectedIcon or 134400
+    -- Ctrl+S on an unchanged macro: say so, write nothing
+    if not self.isNew and not self:IsDirty() then
+        MF:Notify(MF.C.grey .. L["NOTHING_TO_SAVE"] .. "|r")
+        return true
+    end
     local P = MF:GetModule("Profiles")
     if self.isNew then
         -- nil out of combat = refused (slot limit); in combat it is queued
@@ -1090,7 +1095,7 @@ function Editor:Save(noReopen)
             local H = MF:GetModule("History")
             if H then H:SaveSnapshot(cur) end
             EditMacro(cur.index, name, icon, body)
-            MF:Print(MF.C.green .. L["MACRO_SAVED"]:format(MF.C.cyan .. name .. MF.C.r))
+            MF:Notify(MF.C.green .. L["MACRO_SAVED"]:format(MF.C.cyan .. name .. MF.C.r))
         end)
     end
 

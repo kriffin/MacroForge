@@ -168,6 +168,13 @@ end
 ---------------------------------------------------
 local pendingOOC, pendingOrder = {}, {}
 
+-- Feedback for an action: in the window's status line when it is open,
+-- in chat otherwise (a chat line stays forever)
+function MF:Notify(text)
+    local UI = self:GetModule("UI")
+    if not (UI and UI:IsShown() and UI:Status(text)) then self:Print(text) end
+end
+
 function MF:RunOutOfCombat(key, fn)
     if not InCombatLockdown() then
         fn()

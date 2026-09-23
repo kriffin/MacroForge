@@ -32,6 +32,7 @@ local collapsed = {}
 local TABS = { "macros", "sets", "trash" }
 local activeTab = "macros"
 local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary, sidebarInset, filterButton
+local statusText
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -680,6 +681,22 @@ local function CreateSidebar()
     btnSecondary:SetSize(132, 22)
     btnSecondary:SetPoint("LEFT", btnPrimary, "RIGHT", 6, 0)
 
+    -- Status line (bottom of the window): what just happened, instead of
+    -- chat lines that stay forever. Fades out after a few seconds.
+    statusText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    statusText:SetPoint("LEFT", btnSecondary, "RIGHT", 16, 0)
+    statusText:SetPoint("RIGHT", frame, "RIGHT", -30, 0)
+    statusText:SetJustifyH("LEFT")
+    statusText:SetWordWrap(false)
+    local fade = statusText:CreateAnimationGroup()
+    local alpha = fade:CreateAnimation("Alpha")
+    alpha:SetFromAlpha(1)
+    alpha:SetToAlpha(0)
+    alpha:SetStartDelay(4)
+    alpha:SetDuration(1)
+    fade:SetScript("OnFinished", function() statusText:SetText("") end)
+    statusText.fade = fade
+
     local saved = MF.db and MF.db.global.sidebarTab
     activeTab = PROVIDERS[saved] and saved or "macros"
     for i, name in ipairs(TABS) do
@@ -1267,6 +1284,16 @@ function UI:CurrentPage()
     local top = pageStack[#pageStack]
     return top and top.key
 end
+
+-- One-line feedback in the window (saved, created...)
+function UI:Status(text)
+    if not statusText then return false end
+    statusText.fade:Stop()
+    statusText:SetText(date("%H:%M") .. "  " .. text)
+    statusText.fade:Play()
+    return true
+end
+
 
 ---------------------------------------------------
 -- Public API

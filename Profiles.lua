@@ -582,7 +582,7 @@ function MF.Profiles:CreateNewMacro(name, icon, body, perCharacter)
     local macroId = CreateMacro(name, newIcon, newBody, perCharacter)
 
     if macroId then
-        MF:Print(MF.C.green .. format(L["MACRO_CREATED"], MF.C.cyan .. name .. "|r"))
+        MF:Notify(MF.C.green .. format(L["MACRO_CREATED"], MF.C.cyan .. name .. "|r"))
     end
     return macroId
 end
