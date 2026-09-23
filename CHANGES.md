@@ -34,8 +34,8 @@
   and the icon picker open in a drawer next to the code, in place of the
   analysis. /mf trash and /mf sets open their tabs. Everything is built
   from Blizzard templates.
-- **WoW Forever templates**: 74 new ones for its 9 classes (stances, traps,
-  totems, pets, seals, druid forms...), 8 to 14 per class, every spell checked in the
+- **WoW Forever templates**: 148 new ones for its 9 classes (stances, traps,
+  totems, pets, seals, curses, druid forms...), 16 to 21 per class, every spell checked in the
   Forever client, names and descriptions translated. Templates whose spells
   do not exist in the client are hidden, and so are classes it lacks. The
   class list walks class IDs (they have holes: the druid is 11), so the
