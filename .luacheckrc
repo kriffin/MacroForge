@@ -27,5 +27,5 @@ read_globals = {
   "IsShiftKeyDown", "LibStub", "YES", "NO", "OKAY", "ACCEPT", "CANCEL", "SETTINGS", "DELETE",
   "GetItemInfo", "MAX_ACCOUNT_MACROS", "MAX_CHARACTER_MACROS",
   "MacroFrame", "MacroDeleteButton", "HideUIPanel", "EventUtil",
-  "CreateScrollBoxListLinearView", "CreateDataProvider", "BACK", "LOCALIZED_CLASS_NAMES_MALE", "ChatFontNormal", "GetMacroIcons", "GetMacroItemIcons", "GetLooseMacroIcons", "GetNumClasses", "GetClassInfo", "GetLocale", "LoadAddOn",
+  "CreateScrollBoxListLinearView", "CreateDataProvider", "BACK", "LOCALIZED_CLASS_NAMES_MALE", "ChatFontNormal", "IsSecureCmd", "GetMacroIcons", "GetMacroItemIcons", "GetLooseMacroIcons", "GetNumClasses", "GetClassInfo", "GetLocale", "LoadAddOn",
 }

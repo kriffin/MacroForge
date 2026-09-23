@@ -37,15 +37,18 @@ local function MacroIcons()
     local icons, seen = { MF.Helpers.DYNAMIC_ICON }, { [MF.Helpers.DYNAMIC_ICON] = true }
     local E = MF:GetModule("Editor")
     local _, _, body = E:GetContent()
-    for _, name in ipairs(MF.Helpers:ParseSpells(body)) do
-        name = (name:match("^([^;,]+)") or name):match("^%s*(.-)%s*$")
-        local tex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(name)
-        if not tex and C_Item and C_Item.GetItemInfoInstant then
-            tex = select(5, C_Item.GetItemInfoInstant(name))
-        end
-        if tex and not seen[tex] then
-            seen[tex] = true
-            table.insert(icons, tex)
+    for _, line in ipairs(MF.Helpers:ParseSpells(body)) do
+        -- Every alternative of "A; [cond] B" and of "reset=8 A, B"
+        for name in (line .. ";"):gmatch("([^;,]+)[;,]") do
+            name = name:gsub("%[.-%]", ""):gsub("^%s*reset=%S+", ""):match("^%s*(.-)%s*$")
+            local tex = name ~= "" and C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(name)
+            if not tex and name ~= "" and C_Item and C_Item.GetItemInfoInstant then
+                tex = select(5, C_Item.GetItemInfoInstant(name))
+            end
+            if tex and not seen[tex] then
+                seen[tex] = true
+                table.insert(icons, tex)
+            end
         end
     end
     return icons

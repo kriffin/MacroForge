@@ -22,7 +22,8 @@ assert(b2 == body and n2 == "A very long macr")
 -- No fix known
 assert(H:ApplyIssueFix(body, "x", { fixType = "spell", line = 4 }) == nil)
 -- End to end: the analyzer points at the real line and its fix applies
-SLASH_CASTSEQUENCE1 = "/castsequence"; SLASH_CAST1 = "/cast"
+SLASH_CASTSEQUENCE1 = "/castsequence"; SLASH_CAST1 = "/cast"; SLASH_CATTEST1 = "/cat"
+IsSecureCmd = function(c) return c == "/cast" or c == "/castsequence" end
 dofile(ROOT .. "/Analyzer.lua")
 local An = MF.modules.Analyzer
 local iss
@@ -36,4 +37,8 @@ for _, i in ipairs(An:Analyze("/zzzzzzzzzzzz x", "m").issues) do assert(not i.fi
 for _, i in ipairs(An:Analyze("/cast Blink", "Éclair mouseover").issues) do assert(i.fixType ~= "name", i.message) end
 local long = An:Analyze("/cast Blink", "Éclair mouseover!").issues[1]
 assert(long and long.fixType == "name" and long.fix == "Éclair mouseover", long and long.fix)
+-- "/csat" is one edit from /cast and from another addon's /cat: /cast wins
+local csat
+for _, i in ipairs(An:Analyze("/csat Blink", "m").issues) do if i.fixType == "command" then csat = i end end
+assert(csat and csat.fix == "/cast", csat and csat.fix)
 print("fix ok")

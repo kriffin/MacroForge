@@ -251,11 +251,23 @@ local function getLevenshtein(s, t, lim)
     return d[#d]
 end
 
+-- Ties are common ("csat" is one edit from both "cast" and "cat"): prefer
+-- the secure macro commands, then the same length, then alphabetical, so
+-- the answer does not depend on the table's iteration order
+local function Better(k, best, source)
+    local sk = IsSecureCmd and IsSecureCmd("/" .. k) and 1 or 0
+    local sb = IsSecureCmd and IsSecureCmd("/" .. best) and 1 or 0
+    if sk ~= sb then return sk > sb end
+    local lk, lb = math.abs(#k - #source), math.abs(#best - #source)
+    if lk ~= lb then return lk < lb end
+    return k < best
+end
+
 function A:FindBestMatch(source)
     local diff, bestmatch = 99, ""
     for k, _ in pairs(commands) do
         local d = getLevenshtein(source, k)
-        if d < diff then diff = d; bestmatch = k end
+        if d < diff or (d == diff and Better(k, bestmatch, source)) then diff = d; bestmatch = k end
     end
     return bestmatch, diff
 end

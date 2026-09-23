@@ -1485,11 +1485,12 @@ local function AddMacroFrameButton()
     if not MacroFrame or UI.macroFrameButton then return end
     local anchor = MacroDeleteButton or MacroFrame
     local b = CreateFrame("Button", nil, MacroFrame, "UIPanelButtonTemplate")
-    b:SetSize(110, 22)
+    -- Between Delete (80) and New: 84 px free, 110 overlapped New
+    b:SetSize(84, 22)
     if anchor == MacroFrame then
         b:SetPoint("BOTTOMLEFT", MacroFrame, "BOTTOMLEFT", 88, 4)
     else
-        b:SetPoint("LEFT", anchor, "RIGHT", 4, 0)
+        b:SetPoint("LEFT", anchor, "RIGHT", 2, 0)
     end
     b:SetText("MacroForge")
     b:SetScript("OnClick", function() UI:OpenFromMacroFrame() end)
