@@ -21,7 +21,7 @@ end
 assert(not H:DraftBelongsTo(draft, { name = "Frost", scope = "account", index = 1 }))
 -- A new macro's draft never lands on a saved one
 assert(not H:DraftTarget({ isNew = true, name = "Frost", body = "x" }, macros))
--- Pre-7.3.1 drafts: index and name must both match
+-- Pre-7.4.0 drafts: index and name must both match
 assert(H:DraftBelongsTo({ index = 122, name = "Frost" }, target))
 assert(not H:DraftBelongsTo({ index = 121, name = "Frost" }, macros[1]))
 print("draft ok")

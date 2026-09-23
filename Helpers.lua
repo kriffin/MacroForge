@@ -309,7 +309,7 @@ function MF.Helpers:DraftBelongsTo(draft, macro)
     if draft.scope then
         return draft.scope == macro.scope and draft.key == macro.name
     end
-    -- Drafts saved before 7.3.1 only have the index and the edited name
+    -- Drafts saved before 7.4.0 only have the index and the edited name
     return draft.index == macro.index and draft.name == macro.name
 end
 

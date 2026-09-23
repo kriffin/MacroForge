@@ -1,56 +1,69 @@
 # Changes
 
-## Unreleased
+## 7.4.0 — 2026-09-23
 
-- **Drafts** now follow their macro by scope and name instead of its slot
-  number: creating or renaming a macro no longer offers a draft on the wrong
-  macro. A new macro's draft is kept too - it used to be saved and never
-  offered back. The Home view shows a "Resume the draft" button.
-- A draft is no longer wiped by opening another macro first, and discarding
-  or cancelling your edits drops it.
-- **Import**: one window for everything you paste. A MacroForge code, or the
-  plain text of a macro copied from a guide or a forum - the name comes from
-  its first line, or from the spell it casts. The preview says which one it
-  read, and why it refuses anything else.
-- **Blizzard's /macro window** gets a MacroForge button next to Delete: it
-  opens the selected macro in MacroForge (what you typed there is saved
-  first), or a new macro when the tab is empty.
-- **Test is live**: click it once and the result follows your target, focus,
-  the unit under your cursor, combat and the keys you hold - no more clicking
-  with Shift down. Click again (Stop test) to turn it off; saving keeps it on.
-- **French**: every string has its accents back (the locale had none), and
-  the whole interface now says "vous", like Blizzard's own French UI.
-- **Clickable analysis**: click an issue to select its line in the code, and
-  click "Fix: /castsequence" under a mistyped command (or a name over 16
-  characters) to apply the correction. Line numbers now match the editor
-  gutter: blank lines used to be skipped, so every issue below one pointed
-  one line too high.
-- **One window**: tools now open inside the main window instead of on top of
-  it, Blizzard style. Templates is the first: search and filter on top, the
-  list on the left, the selected template on the right. The title shows where
-  you are; Back (or Esc) returns to what was open, unsaved edits included.
-- **No more floating windows**: History, Share (import, export, copy, send)
-  and Duplicates are pages of the main window; Spell, Command, Conditions
-  and the icon picker open in a drawer next to the code, in place of the
-  analysis. /mf trash and /mf sets open their tabs. Everything is built
-  from Blizzard templates.
-- **WoW Forever templates**: 148 new ones for its 9 classes (stances, traps,
-  totems, pets, seals, curses, druid forms...), 16 to 21 per class, every spell checked in the
-  Forever client, names and descriptions translated. Templates whose spells
-  do not exist in the client are hidden, and so are classes it lacks. The
-  class list walks class IDs (they have holes: the druid is 11), so the
-  druid is no longer missing.
-- **WoW Forever conditions**: pvptalent, advflyable and petbattle are flagged
-  (an unknown condition is always true there) and left out of the builder
-  with vehicleui and canexitvehicle.
-- Name and code lengths count characters, not bytes: "Éclair mouseover" is
-  16 characters, not 17.
-- **Templates of every class**: a class button lists them all (yours marked).
+One window, Blizzard style, and a real WoW Forever release: 190 templates
+checked in the client, a live Test, one-click fixes.
+
+### One window
+
+- **No floating window left**: Templates, History, Share (import, export,
+  copy, send) and Duplicates are pages of the main window. The title shows
+  where you are; Back or Esc returns to what was open, unsaved edits
+  included. /mf trash and /mf sets open their tabs.
+- **Editor drawer**: Spell, Command, Conditions and the icon picker open next
+  to the code, in place of the analysis. One at a time; its button, the
+  close button or Esc brings the analysis back. Click or Enter inserts at
+  the cursor; the icon picker shows the macro's own spell icons on top.
+- Everything is built from Blizzard templates (insets, ScrollBox lists,
+  search boxes, UIPanel buttons, menus).
 - **Status line**: saves and creations show at the bottom of the window
   instead of piling up in chat; Ctrl+S on an unchanged macro writes nothing.
-- **What's new** is a page (logo, title, features with icons), also in the
-  ? menu, instead of a popup of packed lines.
+- **What's new** is a page (logo, title, features with icons): the ? button,
+  the link on Home or /mf news.
+- **Blizzard's /macro window** gets a MacroForge button: it opens the
+  selected macro here (what you typed there is saved first).
 - **Flat logo** on the minimap button and in the addon list.
+
+### Editing
+
+- **Live test**: click Test once and the result follows your target, focus,
+  the unit under your cursor, combat and the keys you hold. Click again
+  (Stop test) to turn it off; saving keeps it on.
+- **Clickable analysis**: click an issue to select its line, click "Fix" to
+  correct a mistyped command or a name over 16 characters. Line numbers now
+  match the gutter (blank lines used to be skipped). "Did you mean" prefers
+  macro commands: /csat suggests /cast, not another addon's /cat.
+- **Import anything**: one window takes a MacroForge code or the plain text
+  of a macro copied from a guide; the name comes from its first line or the
+  spell it casts.
+- **Drafts** follow their macro by name instead of its slot, a new macro's
+  draft is offered back, and Home has a "Resume the draft" button.
+- Name and code lengths count characters, not bytes ("Éclair mouseover" is
+  16 characters).
+
+### WoW Forever
+
+- **148 Forever templates** for its 9 classes (stances, traps, totems, pets,
+  seals, curses, druid forms...), 16 to 21 per class plus 11 universal,
+  every spell checked in the client, names and descriptions translated.
+- **Any class**: the Class button browses every class of the client.
+  Templates whose spells the client lacks are hidden, and the class list
+  walks class IDs (they have holes: the druid is 11, it was missing).
+- **Conditions**: an unknown condition is always true on Forever (checked in
+  game), so pvptalent, advflyable and petbattle are flagged by the analyzer,
+  and the builder leaves them out with vehicleui and canexitvehicle.
+
+### French
+
+- Every string has its accents back and the interface says "vous", like
+  Blizzard's French UI.
+
+### Fixes
+
+- Clicking the ? button crashed the 1.60.1 client (a Blizzard menu bug): it
+  now opens What's new directly.
+- The mouse wheel works over the drawer lists.
 
 ## 7.3.0 — 2026-09-20
 
