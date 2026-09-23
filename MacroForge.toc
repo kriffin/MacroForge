@@ -38,6 +38,7 @@ Locales\frFR.lua
 Core.lua
 Log.lua
 Helpers.lua
+Widgets.lua
 Templates.lua
 Profiles.lua
 SlashDB.lua

@@ -278,51 +278,87 @@ local function AddBodyPreview(grp, body)
 end
 
 ---------------------------------------------------
--- Versions browser for one macro
+-- Versions of one macro: a page of the main window (UI:OpenPage), newest
+-- version first on the left, the selected one on the right
 ---------------------------------------------------
+local function BuildVersionsPage(page)
+    local W = MF.Widgets
+    local state = {}
+    local list, card = W:ListAndCard(page, {
+        icon = function(row) return (row.v.icon and row.v.icon ~= 0) and row.v.icon or 134400 end,
+        name = function(row) return MF.C.gold .. "#" .. row.i .. "|r  " .. FormatTime(row.v) end,
+        sub = function(row) return (row.v.name or state.key or "") .. (row.v.reason and ("  [" .. row.v.reason .. "]") or "") end,
+        badge = function(row) return row.latest and (MF.C.green .. L["VERSION_LATEST"] .. "|r") or "" end,
+        onSelect = function(row) page.ShowVersion(row) end,
+        empty = L["NO_HISTORY"],
+    }, 0)
+    local title = W:Text(card, "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 14, -14)
+    title:SetPoint("RIGHT", card, "RIGHT", -14, 0)
+    local sub = W:Text(card, "GameFontHighlightSmall")
+    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    local preview = W:Text(card, "GameFontHighlight")
+    preview:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -14)
+    preview:SetPoint("RIGHT", card, "RIGHT", -14, 0)
+    preview:SetJustifyV("TOP")
+    local count = W:Text(card, "GameFontDisableSmall")
+    count:SetPoint("TOPLEFT", preview, "BOTTOMLEFT", 0, -8)
+
+    local load = W:Button(page, L["VERSION_LOAD"], 180, function()
+        local row = list.selected
+        if not row then return end
+        local E = MF:GetModule("Editor")
+        -- Loaded into the live macro if it still exists, otherwise as a
+        -- new macro; nothing is written until the user saves
+        local live
+        for _, m in ipairs(History:KeyedMacros(state.scope)) do
+            if m.key == state.key then live = m; break end
+        end
+        local function Fill() E:LoadContent(row.v.name, row.v.body, row.v.icon) end
+        if live then E:Open(live, nil, Fill) else E:OpenNew(state.scope == "character", nil, Fill) end
+        MF:Notify(MF.C.green .. format(L["VERSION_RESTORED"], row.i) .. "|r")
+    end)
+    load:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    function page.ShowVersion(row)
+        card:SetShown(row ~= nil)
+        load:SetEnabled(row ~= nil)
+        if not row then return end
+        local An = MF:GetModule("Analyzer")
+        local body = row.v.body or ""
+        title:SetText(MF.C.gold .. "#" .. row.i .. "|r  " .. (row.v.name or state.key))
+        sub:SetText(MF.C.grey .. FormatTime(row.v) .. "|r" .. ReasonTag(row.v.reason))
+        preview:SetText(An and An:ColorizeBody(body) or body)
+        count:SetText(format(L["CHARS"], #body))
+    end
+
+    function page.Fill(arg)
+        state.scope, state.key = arg.scope, arg.key
+        local versions = History:GetVersions(arg.scope, arg.key)
+        local rows = {}
+        for i = #versions, 1, -1 do
+            table.insert(rows, { i = i, v = versions[i], latest = i == #versions })
+        end
+        list.selected = nil
+        list:SetRows(rows)
+    end
+end
+
 function History:OpenVersions(scope, key)
-    local versions = self:GetVersions(scope, key)
-    if #versions == 0 then
-        MF:Print(MF.C.grey .. L["NO_HISTORY"] .. "|r")
+    if #self:GetVersions(scope, key) == 0 then
+        MF:Notify(MF.C.grey .. L["NO_HISTORY"] .. "|r")
         return
     end
-
-    local f = MF.Helpers:CreateDarkFrame("|cff00ccffMacroForge|r - " .. L["HISTORY"] .. " : " .. key, 520, 440, "Fill")
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    f:AddChild(scroll)
-
-    for i = #versions, 1, -1 do
-        local v = versions[i]
-        local grp = AceGUI:Create("InlineGroup")
-        grp:SetFullWidth(true)
-        grp:SetLayout("Flow")
-        grp:SetTitle(MF.C.gold .. "#" .. i .. "|r  " .. MF.C.grey .. FormatTime(v) .. "|r  "
-            .. MF.C.white .. (v.name or key) .. "|r" .. ReasonTag(v.reason)
-            .. (i == #versions and ("  " .. MF.C.green .. L["VERSION_LATEST"] .. "|r") or ""))
-        AddBodyPreview(grp, v.body or "")
-
-        local btn = AceGUI:Create("Button")
-        btn:SetText(L["VERSION_LOAD"])
-        btn:SetWidth(160)
-        btn:SetCallback("OnClick", function()
-            local E = MF:GetModule("Editor")
-            if not E then return end
-            -- Load into the editor on the live macro if it still exists,
-            -- otherwise as a new macro; the user saves explicitly.
-            local live
-            for _, m in ipairs(self:KeyedMacros(scope)) do
-                if m.key == key then live = m; break end
-            end
-            local function load() E:LoadContent(v.name, v.body, v.icon) end
-            if live then E:Open(live, nil, load) else E:OpenNew(scope == "character", nil, load) end
-            MF:Print(MF.C.green .. format(L["VERSION_RESTORED"], i) .. "|r")
-            f:Release()
-        end)
-        grp:AddChild(btn)
-        scroll:AddChild(grp)
+    local UI = MF:GetModule("UI")
+    if not self.pageRegistered then
+        self.pageRegistered = true
+        UI:RegisterPage("history", {
+            title = L["HISTORY"],
+            build = BuildVersionsPage,
+            onShow = function(page, arg) page.Fill(arg) end,
+        })
     end
-    f:Show()
+    UI:OpenPage("history", { scope = scope, key = key })
 end
 
 -- Kept for callers passing a macro (editor, /mf history)
@@ -393,22 +429,12 @@ function History:GetDeletedEntry(scope, key)
     end
 end
 
+-- The Trash lives in the main window's Trash tab
 function History:OpenTrash()
     self:ScanAll()
-    local deleted = self:GetDeleted()
-    if #deleted == 0 then
-        MF:Print(MF.C.grey .. L["TRASH_EMPTY"] .. "|r")
-        return
-    end
-
-    local f = MF.Helpers:CreateDarkFrame("|cff00ccffMacroForge|r - " .. L["TRASH"], 520, 460, "Fill")
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    f:AddChild(scroll)
-    for _, d in ipairs(deleted) do
-        scroll:AddChild(self:BuildTrashGroup(d, function() f:Release() end))
-    end
-    f:Show()
+    local UI = MF:GetModule("UI")
+    UI:Show()
+    UI:SetTab("trash")
 end
 
 function History:OnInitialize()

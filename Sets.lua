@@ -9,7 +9,6 @@ local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local AceGUI = LibStub("AceGUI-3.0")
 local Sets = {}
 
-local frame
 local MAX_LISTED_MACROS = 12
 
 ---------------------------------------------------
@@ -221,33 +220,20 @@ end
 ---------------------------------------------------
 -- Open / Toggle / Refresh
 ---------------------------------------------------
+-- Sets live in the main window's Sets tab
 function Sets:Open()
-    if frame then
-        self:Refresh()
-        return
-    end
-    frame = MF.Helpers:CreateDarkFrame("|cff00ccffMacroForge|r - " .. L["SETS"], 620, 520, "Flow")
-    frame:SetCallback("OnClose", function(w)
-        w:Release()
-        frame = nil
-    end)
-    Build(frame)
-    frame:Show()
+    local UI = MF:GetModule("UI")
+    UI:Show()
+    UI:SetTab("sets")
 end
 
 function Sets:Toggle()
-    if frame then
-        frame:Release()
-        frame = nil
-    else
-        self:Open()
-    end
+    self:Open()
 end
 
 function Sets:Refresh()
-    if not frame then return end
-    frame:ReleaseChildren()
-    Build(frame)
+    local UI = MF:GetModule("UI")
+    if UI then UI:Refresh() end
 end
 
 ---------------------------------------------------
