@@ -926,6 +926,25 @@ local function BuildHome(container)
         if S then S:OpenImport() end
     end)
 
+    -- Draft left by a reload, a crash or a disconnect: one click back to it
+    local draft = MF.db and MF.db.char and MF.db.char.draft
+    if draft then
+        local target
+        if not draft.isNew then
+            target = MF.Helpers:DraftTarget(draft, P:ReadMacros(draft.scope or "character"))
+                or (not draft.scope and MF.Helpers:DraftTarget(draft, P:ReadMacros("account")))
+        end
+        if draft.isNew or target then
+            local label = (draft.name or ""):match("^%s*(.-)%s*$")
+            if label == "" then label = MF.Helpers:ParseShowTooltip(draft.body) or L["MACRO_UNNAMED"] end
+            AddHeading(container, "|cffffff33" .. format(L["HOME_DRAFT"], label, draft.timestamp or "") .. "|r")
+            AddActionButton(container, L["HOME_DRAFT_RESUME"], 220, function()
+                local E = MF:GetModule("Editor")
+                if target then E:Open(target) else E:OpenNew(draft.perChar and true or false) end
+            end)
+        end
+    end
+
     local problems = ProblemMacros()
     if #problems > 0 then
         AddHeading(container, "|cffffff33" .. format(L["HOME_PROBLEMS"], #problems) .. "|r")

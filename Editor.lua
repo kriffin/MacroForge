@@ -709,6 +709,42 @@ local function SameBody(a, b)
     return (a or ""):gsub("%s+$", "") == (b or ""):gsub("%s+$", "")
 end
 
+-- Drops the auto-saved draft and any pending write of it
+function Editor:DropDraft()
+    if draftTimer then draftTimer:Cancel(); draftTimer = nil end
+    if MF.db and MF.db.char then MF.db.char.draft = nil end
+end
+
+-- Proposes to put a draft back into the open editor
+local function OfferDraft(draft)
+    -- The editor was just filled with the saved text: that must not
+    -- overwrite the draft while the question is on screen
+    if draftTimer then draftTimer:Cancel(); draftTimer = nil end
+    StaticPopupDialogs["MACROFORGE_DRAFT"] = {
+        text = L["DRAFT_FOUND"],
+        button1 = L["RESTORE_BTN"],
+        button2 = L["IGNORE_BTN"],
+        OnAccept = function()
+            if draft.isNew and Editor.isNew then
+                Editor.newPerChar = draft.perChar and true or false
+                editorFrame:SetStatusText(Editor.newPerChar
+                    and MF.C.cyan .. L["CHARACTER_SCOPE"] .. "|r" or MF.C.yellow .. L["ACCOUNT_SCOPE"] .. "|r")
+            end
+            nameWidget:SetText(draft.name or "")
+            bodyWidget:SetText(draft.body or "")
+            if draft.icon and iconButton then
+                Editor.selectedIcon = draft.icon
+                iconButton:SetImage(draft.icon)
+            end
+            Editor:OnChanged()
+            MF:Print(MF.C.green .. L["DRAFT_RESTORED_MSG"] .. "|r")
+        end,
+        OnCancel = function() Editor:DropDraft() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    StaticPopup_Show("MACROFORGE_DRAFT")
+end
+
 -- onOpened (optional) runs once the macro is shown: callers that fill the
 -- editor afterwards must use it, since Open can wait for the user to
 -- save/discard unsaved changes.
@@ -733,41 +769,20 @@ function Editor:Open(macro, force, onOpened)
     local scope = macro.scope == "character" and MF.C.cyan .. L["CHARACTER_SCOPE"] or MF.C.yellow .. L["ACCOUNT_SCOPE"]
     editorFrame:SetStatusText(scope .. "|r " .. MF.C.white .. dn .. "|r  #" .. (macro.index or "?"))
 
-    -- Check for auto-saved draft
+    nameWidget:SetText(macro.name or "")
+    bodyWidget:SetText(macro.body or "")
+    local iconTex = (macro.icon and macro.icon ~= 0) and macro.icon or 134400
+    if iconButton then iconButton:SetImage(iconTex) end
+    self:OnChanged()
+
+    -- Auto-saved draft left on this macro (reload, crash, disconnect)
     local draft = MF.db and MF.db.char and MF.db.char.draft
-    if draft and draft.index == macro.index and not SameBody(draft.body, macro.body) then
-        -- Propose draft restoration
-        StaticPopupDialogs["MACROFORGE_DRAFT"] = {
-            text = L["DRAFT_FOUND"],
-            button1 = L["RESTORE_BTN"],
-            button2 = L["IGNORE_BTN"],
-            OnAccept = function()
-                nameWidget:SetText(draft.name or macro.name or "")
-                bodyWidget:SetText(draft.body or "")
-                if draft.icon and iconButton then
-                    Editor.selectedIcon = draft.icon
-                    iconButton:SetImage(draft.icon)
-                end
-                Editor:OnChanged()
-                MF:Print(MF.C.green .. L["DRAFT_RESTORED_MSG"] .. "|r")
-            end,
-            OnCancel = function()
-                MF.db.char.draft = nil
-            end,
-            timeout = 0, whileDead = true, hideOnEscape = true,
-        }
-        nameWidget:SetText(macro.name or "")
-        bodyWidget:SetText(macro.body or "")
-        local iconTex = (macro.icon and macro.icon ~= 0) and macro.icon or 134400
-        if iconButton then iconButton:SetImage(iconTex) end
-        self:OnChanged()
-        StaticPopup_Show("MACROFORGE_DRAFT")
-    else
-        nameWidget:SetText(macro.name or "")
-        bodyWidget:SetText(macro.body or "")
-        local iconTex = (macro.icon and macro.icon ~= 0) and macro.icon or 134400
-        if iconButton then iconButton:SetImage(iconTex) end
-        self:OnChanged()
+    if MF.Helpers:DraftBelongsTo(draft, macro) then
+        if SameBody(draft.body, macro.body) and (draft.name or macro.name) == macro.name then
+            self:DropDraft()
+        else
+            OfferDraft(draft)
+        end
     end
 
     if testLabel then testLabel:SetText("") end
@@ -810,6 +825,9 @@ function Editor:OpenNew(perChar, force, onOpened)
 
     -- Push initial state
     PushUndo(DEFAULT_NAME, "#showtooltip\n/cast ", 134400)
+
+    local draft = MF.db and MF.db.char and MF.db.char.draft
+    if draft and draft.isNew then OfferDraft(draft) end
 
     editorFrame:Show()
     local UI = MF:GetModule("UI")
@@ -1002,19 +1020,26 @@ function Editor:OnChanged(skipUndo)
         end
     end
 
-    -- Auto-save draft (throttled 2s) — uses AceDB char namespace
+    -- Auto-save draft (throttled 2s) — uses AceDB char namespace. What it
+    -- belongs to is captured now: another macro may be open when it fires.
     if MF.db and MF.db.profile.autoSaveDraft then
         if draftTimer then draftTimer:Cancel() end
+        local cur, isNew, perChar, icon = self.cur, self.isNew, self.newPerChar, self.selectedIcon
         draftTimer = C_Timer.NewTimer(2, function()
-            local cur = Editor.cur
-            if cur and SameBody(body, cur.body) and name == cur.name and Editor.selectedIcon == cur.icon then
-                MF.db.char.draft = nil  -- nothing unsaved
+            draftTimer = nil
+            local old = MF.db.char.draft
+            if not dirty then
+                -- Back to the saved text: drop only this macro's draft
+                if old and ((isNew and old.isNew) or MF.Helpers:DraftBelongsTo(old, cur)) then
+                    MF.db.char.draft = nil
+                end
                 return
             end
             MF.db.char.draft = {
-                name = name, body = body,
-                icon = Editor.selectedIcon,
-                index = Editor.cur and Editor.cur.index or nil,
+                name = name, body = body, icon = icon,
+                isNew = isNew or nil,
+                perChar = isNew and perChar or nil,
+                scope = cur and cur.scope, key = cur and cur.name, index = cur and cur.index,
                 timestamp = date("%Y-%m-%d %H:%M:%S"),
             }
         end)
@@ -1053,9 +1078,7 @@ function Editor:Save(noReopen)
         end)
     end
 
-    -- Clear draft on save
-    if MF.db and MF.db.char then MF.db.char.draft = nil end
-    if draftTimer then draftTimer:Cancel(); draftTimer = nil end
+    self:DropDraft()
 
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
     -- Stay on the saved macro: find it again once the client has written it
@@ -1131,7 +1154,7 @@ StaticPopupDialogs["MACROFORGE_UNSAVED"] = {
     button3 = L["UNSAVED_DISCARD"],
     -- A failed save (empty name, slot limit) keeps the user on the macro
     OnAccept = function(_, proceed) if Editor:Save(true) then proceed() end end,
-    OnAlt = function(_, proceed) proceed() end,
+    OnAlt = function(_, proceed) Editor:DropDraft(); proceed() end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
@@ -1147,6 +1170,7 @@ end
 -- Revert / Clear (embedded editor: no window to close)
 ---------------------------------------------------
 function Editor:Revert()
+    self:DropDraft()
     if self.isNew or not self.cur then
         self:Clear()
         return

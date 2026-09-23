@@ -1,5 +1,14 @@
 # Changes
 
+## Unreleased
+
+- **Drafts** now follow their macro by scope and name instead of its slot
+  number: creating or renaming a macro no longer offers a draft on the wrong
+  macro. A new macro's draft is kept too - it used to be saved and never
+  offered back. The Home view shows a "Resume the draft" button.
+- A draft is no longer wiped by opening another macro first, and discarding
+  or cancelling your edits drops it.
+
 ## 7.3.0 — 2026-09-20
 
 A home view, an audit of every macro, a Test button and list filters.

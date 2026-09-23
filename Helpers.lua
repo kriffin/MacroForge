@@ -250,4 +250,23 @@ function MF.Helpers:GetSpellbookSpells()
     return self:BuildSpellbookCache()
 end
 
+-- Drafts: one unsaved edit per character. An existing macro's draft is keyed
+-- by scope + saved name, not by index: WoW sorts macros by name, so an index
+-- moves as soon as a macro is created or renamed.
+function MF.Helpers:DraftBelongsTo(draft, macro)
+    if not draft or not macro or draft.isNew then return false end
+    if draft.scope then
+        return draft.scope == macro.scope and draft.key == macro.name
+    end
+    -- Drafts saved before 7.3.1 only have the index and the edited name
+    return draft.index == macro.index and draft.name == macro.name
+end
+
+-- The saved macro a draft belongs to, or nil (new macro, or gone)
+function MF.Helpers:DraftTarget(draft, macros)
+    for _, m in ipairs(macros or {}) do
+        if self:DraftBelongsTo(draft, m) then return m end
+    end
+end
+
 MF:RegisterModule("Helpers", MF.Helpers)
