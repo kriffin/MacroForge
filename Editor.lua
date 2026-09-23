@@ -586,6 +586,63 @@ function Editor:ApplyFontSize(size)
 end
 
 ---------------------------------------------------
+-- Load content into the editor (for templates/share import)
+-- Does NOT change isNew/cur state — assumes OpenNew was called first
+---------------------------------------------------
+function Editor:LoadContent(name, body, icon)
+    if nameWidget then nameWidget:SetText(name or "") end
+    if bodyWidget then bodyWidget:SetText(body or "") end
+    if icon and iconButton then
+        self.selectedIcon = icon
+        iconButton:SetImage(icon)
+    end
+    -- Reset undo with new content
+    wipe(undoStack); wipe(redoStack)
+    lastSnapshot = nil
+    PushUndo(name or "", body or "", icon or 134400)
+    self:OnChanged()
+end
+
+---------------------------------------------------
+-- Insert text at cursor position in body
+---------------------------------------------------
+function Editor:InsertText(text)
+    if bodyWidget then
+        local eb = bodyWidget.editBox or bodyWidget.editbox
+        if eb then
+            eb:Insert(text)
+            Editor:OnChanged()
+        else
+            -- Fallback: append
+            local current = bodyWidget:GetText() or ""
+            bodyWidget:SetText(current .. text)
+            Editor:OnChanged()
+        end
+    end
+end
+
+---------------------------------------------------
+-- Shorten macro body
+---------------------------------------------------
+function Editor:Shorten()
+    if not bodyWidget then return end
+    local body = bodyWidget:GetText()
+    if not body or body == "" then return end
+
+    local An = MF:GetModule("Analyzer")
+    if An and An.ShortenMacro then
+        local shortened, saved = An:ShortenMacro(body)
+        bodyWidget:SetText(shortened)
+        self:OnChanged()
+        if saved > 0 then
+            MF:Print(MF.C.green .. format(L["SHORTENED_MSG"], saved) .. "|r")
+        else
+            MF:Print(MF.C.grey .. L["ALREADY_OPTIMIZED"] .. "|r")
+        end
+    end
+end
+
+---------------------------------------------------
 -- Copy / Export: the Share page, with what is typed in the editor
 ---------------------------------------------------
 -- name, icon, body currently in the editor, or nil when nothing is open
