@@ -33,6 +33,7 @@ local TABS = { "macros", "sets", "trash" }
 local activeTab = "macros"
 local tabHost, tabButtons, listEmptyText, btnPrimary, btnSecondary, sidebarInset, filterButton
 local statusText
+local pageDefs, pageFrames, pageStack = {}, {}, {}  -- right-pane pages (see "Pages")
 
 ---------------------------------------------------
 -- Context menu (right-click) — WoW 11.0+ API
@@ -1074,7 +1075,8 @@ end
 -- at the moment the feature matters. Seen flags: db.global.onboarding.
 -- The "?" button in the title bar lists the shortcuts and replays the tips.
 ---------------------------------------------------
-local WHATS_NEW_ID = "7.2"
+local WHATS_NEW_ID = "7.4"
+local LOGO = "Interface\\AddOns\\MacroForge\\icons\\MacroForge_logo"
 local TIP_SYSTEM = "MacroForge"
 
 local function OnboardingDB()
@@ -1121,21 +1123,87 @@ function UI:ShowTip(key)
     if frame and frame:IsShown() and TIPS[key] then TIPS[key]() end
 end
 
-StaticPopupDialogs["MACROFORGE_WHATS_NEW"] = {
-    text = L["WHATS_NEW"],
-    button1 = OKAY,
-    OnHide = function() C_Timer.After(0.2, function() UI:ShowTip("list") end) end,
-    timeout = 0,
-    whileDead = true,
-    hideOnEscape = true,
-    preferredIndex = 3,
+---------------------------------------------------
+-- What's new: a page like Blizzard's patch splash (logo, title, a grid of
+-- features with an icon each), shown once per release and from the "?" menu
+---------------------------------------------------
+local NEWS = {
+    { icon = "Interface\\Icons\\INV_Misc_Book_09",        key = "NEWS_ONE_WINDOW" },
+    { icon = "Interface\\Icons\\Spell_Nature_TimeStop",   key = "NEWS_LIVE_TEST" },
+    { icon = "Interface\\Icons\\INV_Misc_Wrench_01",      key = "NEWS_FIX" },
+    { icon = "Interface\\Icons\\INV_Scroll_03",           key = "NEWS_IMPORT" },
+    { icon = "Interface\\Icons\\INV_Misc_Note_01",        key = "NEWS_MACRO_FRAME" },
+    { icon = "Interface\\Icons\\INV_Misc_PocketWatch_01", key = "NEWS_DRAFTS" },
 }
+
+local function BuildNewsPage(page)
+    local logo = page:CreateTexture(nil, "ARTWORK")
+    logo:SetSize(96, 96)
+    logo:SetPoint("TOP", 0, -8)
+    logo:SetTexture(LOGO)
+    local title = page:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    title:SetPoint("TOP", logo, "BOTTOM", 0, -10)
+    title:SetText(format(L["NEWS_TITLE"], MF.VERSION or ""))
+    local sub = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    sub:SetPoint("TOP", title, "BOTTOM", 0, -6)
+    sub:SetText(L["NEWS_SUBTITLE"])
+
+    -- Two columns of features
+    local grid = CreateFrame("Frame", nil, page)
+    grid:SetPoint("TOPLEFT", page, "TOPLEFT", 20, -180)
+    grid:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -20, 36)
+    local cells = {}
+    for i, item in ipairs(NEWS) do
+        local cell = CreateFrame("Frame", nil, grid)
+        local icon = cell:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(40, 40)
+        icon:SetPoint("TOPLEFT")
+        icon:SetTexture(item.icon)
+        local head = cell:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        head:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, -2)
+        head:SetPoint("RIGHT", cell, "RIGHT")
+        head:SetJustifyH("LEFT")
+        head:SetText(L[item.key])
+        local body = cell:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        body:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -4)
+        body:SetPoint("RIGHT", cell, "RIGHT")
+        body:SetJustifyH("LEFT")
+        body:SetJustifyV("TOP")
+        body:SetText(L[item.key .. "_DESC"])
+        cells[i] = cell
+    end
+    local function Layout()
+        local w = grid:GetWidth()
+        local colW, rowH = (w - 30) / 2, 72
+        for i, cell in ipairs(cells) do
+            local col, row = (i - 1) % 2, math.floor((i - 1) / 2)
+            cell:ClearAllPoints()
+            cell:SetPoint("TOPLEFT", grid, "TOPLEFT", col * (colW + 30), -row * rowH)
+            cell:SetSize(colW, rowH - 8)
+        end
+    end
+    grid:SetScript("OnSizeChanged", Layout)
+    Layout()
+
+    local go = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    go:SetSize(150, 22)
+    go:SetPoint("BOTTOMRIGHT", 0, 0)
+    go:SetText(L["NEWS_GO"])
+    go:SetScript("OnClick", function() UI:ClosePage() end)
+end
+
+function UI:ShowNews()
+    if not pageDefs.news then
+        self:RegisterPage("news", { title = L["NEWS_PAGE"], build = BuildNewsPage })
+    end
+    self:OpenPage("news")
+end
 
 function OnMainShown()
     local db = OnboardingDB()
     if db.whatsNew ~= WHATS_NEW_ID then
         db.whatsNew = WHATS_NEW_ID
-        StaticPopup_Show("MACROFORGE_WHATS_NEW")
+        UI:ShowNews()
     else
         UI:ShowTip("list")
     end
@@ -1162,11 +1230,17 @@ function CreateHelpButton()
             GameTooltip:AddLine(L[line], 1, 1, 1, true)
         end
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(L["HELP_REPLAY_TIPS"], 0.6, 0.8, 1, true)
+        GameTooltip:AddLine(L["HELP_CLICK_MENU"], 0.6, 0.8, 1, true)
         GameTooltip:Show()
     end)
     help:SetScript("OnLeave", GameTooltip_Hide)
-    help:SetScript("OnClick", function() UI:ResetTips() end)
+    help:SetScript("OnClick", function(self)
+        GameTooltip:Hide()
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            root:CreateButton(L["NEWS_PAGE"], function() UI:ShowNews() end)
+            root:CreateButton(L["HELP_REPLAY_TIPS_BTN"], function() UI:ResetTips() end)
+        end)
+    end)
 end
 
 ---------------------------------------------------
@@ -1219,7 +1293,6 @@ end
 -- what was there, unsaved text included. The title shows where you are.
 -- A page def: { title = string, build = function(page), onShow = function(page, arg) }
 ---------------------------------------------------
-local pageDefs, pageFrames, pageStack = {}, {}, {}
 
 function UI:RegisterPage(key, def)
     pageDefs[key] = def
