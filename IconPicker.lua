@@ -1,171 +1,172 @@
 ---------------------------------------------------
 -- MacroForge — Icon Picker
--- Grid-based icon selector with search
+-- Editor drawer, like the icon picker next to Blizzard's macro window: the
+-- "?" icon and the icons of the macro's own spells on top, then every
+-- macro icon in a scrolling grid. A click picks the icon.
 ---------------------------------------------------
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local IP = {}
-local AceGUI
 
-local function G()
-    if not AceGUI then AceGUI = LibStub("AceGUI-3.0") end
-    return AceGUI
-end
+local ICON_SIZE, GAP = 36, 4
+local MAX_PER_ROW = 16
+local allIcons
+local onPick
 
-local pickerFrame, iconScroll, searchBox
-local allIcons = {}
-local iconsBuilt = false
-local onSelectCallback = nil
-
----------------------------------------------------
--- Build icon list (cached)
----------------------------------------------------
-local function BuildIconList()
-    if iconsBuilt then return end
-    iconsBuilt = true
-    wipe(allIcons)
-
-    -- Question mark icon always first
-    table.insert(allIcons, { id = 134400, name = "INV_Misc_QuestionMark" })
-
-    -- GetMacroIcons and GetLooseMacroIcons
-    local macroIcons = {}
-    if GetMacroIcons then GetMacroIcons(macroIcons) end
-    if GetLooseMacroIcons then GetLooseMacroIcons(macroIcons) end
-
-    for _, icon in ipairs(macroIcons) do
-        if type(icon) == "number" then
-            table.insert(allIcons, { id = icon, name = tostring(icon) })
-        elseif type(icon) == "string" then
-            table.insert(allIcons, { id = icon, name = icon })
+-- Every icon the macro UI offers, built once
+local function AllIcons()
+    if allIcons then return allIcons end
+    allIcons = {}
+    local list = {}
+    if GetMacroIcons then GetMacroIcons(list) end
+    if GetMacroItemIcons then GetMacroItemIcons(list) end
+    if GetLooseMacroIcons then GetLooseMacroIcons(list) end
+    local seen = {}
+    for _, icon in ipairs(list) do
+        if not seen[icon] then
+            seen[icon] = true
+            table.insert(allIcons, icon)
         end
     end
-
-    -- Limit to first 1000 for performance
-    if #allIcons > 1000 then
-        local trimmed = {}
-        for i = 1, 1000 do trimmed[i] = allIcons[i] end
-        allIcons = trimmed
-    end
+    return allIcons
 end
 
----------------------------------------------------
--- Populate icon grid (flow of icon widgets)
----------------------------------------------------
-local function PopulateIcons(scroll, query)
-    scroll:ReleaseChildren()
-    local gui = G()
-    local q = (query or ""):lower()
-    local count = 0
-    local maxIcons = 200
-
-    for _, iconData in ipairs(allIcons) do
-        if count >= maxIcons then break end
-
-        local nameMatch = true
-        if q ~= "" then
-            local name = type(iconData.name) == "string" and iconData.name:lower() or tostring(iconData.id)
-            nameMatch = name:find(q, 1, true)
+-- "?" (dynamic: WoW shows the icon of the spell being cast) + the spells
+-- and items named in the code
+local function MacroIcons()
+    local icons, seen = { MF.Helpers.DYNAMIC_ICON }, { [MF.Helpers.DYNAMIC_ICON] = true }
+    local E = MF:GetModule("Editor")
+    local _, _, body = E:GetContent()
+    for _, name in ipairs(MF.Helpers:ParseSpells(body)) do
+        name = name:match("^([^;,]+)"):match("^%s*(.-)%s*$")
+        local tex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(name)
+        if not tex and C_Item and C_Item.GetItemInfoInstant then
+            tex = select(5, C_Item.GetItemInfoInstant(name))
         end
-
-        if nameMatch then
-            local iconBtn = gui:Create("Icon")
-            iconBtn:SetImage(iconData.id)
-            iconBtn:SetImageSize(32, 32)
-            iconBtn:SetWidth(40)
-            iconBtn:SetHeight(40)
-            iconBtn:SetCallback("OnClick", function()
-                if onSelectCallback then
-                    onSelectCallback(iconData.id)
-                end
-                PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
-                if pickerFrame then pickerFrame:Hide() end
-            end)
-            iconBtn:SetCallback("OnEnter", function(w)
-                GameTooltip:SetOwner(w.frame, "ANCHOR_RIGHT")
-                local displayName = type(iconData.name) == "string" and iconData.name or format(L["ICON_TOOLTIP_ID"], tostring(iconData.id))
-                GameTooltip:AddLine(displayName, 1, 1, 1)
-                GameTooltip:AddLine("|cff00ccff" .. L["ICON_CLICK_SELECT"] .. "|r")
-                GameTooltip:Show()
-            end)
-            iconBtn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-
-            scroll:AddChild(iconBtn)
-            count = count + 1
+        if tex and not seen[tex] then
+            seen[tex] = true
+            table.insert(icons, tex)
         end
     end
-
-    if count == 0 then
-        local lbl = gui:Create("Label")
-        lbl:SetFullWidth(true)
-        lbl:SetText(MF.C.grey .. L["ICON_NONE_FOUND"] .. "|r")
-        scroll:AddChild(lbl)
-    end
+    return icons
 end
 
----------------------------------------------------
--- Create picker frame
----------------------------------------------------
-local function CreatePicker()
-    if pickerFrame then return end
-    local gui = G()
+local function Pick(icon)
+    PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
+    if onPick then onPick(icon) end
+    MF:GetModule("Editor"):CloseDrawer()
+end
 
-    BuildIconList()
-
-    local f = gui:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["ICON_PICKER_TITLE"])
-    f:SetWidth(480)
-    f:SetHeight(420)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Hide() end)
-    f:EnableResize(true)
-    pickerFrame = f
-
-    -- Dark BG
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    -- Search
-    searchBox = gui:Create("EditBox")
-    searchBox:SetLabel("|cffffff33" .. L["ICON_SEARCH"] .. "|r")
-    searchBox:SetFullWidth(true)
-    searchBox:DisableButton(true)
-    searchBox:SetCallback("OnTextChanged", function(w)
-        if iconScroll then PopulateIcons(iconScroll, w:GetText()) end
+local function IconButton(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(ICON_SIZE, ICON_SIZE)
+    b.tex = b:CreateTexture(nil, "ARTWORK")
+    b.tex:SetAllPoints()
+    b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    b:SetScript("OnClick", function(self) Pick(self.icon) end)
+    b:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(self.icon == MF.Helpers.DYNAMIC_ICON and L["ICON_DYNAMIC"]
+            or format(L["ICON_TOOLTIP_ID"], tostring(self.icon)), 1, 1, 1, true)
+        GameTooltip:Show()
     end)
-    f:AddChild(searchBox)
-
-    -- Icon grid scroll
-    iconScroll = gui:Create("ScrollFrame")
-    iconScroll:SetFullWidth(true)
-    iconScroll:SetFullHeight(true)
-    iconScroll:SetLayout("Flow")
-    f:AddChild(iconScroll)
-
-    PopulateIcons(iconScroll, "")
-    f:Hide()
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    return b
 end
 
----------------------------------------------------
--- API
----------------------------------------------------
-function IP:Open(callback)
-    onSelectCallback = callback
-    CreatePicker()
-    if searchBox then searchBox:SetText("") end
-    if iconScroll then PopulateIcons(iconScroll, "") end
-    pickerFrame:Show()
-    if searchBox then searchBox:SetFocus() end
-end
+local function BuildDrawer(body)
+    local W = MF.Widgets
+    local mine = W:Text(body, "GameFontNormalSmall", L["ICON_FROM_MACRO"])
+    mine:SetPoint("TOPLEFT", 4, 0)
+    local top = CreateFrame("Frame", nil, body)
+    top:SetPoint("TOPLEFT", mine, "BOTTOMLEFT", 0, -4)
+    top:SetPoint("RIGHT", body, "RIGHT")
+    top:SetHeight(ICON_SIZE)
+    top.buttons = {}
+    local all = W:Text(body, "GameFontNormalSmall", L["ICON_ALL"])
+    all:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 0, -10)
 
-function IP:Toggle(callback)
-    if pickerFrame and pickerFrame.frame:IsShown() then
-        pickerFrame:Hide()
-    else
-        self:Open(callback)
+    local inset = CreateFrame("Frame", nil, body, "InsetFrameTemplate")
+    inset:SetPoint("TOPLEFT", all, "BOTTOMLEFT", -4, -4)
+    inset:SetPoint("BOTTOMRIGHT")
+    local scrollBox = CreateFrame("Frame", nil, inset, "WowScrollBoxList")
+    scrollBox:SetPoint("TOPLEFT", 4, -4)
+    scrollBox:SetPoint("BOTTOMRIGHT", -18, 4)
+    local scrollBar = CreateFrame("EventFrame", nil, inset, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, -2)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 2)
+
+    -- One element = one row of icons, as many as the width allows
+    local view = CreateScrollBoxListLinearView()
+    view:SetElementExtent(ICON_SIZE + GAP)
+    view:SetElementInitializer("Frame", function(row, icons)
+        row.buttons = row.buttons or {}
+        for i = 1, MAX_PER_ROW do
+            local b = row.buttons[i]
+            if icons[i] and not b then
+                b = IconButton(row)
+                b:SetPoint("LEFT", (i - 1) * (ICON_SIZE + GAP), 0)
+                row.buttons[i] = b
+            end
+            if b then
+                b.icon = icons[i]
+                b.tex:SetTexture(icons[i])
+                b:SetShown(icons[i] ~= nil)
+            end
+        end
+    end)
+    ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
+
+    local perRow
+    local Fill
+    function Fill()
+        -- Laid out on the next frame: the width is not known yet
+        if not body:IsVisible() then return end
+        if scrollBox:GetWidth() < ICON_SIZE then return C_Timer.After(0, Fill) end
+        local n = math.max(1, math.min(MAX_PER_ROW, math.floor((scrollBox:GetWidth() + GAP) / (ICON_SIZE + GAP))))
+        -- Top row: the macro's own icons
+        local mineIcons = MacroIcons()
+        for i = 1, math.max(#mineIcons, #top.buttons) do
+            local b = top.buttons[i]
+            if mineIcons[i] and i <= n and not b then
+                b = IconButton(top)
+                b:SetPoint("LEFT", (i - 1) * (ICON_SIZE + GAP), 0)
+                top.buttons[i] = b
+            end
+            if b then
+                b.icon = mineIcons[i]
+                b.tex:SetTexture(mineIcons[i])
+                b:SetShown(mineIcons[i] ~= nil and i <= n)
+            end
+        end
+        if n == perRow then return end
+        perRow = n
+        local rows, row = {}, nil
+        for i, icon in ipairs(AllIcons()) do
+            if (i - 1) % n == 0 then row = {}; table.insert(rows, row) end
+            table.insert(row, icon)
+        end
+        scrollBox:SetDataProvider(CreateDataProvider(rows))
     end
+    scrollBox:HookScript("OnSizeChanged", function() if body:IsVisible() then Fill() end end)
+    body.Fill = Fill
 end
+
+local registered
+-- callback(icon) receives the picked icon
+function IP:Toggle(callback)
+    onPick = callback
+    local E = MF:GetModule("Editor")
+    if not registered then
+        registered = true
+        E:RegisterDrawer("icons", {
+            title = L["ICON_PICKER_TITLE"],
+            build = BuildDrawer,
+            onShow = function(body) body.Fill() end,
+        })
+    end
+    E:ToggleDrawer("icons")
+end
+IP.Open = IP.Toggle
 
 MF:RegisterModule("IconPicker", IP)

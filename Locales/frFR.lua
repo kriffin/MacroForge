@@ -341,6 +341,13 @@ L["PALETTE_CATEGORY"] = "Catégorie : %s"
 L["PALETTE_CLICK_INSERT"] = "Clic pour insérer"
 L["PALETTE_TITLE_SPELLS"] = "Sorts & Objets"
 L["PALETTE_TITLE_COMMANDS"] = "Commandes Slash"
+L["OPEN_MACRO_FIRST_TOOL"] = "Ouvrez ou créez d'abord une macro."
+L["PALETTE_HINT_SPELLS"] = "Cliquez un sort pour l'insérer au curseur. Entrée insère le premier."
+L["PALETTE_HINT_COMMANDS"] = "Cliquez une commande pour l'insérer au curseur. Entrée insère la première."
+L["PALETTE_EMPTY"] = "Aucun résultat."
+L["ICON_DYNAMIC"] = "? : dynamique, affiche l'icône du sort lancé par la macro"
+L["ICON_FROM_MACRO"] = "Cette macro"
+L["ICON_ALL"] = "Toutes les icônes"
 L["INSERT_CMD_BTN"] = "+ Insérer commande"
 
 -- Sets

@@ -1295,7 +1295,8 @@ function UI:HandleKey(key)
         return true
     end
     if GetCurrentKeyBoardFocus() then return false end
-    if key == "ESCAPE" and self:CurrentPage() then self:ClosePage()
+    if key == "ESCAPE" and E:DrawerOpen() and not self:CurrentPage() then E:CloseDrawer()
+    elseif key == "ESCAPE" and self:CurrentPage() then self:ClosePage()
     elseif key == "UP" then self:SelectRelative(-1)
     elseif key == "DOWN" then self:SelectRelative(1)
     elseif key == "DELETE" and E.cur then self:ConfirmDelete(E.cur)

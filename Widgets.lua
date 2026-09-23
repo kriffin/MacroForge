@@ -87,7 +87,8 @@ end
 
 -- List in an inset (WowScrollBoxList + MinimalScrollBar), one row per item:
 -- icon, name, sub-line, badge. opts: { width, icon(row), name(row),
--- sub(row), badge(row), onSelect(row), empty = text }
+-- sub(row), badge(row), onSelect(row), empty = text }. With onClick(row)
+-- instead of onSelect the list is an action list: nothing stays selected.
 function W:List(parent, opts)
     local list = { selected = nil }
     local inset = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
@@ -139,8 +140,12 @@ function W:List(parent, opts)
         btn.mfSelected:SetShown(row == list.selected)
         btn:SetScript("OnClick", function()
             PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
-            Select(row)
+            if opts.onClick then opts.onClick(row) else Select(row) end
         end)
+        if opts.tooltip then
+            btn:SetScript("OnEnter", function(owner) opts.tooltip(owner, row) end)
+            btn:SetScript("OnLeave", GameTooltip_Hide)
+        end
     end)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
@@ -151,7 +156,7 @@ function W:List(parent, opts)
         for _, r in ipairs(rows) do
             if list.selected and (r == list.selected or (same and same(r, list.selected))) then keep = r end
         end
-        list.selected = keep or rows[1]
+        list.selected = not opts.onClick and (keep or rows[1]) or nil
         emptyText:SetShown(#rows == 0)
         scrollBox:SetDataProvider(CreateDataProvider(rows), ScrollBoxConstants.RetainScrollPosition)
         if opts.onSelect then opts.onSelect(list.selected) end

@@ -124,16 +124,13 @@ local function CreateToolbar(pane)
     end
 
     TextButton(L["TOOLBAR_SPELL"], L["INSERT_SPELL_BTN"], L["TOOL_SPELL_DESC"], 84, function()
-        local CP = MF:GetModule("CommandPalette")
-        if CP then CP:OpenSpells() end
+        MF:GetModule("CommandPalette"):Toggle("spells")
     end)
     TextButton(L["TOOLBAR_CMD"], L["INSERT_CMD_BTN"], L["TOOL_CMD_DESC"], 104, function()
-        local CP = MF:GetModule("CommandPalette")
-        if CP then CP:OpenCommands() end
+        MF:GetModule("CommandPalette"):Toggle("commands")
     end)
     TextButton(L["TOOLBAR_COND"], L["BUILDER"], L["TOOLS_BUILDER_DESC"], 104, function()
-        local B = MF:GetModule("Builder")
-        if B then B:Toggle() end
+        MF:GetModule("Builder"):Toggle()
     end)
     TextButton(L["SHORTEN_BTN"], L["SHORTEN_BTN"], L["TOOL_SHORTEN_DESC"], 100, function()
         Editor:Shorten()
@@ -278,14 +275,11 @@ local function CreateEditor()
     iconButton:SetWidth(36)
     iconButton:SetHeight(36)
     iconButton:SetCallback("OnClick", function()
-        local IP = MF:GetModule("IconPicker")
-        if IP then
-            IP:Open(function(iconId)
-                Editor.selectedIcon = iconId
-                iconButton:SetImage(iconId)
-                Editor:OnChanged()
-            end)
-        end
+        MF:GetModule("IconPicker"):Toggle(function(iconId)
+            Editor.selectedIcon = iconId
+            iconButton:SetImage(iconId)
+            Editor:OnChanged()
+        end)
     end)
     nameRow:AddChild(iconButton)
 
@@ -320,6 +314,12 @@ local function CreateEditor()
     rightCol:SetLayout("List")
     rightCol.alignoffset = 0
     columns:AddChild(rightCol)
+    -- The drawer takes this column's place; AceGUI layouts re-show their
+    -- children, so keep it hidden while a drawer is open
+    Editor.analysisColumn = rightCol.frame
+    rightCol.frame:HookScript("OnShow", function(col)
+        if Editor:DrawerOpen() then col:Hide() end
+    end)
 
     -- Body (the label carries the live n/255 counter)
     bodyWidget = gui:Create("MultiLineEditBox")
@@ -492,6 +492,79 @@ local function CreateEditor()
     if bodyEB then bodyEB:HookScript("OnKeyDown", ForwardCtrl) end
 
     editorFrame:Hide()
+end
+
+---------------------------------------------------
+-- Drawer: the tools used while typing (spells, commands, conditions,
+-- icons) open in place of the analysis column, next to the code, the way
+-- Blizzard's macro window puts its icon picker beside the macro. One at a
+-- time; its toolbar button, the close button or Esc brings the analysis
+-- back. A drawer def: { title, build = function(body), onShow = function(body, arg) }
+---------------------------------------------------
+local drawer, drawerKey
+local drawerDefs, drawerBodies = {}, {}
+
+function Editor:RegisterDrawer(key, def)
+    drawerDefs[key] = def
+end
+
+function Editor:DrawerOpen()
+    return drawer ~= nil and drawer:IsShown()
+end
+
+local function CreateDrawer()
+    if drawer then return end
+    local host = editorRoot.frame
+    drawer = CreateFrame("Frame", nil, host, "InsetFrameTemplate")
+    drawer:SetPoint("TOPRIGHT", host, "TOPRIGHT", 0, -46)
+    drawer:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 0, 0)
+    drawer:SetFrameLevel(host:GetFrameLevel() + 50)
+    drawer:EnableMouse(true)
+    local function Fit() drawer:SetWidth(math.max(260, math.floor(host:GetWidth() * 0.39))) end
+    host:HookScript("OnSizeChanged", Fit)
+    Fit()
+    drawer.title = drawer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    drawer.title:SetPoint("TOPLEFT", 10, -9)
+    local close = CreateFrame("Button", nil, drawer, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", 0, 0)
+    close:SetScript("OnClick", function() Editor:CloseDrawer() end)
+    drawer:SetScript("OnHide", function()
+        if Editor.analysisColumn then Editor.analysisColumn:Show() end
+    end)
+    drawer:Hide()
+end
+
+function Editor:OpenDrawer(key, arg)
+    if not (self.cur or self.isNew) or not editorRoot then
+        return MF:Notify(MF.C.yellow .. L["OPEN_MACRO_FIRST_TOOL"] .. "|r")
+    end
+    local def = assert(drawerDefs[key], key)
+    MF:GetModule("UI"):Show()
+    CreateDrawer()
+    if not drawerBodies[key] then
+        local body = CreateFrame("Frame", nil, drawer)
+        body:SetPoint("TOPLEFT", 8, -30)
+        body:SetPoint("BOTTOMRIGHT", -6, 6)
+        def.build(body)
+        drawerBodies[key] = body
+    end
+    for k, body in pairs(drawerBodies) do body:SetShown(k == key) end
+    drawerKey = key
+    drawer.title:SetText(def.title)
+    drawer:Show()
+    if self.analysisColumn then self.analysisColumn:Hide() end
+    if def.onShow then def.onShow(drawerBodies[key], arg) end
+end
+
+function Editor:CloseDrawer()
+    if drawer then drawer:Hide() end
+    drawerKey = nil
+end
+
+-- A toolbar button: opens its drawer, or closes it when it is the one open
+function Editor:ToggleDrawer(key, arg)
+    if self:DrawerOpen() and drawerKey == key then return self:CloseDrawer() end
+    self:OpenDrawer(key, arg)
 end
 
 ---------------------------------------------------
@@ -1122,6 +1195,7 @@ function Editor:Clear()
     self.cur, self.isNew, self.baseline, self.wasDirty = nil, false, nil, false
     MF.editingIndex = nil
     self:StopTest()
+    self:CloseDrawer()
     if draftTimer then draftTimer:Cancel(); draftTimer = nil end
     if undoTimer then undoTimer:Cancel(); undoTimer = nil end
     if editorFrame then editorFrame:Hide() end

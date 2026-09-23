@@ -5,14 +5,6 @@
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local Builder = {}
-local AceGUI
-
-local function G()
-    if not AceGUI then AceGUI = LibStub("AceGUI-3.0") end
-    return AceGUI
-end
-
-local builderFrame
 local state = {}
 
 ---------------------------------------------------
@@ -122,18 +114,6 @@ local function BuildCondString()
 end
 
 ---------------------------------------------------
--- Build condition dropdown list/order for AceGUI
----------------------------------------------------
-local function ToDropdownList(tbl)
-    local list, order = {}, {}
-    for _, entry in ipairs(tbl) do
-        list[entry.value] = entry.label
-        table.insert(order, entry.value)
-    end
-    return list, order
-end
-
----------------------------------------------------
 -- Find condition entry by value
 ---------------------------------------------------
 local function FindCondEntry(val)
@@ -143,274 +123,149 @@ local function FindCondEntry(val)
     return nil
 end
 
----------------------------------------------------
--- Create Builder Frame
----------------------------------------------------
-local function CreateBuilderFrame()
-    if builderFrame then return end
-    local gui = G()
+local function LabelOf(tbl, value)
+    for _, e in ipairs(tbl) do
+        if e.value == value then return e.label end
+    end
+    return value
+end
 
-    local f = gui:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["BUILDER_TITLE"])
-    f:SetWidth(600)
-    f:SetHeight(500)
-    f:SetLayout("Fill")
-    f:SetCallback("OnClose", function(w) w:Hide() end)
-    f:EnableResize(false)
-    builderFrame = f
+-- Choices of an argument with a fixed list, or nil when it is typed
+local function ArgChoices(argType)
+    if argType == "mod" then return MOD_KEYS end
+    if argType == "btn" then return BUTTONS end
+    if argType == "group" then
+        return { { value = "", label = L["BUILDER_ANY"] }, { value = "party", label = "party" }, { value = "raid", label = "raid" } }
+    end
+    local max = argType == "num4" and 4 or argType == "num7" and 7
+    if max then
+        local t = {}
+        for n = (argType == "num7" and 0 or 1), max do table.insert(t, { value = tostring(n), label = tostring(n) }) end
+        return t
+    end
+end
 
-    -- Dark BG
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    local scroll = gui:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    f:AddChild(scroll)
-
-    -- Heading
-    local hd = gui:Create("Heading")
-    hd:SetFullWidth(true)
-    hd:SetText("|cffffff33" .. L["BUILDER_HEADING"] .. "|r")
-    scroll:AddChild(hd)
-
-    -- Target dropdown
-    local targetList, targetOrder = ToDropdownList(TARGETS)
-    local ddTarget = gui:Create("Dropdown")
-    ddTarget:SetLabel(L["BUILDER_TARGET_LABEL"])
-    ddTarget:SetFullWidth(true)
-    ddTarget:SetList(targetList, targetOrder)
-    ddTarget:SetValue("")
-    ddTarget:SetCallback("OnValueChanged", function(_, _, val)
-        state.target = val
-        Builder:UpdatePreview()
+-- A button opening a radio menu over entries { value, label }
+local function ChoiceButton(parent, width, getEntries, getValue, setValue)
+    local b = MF.Widgets:Button(parent, "", width)
+    b:SetScript("OnClick", function(self)
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            if root.SetScrollMode then root:SetScrollMode(360) end
+            for _, e in ipairs(getEntries()) do
+                root:CreateRadio(e.label, function() return getValue() == e.value end,
+                    function() setValue(e.value) end)
+            end
+        end)
     end)
-    scroll:AddChild(ddTarget)
+    return b
+end
 
-    -- Condition rows (5 slots)
-    local condList, condOrder = ToDropdownList(CONDITIONS)
-    local modList, modOrder = ToDropdownList(MOD_KEYS)
+---------------------------------------------------
+-- Drawer (editor): target, up to 5 conditions, live preview, Insert
+---------------------------------------------------
+local SLOTS = 5
 
-    local argWidgets = {}
+local function BuildDrawer(body)
+    local W = MF.Widgets
+    local rows = {}
+    local desc, preview
 
-    for i = 1, 5 do
-        local grp = gui:Create("SimpleGroup")
-        grp:SetFullWidth(true)
-        grp:SetLayout("Flow")
-
-        local dd = gui:Create("Dropdown")
-        dd:SetLabel(i == 1 and "|cffffff33" .. L["BUILDER_CONDITIONS_LABEL"] .. "|r" or "")
-        dd:SetWidth(300)
-        dd:SetList(condList, condOrder)
-        dd:SetValue("")
-
-        -- Arg widget (hidden by default)
-        local argDD = gui:Create("Dropdown")
-        argDD:SetWidth(180)
-        argDD:SetList(modList, modOrder)
-        argDD:SetValue("")
-        argDD.frame:Hide()
-
-        local argEB = gui:Create("EditBox")
-        argEB:SetWidth(180)
-        argEB:SetLabel("")
-        argEB:DisableButton(true)
-        argEB.frame:Hide()
-
-        argWidgets[i] = { dd = argDD, eb = argEB }
-
-        -- Description label for this condition
-        local descLbl = gui:Create("Label")
-        descLbl:SetFullWidth(true)
-        descLbl:SetFontObject(GameFontNormalSmall)
-        descLbl:SetText("")
-        descLbl.frame:Hide()
-
-        dd:SetCallback("OnValueChanged", function(_, _, val)
-            state["cond" .. i] = val
-            state["arg" .. i] = ""
-            -- Show/hide arg widget
-            local entry = FindCondEntry(val)
-            argDD.frame:Hide()
-            argEB.frame:Hide()
-            argDD:SetValue("")
-            argEB:SetText("")
-
-            -- Update description
-            if entry and entry.desc and val ~= "" then
-                descLbl:SetText(MF.C.grey .. entry.desc .. "|r")
-                descLbl.frame:Show()
-            else
-                descLbl:SetText("")
-                descLbl.frame:Hide()
-            end
-
-            if entry and entry.hasArg then
-                if entry.argType == "mod" then
-                    argDD:SetList(modList, modOrder)
-                    argDD:SetValue("")
-                    argDD.frame:Show()
-                elseif entry.argType == "btn" then
-                    local bList, bOrder = ToDropdownList(BUTTONS)
-                    argDD:SetList(bList, bOrder)
-                    argDD:SetValue("")
-                    argDD.frame:Show()
-                elseif entry.argType == "group" then
-                    argDD:SetList({ [""] = L["BUILDER_ANY"], party = "party", raid = "raid" }, { "", "party", "raid" })
-                    argDD:SetValue("")
-                    argDD.frame:Show()
-                elseif entry.argType == "num4" then
-                    local l, o = {}, {}
-                    for n = 1, 4 do l[tostring(n)] = tostring(n); table.insert(o, tostring(n)) end
-                    argDD:SetList(l, o)
-                    argDD:SetValue("")
-                    argDD.frame:Show()
-                elseif entry.argType == "num7" then
-                    local l, o = {}, {}
-                    for n = 0, 7 do l[tostring(n)] = tostring(n); table.insert(o, tostring(n)) end
-                    argDD:SetList(l, o)
-                    argDD:SetValue("")
-                    argDD.frame:Show()
-                elseif entry.argType == "numslash" then
-                    argEB:SetLabel(L["BUILDER_ARG_TIERCOL"])
-                    argEB.frame:Show()
-                else -- text
-                    argEB:SetLabel(L["BUILDER_ARG_VALUE"])
-                    argEB.frame:Show()
-                end
-            end
-            Builder:UpdatePreview()
-        end)
-
-        argDD:SetCallback("OnValueChanged", function(_, _, val)
-            state["arg" .. i] = val
-            Builder:UpdatePreview()
-        end)
-
-        argEB:SetCallback("OnTextChanged", function(w)
-            state["arg" .. i] = w:GetText()
-            Builder:UpdatePreview()
-        end)
-
-        grp:AddChild(dd)
-        grp:AddChild(argDD)
-        grp:AddChild(argEB)
-        scroll:AddChild(grp)
-        scroll:AddChild(descLbl)
+    local function Update()
+        for i, row in ipairs(rows) do
+            local entry = FindCondEntry(state["cond" .. i] or "")
+            row.cond:SetText(entry and entry.value ~= "" and entry.label or L["BUILDER_NONE"])
+            local choices = entry and entry.hasArg and ArgChoices(entry.argType)
+            row.argButton:SetShown(choices ~= nil)
+            row.argInput:SetShown(entry ~= nil and entry.hasArg and choices == nil)
+            if choices then row.argButton:SetText(LabelOf(choices, state["arg" .. i] or "")) end
+        end
+        body.target:SetText(LabelOf(TARGETS, state.target or ""))
+        local cond = BuildCondString()
+        local An = MF:GetModule("Analyzer")
+        preview:SetText(cond == "" and (MF.C.grey .. L["BUILDER_EMPTY"] .. "|r")
+            or (An and An:ColorizeLine("/cast " .. cond .. " " .. L["BUILDER_PREVIEW_SPELL"]) or cond))
     end
 
-    -- Separator
-    local sep = gui:Create("Heading")
-    sep:SetFullWidth(true)
-    sep:SetText("|cffffff33" .. L["BUILDER_PREVIEW"] .. "|r")
-    scroll:AddChild(sep)
+    local targetLabel = W:Text(body, "GameFontNormal", L["BUILDER_TARGET_LABEL"])
+    targetLabel:SetPoint("TOPLEFT", 4, -2)
+    body.target = ChoiceButton(body, 160, function() return TARGETS end,
+        function() return state.target or "" end,
+        function(v) state.target = v; Update() end)
+    body.target:SetPoint("TOPLEFT", targetLabel, "BOTTOMLEFT", 0, -4)
 
-    -- Preview label
-    local preview = gui:Create("Label")
-    preview:SetFullWidth(true)
-    preview:SetFontObject(GameFontHighlightLarge)
-    preview:SetText(MF.C.grey .. L["BUILDER_EMPTY"] .. "|r")
-    scroll:AddChild(preview)
-    Builder.previewLabel = preview
+    local condLabel = W:Text(body, "GameFontNormal", L["BUILDER_CONDITIONS_LABEL"])
+    condLabel:SetPoint("TOPLEFT", body.target, "BOTTOMLEFT", 0, -12)
+    for i = 1, SLOTS do
+        local row = {}
+        row.cond = ChoiceButton(body, 150, function() return CONDITIONS end,
+            function() return state["cond" .. i] or "" end,
+            function(v)
+                state["cond" .. i], state["arg" .. i] = v, ""
+                rows[i].argInput:SetText("")
+                local entry = FindCondEntry(v)
+                desc:SetText(entry and entry.value ~= "" and (MF.C.grey .. entry.desc .. "|r") or "")
+                Update()
+            end)
+        row.cond:SetPoint("TOPLEFT", i == 1 and condLabel or rows[i - 1].cond, "BOTTOMLEFT", 0, i == 1 and -4 or -4)
+        row.argButton = ChoiceButton(body, 100, function()
+                local entry = FindCondEntry(state["cond" .. i] or "")
+                return entry and ArgChoices(entry.argType) or {}
+            end,
+            function() return state["arg" .. i] or "" end,
+            function(v) state["arg" .. i] = v; Update() end)
+        row.argButton:SetPoint("LEFT", row.cond, "RIGHT", 6, 0)
+        row.argInput = W:Input(body, 94)
+        row.argInput:SetPoint("LEFT", row.cond, "RIGHT", 12, 0)
+        row.argInput:SetScript("OnTextChanged", function(box, user)
+            if user then state["arg" .. i] = box:GetText(); Update() end
+        end)
+        rows[i] = row
+    end
 
-    -- Buttons
-    local btnGrp = gui:Create("SimpleGroup")
-    btnGrp:SetFullWidth(true)
-    btnGrp:SetLayout("Flow")
+    desc = W:Text(body, "GameFontHighlightSmall")
+    desc:SetPoint("TOPLEFT", rows[SLOTS].cond, "BOTTOMLEFT", 0, -8)
+    desc:SetPoint("RIGHT", body, "RIGHT", -4, 0)
+    local pvLabel = W:Text(body, "GameFontNormal", L["BUILDER_PREVIEW"])
+    pvLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -12)
+    preview = W:Text(body, "GameFontHighlight")
+    preview:SetPoint("TOPLEFT", pvLabel, "BOTTOMLEFT", 0, -6)
+    preview:SetPoint("RIGHT", body, "RIGHT", -4, 0)
 
-    local btnInsert = gui:Create("Button")
-    btnInsert:SetText(L["BUILDER_INSERT"])
-    btnInsert:SetWidth(200)
-    btnInsert:SetCallback("OnClick", function()
+    local insert = W:Button(body, L["BUILDER_INSERT"], 150, function()
         local cond = BuildCondString()
-        if cond ~= "" then
-            Builder:InsertToEditor(cond)
-            PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
-        end
+        if cond == "" then return end
+        PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
+        local E = MF:GetModule("Editor")
+        E:InsertText(cond .. " ")
+        E:FocusBody()
     end)
-    btnGrp:AddChild(btnInsert)
-
-    local btnCopy = gui:Create("Button")
-    btnCopy:SetText(L["COPY"])
-    btnCopy:SetWidth(100)
-    btnCopy:SetCallback("OnClick", function()
-        local cond = BuildCondString()
-        if cond ~= "" then
-            -- No clipboard in WoW, print it
-            MF.Helpers:Print(MF.C.cyan .. L["BUILDER_COPY_PRINT"] .. " " .. MF.C.white .. cond .. MF.C.r)
-        end
+    insert:SetPoint("BOTTOMLEFT", 2, 2)
+    local reset = W:Button(body, L["RESET"], 90, function()
+        wipe(state)
+        for _, row in ipairs(rows) do row.argInput:SetText("") end
+        desc:SetText("")
+        Update()
     end)
-    btnGrp:AddChild(btnCopy)
-
-    local btnReset = gui:Create("Button")
-    btnReset:SetText(L["RESET"])
-    btnReset:SetWidth(80)
-    btnReset:SetCallback("OnClick", function()
-        Builder:ResetState()
-    end)
-    btnGrp:AddChild(btnReset)
-
-    scroll:AddChild(btnGrp)
-    f:Hide()
+    reset:SetPoint("LEFT", insert, "RIGHT", 6, 0)
+    body.Update = Update
 end
 
 ---------------------------------------------------
 -- API
 ---------------------------------------------------
-function Builder:UpdatePreview()
-    if not self.previewLabel then return end
-    local cond = BuildCondString()
-    if cond == "" then
-        self.previewLabel:SetText(MF.C.grey .. L["BUILDER_EMPTY"] .. "|r")
-    else
-        -- Colorize the preview
-        local An = MF:GetModule("Analyzer")
-        if An then
-            local colored = An:ColorizeLine("/cast " .. cond .. " " .. L["BUILDER_PREVIEW_SPELL"])
-            self.previewLabel:SetText(colored)
-        else
-            self.previewLabel:SetText(MF.C.cyan .. cond .. MF.C.r)
-        end
-    end
-end
-
-function Builder:InsertToEditor(text)
-    local E = MF:GetModule("Editor")
-    if E and E.InsertText then
-        E:InsertText(text)
-    end
-    if builderFrame then builderFrame:Hide() end
-end
-
-function Builder:ResetState()
-    wipe(state)
-    -- Destroy and recreate for clean dropdowns (AceGUI dropdowns don't support resetting values reliably)
-    if builderFrame then
-        local wasShown = builderFrame.frame:IsShown()
-        builderFrame:Release()
-        builderFrame = nil
-        CreateBuilderFrame()
-        if wasShown then builderFrame:Show() end
-    end
-end
-
-function Builder:Open()
-    if builderFrame then
-        builderFrame:Release()
-        builderFrame = nil
-    end
-    state = {}
-    CreateBuilderFrame()
-    builderFrame:Show()
-end
-
+local registered
 function Builder:Toggle()
-    if builderFrame and builderFrame.frame:IsShown() then
-        builderFrame:Hide()
-    else
-        self:Open()
+    local E = MF:GetModule("Editor")
+    if not registered then
+        registered = true
+        E:RegisterDrawer("builder", {
+            title = L["BUILDER_TITLE"],
+            build = BuildDrawer,
+            onShow = function(body) body.Update() end,
+        })
     end
+    E:ToggleDrawer("builder")
 end
+Builder.Open = Builder.Toggle
 
 MF:RegisterModule("Builder", Builder)

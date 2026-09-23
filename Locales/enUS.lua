@@ -341,6 +341,13 @@ L["PALETTE_CATEGORY"] = "Category: %s"
 L["PALETTE_CLICK_INSERT"] = "Click to insert"
 L["PALETTE_TITLE_SPELLS"] = "Spells & Items"
 L["PALETTE_TITLE_COMMANDS"] = "Slash Commands"
+L["OPEN_MACRO_FIRST_TOOL"] = "Open or create a macro first."
+L["PALETTE_HINT_SPELLS"] = "Click a spell to insert it at the cursor. Enter inserts the first one."
+L["PALETTE_HINT_COMMANDS"] = "Click a command to insert it at the cursor. Enter inserts the first one."
+L["PALETTE_EMPTY"] = "No match."
+L["ICON_DYNAMIC"] = "? : dynamic, shows the icon of the spell the macro casts"
+L["ICON_FROM_MACRO"] = "This macro"
+L["ICON_ALL"] = "All icons"
 L["INSERT_CMD_BTN"] = "+ Insert command"
 
 -- Sets
