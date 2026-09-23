@@ -9,3 +9,6 @@
 *~
 Thumbs.db
 .DS_Store
+
+# Bridge query, rewritten by tools/bridge.sh
+tools/bridge/MacroForgeBridge/Queue.lua

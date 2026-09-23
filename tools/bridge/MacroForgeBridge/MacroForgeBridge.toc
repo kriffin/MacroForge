@@ -1,0 +1,7 @@
+## Interface: 120001, 120005, 120100, 16001
+## Title: MacroForge Bridge (dev)
+## Notes: Dev tunnel: runs Queue.lua at login, keeps the result for the next /reload to write. Never shipped.
+## SavedVariables: MFBridgeDB
+
+Queue.lua
+Bridge.lua
