@@ -188,26 +188,6 @@ function MF.Helpers:AceGUI()
 end
 
 ---------------------------------------------------
--- CreateDarkFrame — factory for dark-themed AceGUI Frames
--- Eliminates copy-pasted boilerplate across 10+ files
----------------------------------------------------
-function MF.Helpers:CreateDarkFrame(title, width, height, layout)
-    local gui = self:AceGUI()
-    local f = gui:Create("Frame")
-    f:SetTitle(title)
-    f:SetWidth(width or 480)
-    f:SetHeight(height or 350)
-    f:SetLayout(layout or "Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-    -- Dark background
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-    return f
-end
-
----------------------------------------------------
 -- Centralized Spellbook Cache
 -- Used by Autocomplete and CommandPalette
 ---------------------------------------------------

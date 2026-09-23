@@ -38,7 +38,7 @@ local function MacroIcons()
     local E = MF:GetModule("Editor")
     local _, _, body = E:GetContent()
     for _, name in ipairs(MF.Helpers:ParseSpells(body)) do
-        name = name:match("^([^;,]+)"):match("^%s*(.-)%s*$")
+        name = (name:match("^([^;,]+)") or name):match("^%s*(.-)%s*$")
         local tex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(name)
         if not tex and C_Item and C_Item.GetItemInfoInstant then
             tex = select(5, C_Item.GetItemInfoInstant(name))
