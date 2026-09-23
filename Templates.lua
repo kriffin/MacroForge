@@ -45,7 +45,7 @@ local CLASS_COLORS = {
 ---------------------------------------------------
 local UNIVERSAL = {
     {
-        category = "universal", name = "Mouseover Heal/Cast",
+        category = "universal", name = "Mouseover Cast",
         description = L["TPL_DESC_MOUSEOVER_HEAL_CAST"],
         body = "#showtooltip\n/cast [@mouseover,help,nodead][] {ph:SORT}",
     },
@@ -75,17 +75,17 @@ local UNIVERSAL = {
         body = "#showtooltip\n/dismount [mounted]\n/cast [advflyable] {ph:MONTURE_VOL}; {ph:MONTURE_SOL}",
     },
     {
-        category = "universal", name = "Cancelaura + Cast",
+        category = "universal", name = "Cancelaura+Cast",
         description = L["TPL_DESC_CANCELAURA_CAST"],
         body = "#showtooltip\n/cancelaura {ph:NOM_BUFF}\n/cast {ph:SORT}",
     },
     {
-        category = "universal", name = "Startattack + Cast",
+        category = "universal", name = "Attack + Cast",
         description = L["TPL_DESC_STARTATTACK_CAST"],
         body = "#showtooltip\n/startattack\n/cast {ph:SORT}",
     },
     {
-        category = "universal", name = "Mod Shift/Ctrl/Alt",
+        category = "universal", name = "Shift/Ctrl/Alt",
         description = L["TPL_DESC_MOD_SHIFT_CTRL_ALT"],
         body = "#showtooltip\n/cast [mod:shift] {ph:SORT_SHIFT}; [mod:ctrl] {ph:SORT_CTRL}; {ph:SORT_NORMAL}",
     },
@@ -95,7 +95,7 @@ local UNIVERSAL = {
         body = "#showtooltip\n/castsequence reset=target {ph:SORT1}, {ph:SORT2}, {ph:SORT3}",
     },
     {
-        category = "universal", name = "Stopcasting + Cast",
+        category = "universal", name = "Stopcast + Cast",
         description = L["TPL_DESC_STOPCASTING_CAST"],
         body = "#showtooltip\n/stopcasting\n/cast {ph:SORT}",
     },
@@ -240,7 +240,7 @@ local CLASS_TEMPLATES = {
     },
     HUNTER = {
         {
-            category = "interrupt", name = "Counter Shot Priority",
+            category = "interrupt", name = "Counter Shot",
             description = L["TPL_DESC_HUNTER_COUNTER_SHOT_PRIORITY"],
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:147362:Counter Shot}",
         },
@@ -274,7 +274,7 @@ local CLASS_TEMPLATES = {
     },
     DRUID = {
         {
-            category = "interrupt", name = "Skull Bash Priority",
+            category = "interrupt", name = "Skull Bash",
             description = L["TPL_DESC_DRUID_SKULL_BASH_PRIORITY"],
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:106839:Skull Bash}",
         },
@@ -291,19 +291,19 @@ local CLASS_TEMPLATES = {
     },
     DEATHKNIGHT = {
         {
-            category = "interrupt", name = "Mind Freeze Priority",
+            category = "interrupt", name = "Mind Freeze",
             description = L["TPL_DESC_DEATHKNIGHT_MIND_FREEZE_PRIORITY"],
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:47528:Mind Freeze}",
         },
         {
-            category = "offensive", name = "Death Grip + Attack",
+            category = "offensive", name = "Grip + Attack",
             description = L["TPL_DESC_DEATHKNIGHT_DEATH_GRIP_ATTACK"],
             body = "#showtooltip {spell:49576:Death Grip}\n/startattack\n/cast {spell:49576:Death Grip}",
         },
     },
     SHAMAN = {
         {
-            category = "interrupt", name = "Wind Shear Priority",
+            category = "interrupt", name = "Wind Shear",
             description = L["TPL_DESC_SHAMAN_WIND_SHEAR_PRIORITY"],
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:57994:Wind Shear}",
         },
@@ -327,7 +327,7 @@ local CLASS_TEMPLATES = {
     },
     MONK = {
         {
-            category = "interrupt", name = "Spear Hand Priority",
+            category = "interrupt", name = "Spear Hand",
             description = L["TPL_DESC_MONK_SPEAR_HAND_PRIORITY"],
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:116705:Spear Hand Strike}",
         },
@@ -344,7 +344,7 @@ local CLASS_TEMPLATES = {
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:183752:Disrupt}",
         },
         {
-            category = "offensive", name = "Fel Rush + Attack",
+            category = "offensive", name = "Fel Rush+Attack",
             description = L["TPL_DESC_DEMONHUNTER_FEL_RUSH_ATTACK"],
             body = "#showtooltip {spell:195072:Fel Rush}\n/startattack\n/cast {spell:195072:Fel Rush}",
         },
