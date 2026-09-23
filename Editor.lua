@@ -518,7 +518,11 @@ local function CreateDrawer()
     drawer = CreateFrame("Frame", nil, host, "InsetFrameTemplate")
     drawer:SetPoint("TOPRIGHT", host, "TOPRIGHT", 0, -46)
     drawer:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", 0, 0)
-    drawer:SetFrameLevel(host:GetFrameLevel() + 50)
+    -- A strata above the window's: frame levels get renumbered when the
+    -- window is raised, and the editor's AceGUI scroll frame (same level)
+    -- then caught the mouse wheel over the drawer's list
+    drawer:SetFrameStrata("DIALOG")
+    Editor.drawerFrame = drawer
     drawer:EnableMouse(true)
     local function Fit() drawer:SetWidth(math.max(260, math.floor(host:GetWidth() * 0.39))) end
     host:HookScript("OnSizeChanged", Fit)
