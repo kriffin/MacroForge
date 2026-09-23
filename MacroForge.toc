@@ -4,7 +4,7 @@
 ## Author: kriffin
 ## Version: 7.3.0
 ## SavedVariables: MacroForgeDB, MacroForgeLog
-## IconTexture: Interface\Icons\Trade_Engineering
+## IconTexture: Interface\AddOns\MacroForge\icons\MacroForge_flat_128
 
 # Libraries — Core
 Libs\LibStub\LibStub.lua

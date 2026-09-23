@@ -13,7 +13,7 @@ function MB:OnInitialize()
 
     local dataObj = ldb:NewDataObject("MacroForge", {
         type = "launcher",
-        icon = "Interface\\Icons\\Trade_Engineering",
+        icon = "Interface\\AddOns\\MacroForge\\icons\\MacroForge_minimap",
         OnClick = function(_, button)
             if button == "LeftButton" then
                 local UI = MF:GetModule("UI")
