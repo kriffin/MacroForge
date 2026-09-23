@@ -430,177 +430,229 @@ function MF.Templates:ResolveBody(body)
 end
 
 ---------------------------------------------------
--- Templates Browser UI
+-- Templates page (native): search + filter on top, the list on the left,
+-- the selected template on the right, like Blizzard's two-pane panels.
+-- Shown in the main window's right pane (UI:OpenPage), never a window.
 ---------------------------------------------------
-local browserFrame
+local function TemplateIcon(tmpl)
+    local id = tmpl.body and tonumber(tmpl.body:match("{spell:(%d+):"))
+    local tex = id and C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(id)
+    return tex or 134400
+end
 
-function MF.Templates:OpenBrowser()
-    local AceGUI = LibStub("AceGUI-3.0")
+local function StripColor(text)
+    return (text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+end
 
-    if browserFrame then
-        browserFrame:Release()
-        browserFrame = nil
+local function CategoryName(id)
+    for _, cat in ipairs(MF.Templates.CATEGORIES) do
+        if cat.id == id then return StripColor(cat.name) end
     end
+    return id or ""
+end
 
-    local f = AceGUI:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["TEMPLATES"])
-    f:SetWidth(560)
-    f:SetHeight(600)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release(); browserFrame = nil end)
-    f:EnableResize(true)
-    browserFrame = f
-
-    -- Dark BG
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    -- Class indicator
+function MF.Templates:BuildPage(page)
+    local T = self
     local cls = self:GetPlayerClass()
     local clsColor = CLASS_COLORS[cls] or "|cffffffff"
     local clsName = UnitClass("player") or cls
+    local state = { cat = "", src = "", query = "" }
 
-    local clsLabel = AceGUI:Create("Label")
-    clsLabel:SetFullWidth(true)
-    clsLabel:SetFontObject(GameFontNormalLarge)
-    clsLabel:SetText(clsColor .. clsName .. "|r  " .. MF.C.grey .. L["TPL_HEADER"] .. "|r")
-    f:AddChild(clsLabel)
+    -- Top row: search and filter
+    local search = CreateFrame("EditBox", nil, page, "SearchBoxTemplate")
+    search:SetSize(230, 20)
+    search:SetPoint("TOPLEFT", 8, -2)
+    local filter = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    filter:SetSize(140, 22)
+    filter:SetPoint("LEFT", search, "RIGHT", 10, 0)
+    local header = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    header:SetPoint("LEFT", filter, "RIGHT", 12, 0)
+    header:SetPoint("RIGHT", page, "RIGHT", -4, 0)
+    header:SetJustifyH("RIGHT")
+    header:SetText(clsColor .. clsName .. "|r  " .. MF.C.grey .. L["TPL_HEADER"] .. "|r")
 
-    -- Filter row
-    local filterRow = AceGUI:Create("SimpleGroup")
-    filterRow:SetFullWidth(true)
-    filterRow:SetLayout("Flow")
+    -- Left: the list
+    local listInset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    listInset:SetPoint("TOPLEFT", 0, -28)
+    listInset:SetPoint("BOTTOMLEFT", 0, 30)
+    listInset:SetWidth(270)
+    local scrollBox = CreateFrame("Frame", nil, listInset, "WowScrollBoxList")
+    scrollBox:SetPoint("TOPLEFT", 4, -4)
+    scrollBox:SetPoint("BOTTOMRIGHT", -18, 4)
+    local scrollBar = CreateFrame("EventFrame", nil, listInset, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, -2)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 2)
+    local emptyText = listInset:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    emptyText:SetPoint("TOPLEFT", 16, -24)
+    emptyText:SetPoint("TOPRIGHT", -16, -24)
+    emptyText:SetText(L["TPL_EMPTY"])
 
-    -- Category dropdown
-    local catDD = AceGUI:Create("Dropdown")
-    catDD:SetLabel("|cffffff33" .. L["TPL_CATEGORY"] .. "|r")
-    catDD:SetWidth(200)
-    local catList, catOrder = { [""] = L["TPL_ALL"] }, { "" }
-    for _, cat in ipairs(self.CATEGORIES) do
-        catList[cat.id] = cat.name
-        table.insert(catOrder, cat.id)
-    end
-    catDD:SetList(catList, catOrder)
-    catDD:SetValue("")
-    filterRow:AddChild(catDD)
+    -- Right: the selected template
+    local card = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
+    card:SetPoint("TOPLEFT", listInset, "TOPRIGHT", 8, 0)
+    card:SetPoint("BOTTOMRIGHT", 0, 30)
+    local icon = card:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(40, 40)
+    icon:SetPoint("TOPLEFT", 14, -14)
+    local title = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, -2)
+    title:SetPoint("RIGHT", card, "RIGHT", -14, 0)
+    title:SetJustifyH("LEFT")
+    local tag = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    tag:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    local desc = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    desc:SetPoint("TOPLEFT", icon, "BOTTOMLEFT", 0, -14)
+    desc:SetPoint("RIGHT", card, "RIGHT", -14, 0)
+    desc:SetJustifyH("LEFT")
+    local previewTitle = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    previewTitle:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -16)
+    previewTitle:SetText(L["BUILDER_PREVIEW"])
+    local previewBg = CreateFrame("Frame", nil, card, "InsetFrameTemplate")
+    previewBg:SetPoint("TOPLEFT", previewTitle, "BOTTOMLEFT", -4, -6)
+    previewBg:SetPoint("RIGHT", card, "RIGHT", -10, 0)
+    previewBg:SetHeight(150)
+    local preview = previewBg:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    preview:SetPoint("TOPLEFT", 10, -10)
+    preview:SetPoint("BOTTOMRIGHT", -10, 10)
+    preview:SetJustifyH("LEFT")
+    preview:SetJustifyV("TOP")
 
-    -- Source filter (universal/class)
-    local srcDD = AceGUI:Create("Dropdown")
-    srcDD:SetLabel("|cffffff33" .. L["TPL_SOURCE"] .. "|r")
-    srcDD:SetWidth(160)
-    srcDD:SetList({
-        [""] = L["TPL_ALL"],
-        ["universal"] = L["TPL_SRC_UNIVERSAL"],
-        [cls] = clsColor .. clsName .. "|r",
-    }, { "", "universal", cls })
-    srcDD:SetValue("")
-    filterRow:AddChild(srcDD)
+    -- Actions, bottom right like Blizzard panels
+    local btnEdit = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    btnEdit:SetSize(150, 22)
+    btnEdit:SetPoint("BOTTOMRIGHT", 0, 0)
+    btnEdit:SetText(L["TPL_OPEN_EDITOR"])
+    local btnCreate = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    btnCreate:SetSize(150, 22)
+    btnCreate:SetPoint("RIGHT", btnEdit, "LEFT", -6, 0)
+    btnCreate:SetText(L["TPL_CREATE_DIRECT"])
 
-    f:AddChild(filterRow)
-
-    -- Results scroll
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetFullWidth(true)
-    scroll:SetFullHeight(true)
-    scroll:SetLayout("List")
-
-    local currentCat = ""
-    local currentSrc = ""
-
-    local function PopulateTemplates()
-        scroll:ReleaseChildren()
+    local selected
+    local function ShowCard(tmpl)
+        selected = tmpl
+        card:SetShown(tmpl ~= nil)
+        btnEdit:SetEnabled(tmpl ~= nil)
+        btnCreate:SetEnabled(tmpl ~= nil)
+        if not tmpl then return end
+        icon:SetTexture(TemplateIcon(tmpl))
+        title:SetText(tmpl.name or "?")
+        tag:SetText((tmpl._source == "universal" and (MF.C.grey .. L["TPL_SRC_UNIVERSAL"] .. "|r")
+            or (clsColor .. clsName .. "|r")) .. MF.C.grey .. "  -  " .. CategoryName(tmpl.category) .. "|r")
+        desc:SetText(tmpl.description or "")
         local An = MF:GetModule("Analyzer")
-        local templates = self:GetTemplatesForPlayer(currentCat)
-
-        local count = 0
-        for _, tmpl in ipairs(templates) do
-            local srcMatch = (currentSrc == "" or tmpl._source == currentSrc)
-            if srcMatch then
-                local grp = AceGUI:Create("InlineGroup")
-                grp:SetFullWidth(true)
-                local srcTag = tmpl._source == "universal"
-                    and (MF.C.grey .. L["TPL_TAG_UNIVERSAL"] .. "|r")
-                    or (clsColor .. "[" .. clsName .. "]|r")
-                grp:SetTitle(srcTag .. "  " .. (tmpl.name or "?"))
-                grp:SetLayout("List")
-
-                -- Description
-                local descLbl = AceGUI:Create("Label")
-                descLbl:SetFullWidth(true)
-                descLbl:SetFontObject(GameFontNormalSmall)
-                descLbl:SetText(MF.C.grey .. (tmpl.description or "") .. "|r")
-                grp:AddChild(descLbl)
-
-                -- Colorized preview of body
-                if An and tmpl.body then
-                    local colored = An:ColorizeBody(MF.Templates:ResolveBody(tmpl.body))
-                    local pvLbl = AceGUI:Create("Label")
-                    pvLbl:SetFullWidth(true)
-                    pvLbl:SetFontObject(GameFontNormalSmall)
-                    pvLbl:SetText(colored)
-                    grp:AddChild(pvLbl)
-                end
-
-                -- Buttons
-                local btnRow = AceGUI:Create("SimpleGroup")
-                btnRow:SetFullWidth(true)
-                btnRow:SetLayout("Flow")
-
-                local btnEdit = AceGUI:Create("Button")
-                btnEdit:SetText(L["EDIT"])
-                btnEdit:SetWidth(100)
-                btnEdit:SetCallback("OnClick", function()
-                    local E = MF:GetModule("Editor")
-                    if E then
-                        E:OpenNew(true, nil, function()
-                            E:LoadContent(tmpl.name or "", MF.Templates:ResolveBody(tmpl.body), 134400)
-                        end)
-                    end
-                    if browserFrame then browserFrame:Release(); browserFrame = nil end
-                end)
-                btnRow:AddChild(btnEdit)
-
-                local btnCreate = AceGUI:Create("Button")
-                btnCreate:SetText(L["TPL_CREATE_DIRECT"])
-                btnCreate:SetWidth(150)
-                btnCreate:SetCallback("OnClick", function()
-                    local P = MF:GetModule("Profiles")
-                    if P then
-                        P:CreateNewMacro(tmpl.name or "Template", 134400, MF.Templates:ResolveBody(tmpl.body), true)
-                        local UI = MF:GetModule("UI")
-                        if UI then C_Timer.After(0.3, function() UI:Refresh() end) end
-                    end
-                end)
-                btnRow:AddChild(btnCreate)
-
-                grp:AddChild(btnRow)
-                scroll:AddChild(grp)
-                count = count + 1
-            end
-        end
-
-        if count == 0 then
-            local lbl = AceGUI:Create("Label")
-            lbl:SetFullWidth(true)
-            lbl:SetText(MF.C.grey .. L["TPL_EMPTY"] .. "|r")
-            scroll:AddChild(lbl)
-        end
+        local body = T:ResolveBody(tmpl.body)
+        preview:SetText(An and An:ColorizeBody(body) or body)
     end
 
-    catDD:SetCallback("OnValueChanged", function(_, _, val)
-        currentCat = val
-        PopulateTemplates()
+    local view = CreateScrollBoxListLinearView()
+    view:SetElementExtent(30)
+    view:SetElementInitializer("Button", function(btn, tmpl)
+        if not btn.mfIcon then
+            btn:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+            btn.mfSelected = btn:CreateTexture(nil, "BACKGROUND")
+            btn.mfSelected:SetAllPoints()
+            btn.mfSelected:SetColorTexture(0.2, 0.6, 1, 0.18)
+            btn.mfIcon = btn:CreateTexture(nil, "ARTWORK")
+            btn.mfIcon:SetSize(24, 24)
+            btn.mfIcon:SetPoint("LEFT", 6, 0)
+            btn.mfName = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            btn.mfName:SetPoint("TOPLEFT", btn.mfIcon, "TOPRIGHT", 8, 1)
+            btn.mfName:SetPoint("RIGHT", -6, 0)
+            btn.mfName:SetJustifyH("LEFT")
+            btn.mfName:SetWordWrap(false)
+            btn.mfSub = btn:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            btn.mfSub:SetPoint("BOTTOMLEFT", btn.mfIcon, "BOTTOMRIGHT", 8, -1)
+            btn.mfSub:SetPoint("RIGHT", -6, 0)
+            btn.mfSub:SetJustifyH("LEFT")
+            btn.mfSub:SetWordWrap(false)
+        end
+        btn.mfIcon:SetTexture(TemplateIcon(tmpl))
+        btn.mfName:SetText(tmpl.name or "?")
+        btn.mfSub:SetText(CategoryName(tmpl.category))
+        btn.mfSelected:SetShown(tmpl == selected)
+        btn:SetScript("OnClick", function()
+            PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+            ShowCard(tmpl)
+            scrollBox:ForEachFrame(function(b, t) b.mfSelected:SetShown(t == selected) end)
+        end)
     end)
-    srcDD:SetCallback("OnValueChanged", function(_, _, val)
-        currentSrc = val
-        PopulateTemplates()
+    ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
+
+    local function Matches(tmpl)
+        if state.src ~= "" and tmpl._source ~= state.src then return false end
+        if state.query == "" then return true end
+        local q = state.query:lower()
+        for _, field in ipairs({ tmpl.name, tmpl.description, T:ResolveBody(tmpl.body) }) do
+            if field and field:lower():find(q, 1, true) then return true end
+        end
+        return false
+    end
+
+    local function Populate()
+        local rows = {}
+        for _, tmpl in ipairs(T:GetTemplatesForPlayer(state.cat)) do
+            if Matches(tmpl) then table.insert(rows, tmpl) end
+        end
+        filter:SetText(state.cat == "" and L["TPL_ALL"] or CategoryName(state.cat))
+        emptyText:SetShown(#rows == 0)
+        local keep
+        for _, t in ipairs(rows) do if t == selected then keep = t end end
+        selected = keep or rows[1]
+        scrollBox:SetDataProvider(CreateDataProvider(rows), ScrollBoxConstants.RetainScrollPosition)
+        ShowCard(selected)
+    end
+
+    search:HookScript("OnTextChanged", function(box)
+        state.query = (box:GetText() or ""):match("^%s*(.-)%s*$")
+        Populate()
+    end)
+    filter:SetScript("OnClick", function(btn)
+        MenuUtil.CreateContextMenu(btn, function(_, root)
+            root:CreateTitle(L["TPL_CATEGORY"])
+            local cats = { { id = "", name = L["TPL_ALL"] } }
+            for _, cat in ipairs(T.CATEGORIES) do table.insert(cats, cat) end
+            for _, cat in ipairs(cats) do
+                root:CreateRadio(StripColor(cat.name), function() return state.cat == cat.id end,
+                    function() state.cat = cat.id; Populate() end)
+            end
+            root:CreateDivider()
+            root:CreateTitle(L["TPL_SOURCE"])
+            for _, src in ipairs({ { "", L["TPL_ALL"] }, { "universal", L["TPL_SRC_UNIVERSAL"] }, { cls, clsName } }) do
+                root:CreateRadio(src[2], function() return state.src == src[1] end,
+                    function() state.src = src[1]; Populate() end)
+            end
+        end)
     end)
 
-    f:AddChild(scroll)
-    PopulateTemplates()
-    f:Show()
+    btnEdit:SetScript("OnClick", function()
+        local tmpl = selected
+        if not tmpl then return end
+        local E = MF:GetModule("Editor")
+        E:OpenNew(true, nil, function()
+            E:LoadContent(tmpl.name or "", T:ResolveBody(tmpl.body), 134400)
+        end)
+    end)
+    btnCreate:SetScript("OnClick", function()
+        local tmpl = selected
+        if not tmpl then return end
+        MF:GetModule("Profiles"):CreateNewMacro(tmpl.name or "Template", 134400, T:ResolveBody(tmpl.body), true)
+        C_Timer.After(0.3, function() MF:GetModule("UI"):Refresh() end)
+    end)
+
+    page.Populate = Populate
+end
+
+function MF.Templates:OpenBrowser()
+    local UI = MF:GetModule("UI")
+    if not self.pageRegistered then
+        self.pageRegistered = true
+        UI:RegisterPage("templates", {
+            title = L["TEMPLATES"],
+            build = function(page) MF.Templates:BuildPage(page) end,
+            onShow = function(page) page.Populate() end,
+        })
+    end
+    UI:OpenPage("templates")
 end
 
 MF:RegisterModule("Templates", MF.Templates)

@@ -564,6 +564,8 @@ L["TPL_ALL"] = "Toutes"
 L["TPL_SRC_UNIVERSAL"] = "Universelles"
 L["TPL_TAG_UNIVERSAL"] = "[Universel]"
 L["TPL_CREATE_DIRECT"] = "Créer directement"
+L["TPL_OPEN_EDITOR"] = "Ouvrir dans l'éditeur"
+L["BACK_BTN"] = "Retour"
 L["TPL_EMPTY"] = "Aucun template dans cette catégorie."
 
 -- Templates: descriptions

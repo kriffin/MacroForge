@@ -25,6 +25,10 @@
   characters) to apply the correction. Line numbers now match the editor
   gutter: blank lines used to be skipped, so every issue below one pointed
   one line too high.
+- **One window**: tools now open inside the main window instead of on top of
+  it, Blizzard style. Templates is the first: search and filter on top, the
+  list on the left, the selected template on the right. The title shows where
+  you are; Back (or Esc) returns to what was open, unsaved edits included.
 
 ## 7.3.0 — 2026-09-20
 

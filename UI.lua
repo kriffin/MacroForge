@@ -731,7 +731,8 @@ function UI:CreateMainFrame()
         self:StopMovingOrSizing()
         SaveGeometry()
     end)
-    frame:SetTitle("|cff00ccffMacro|r|cffffd700Forge|r  " .. MF.C.grey .. "v" .. MF.VERSION .. "|r")
+    UI.baseTitle = "|cff00ccffMacro|r|cffffd700Forge|r  " .. MF.C.grey .. "v" .. MF.VERSION .. "|r"
+    frame:SetTitle(UI.baseTitle)
     -- No portrait: the sidebar tabs take the top-left corner
     frame:SetBorder("ButtonFrameTemplateNoPortrait")
     if frame.SetPortraitShown then frame:SetPortraitShown(false) end
@@ -1044,6 +1045,7 @@ function UI:ShowDetail(kind, id)
         return E:ConfirmLeave(function() E:Clear(); UI:ShowDetail(kind, id) end)
     end
     if E and E.cur or (E and E.isNew) then E:Clear() end
+    self:CloseAllPages()
     detail = { kind = kind, id = id }
     RenderDetail()
     self:Refresh()
@@ -1184,12 +1186,86 @@ function UI:HandleKey(key)
         return true
     end
     if GetCurrentKeyBoardFocus() then return false end
-    if key == "UP" then self:SelectRelative(-1)
+    if key == "ESCAPE" and self:CurrentPage() then self:ClosePage()
+    elseif key == "UP" then self:SelectRelative(-1)
     elseif key == "DOWN" then self:SelectRelative(1)
     elseif key == "DELETE" and E.cur then self:ConfirmDelete(E.cur)
     elseif key == "ENTER" and E.FocusBody then E:FocusBody()
     else return false end
     return true
+end
+
+---------------------------------------------------
+-- Pages: native views that take over the right pane (Templates, History,
+-- Share...), the way WeakAuras swaps its options area. They stack over the
+-- editor or the detail view without closing them: Back or Esc returns to
+-- what was there, unsaved text included. The title shows where you are.
+-- A page def: { title = string, build = function(page), onShow = function(page, arg) }
+---------------------------------------------------
+local pageDefs, pageFrames, pageStack = {}, {}, {}
+
+function UI:RegisterPage(key, def)
+    pageDefs[key] = def
+end
+
+local function ShowTopPage()
+    for _, f in pairs(pageFrames) do f:Hide() end
+    local top = pageStack[#pageStack]
+    editorPane:SetShown(top == nil)
+    frame:SetTitle(UI.baseTitle .. (top and ("  " .. MF.C.grey .. "-|r  " .. pageDefs[top.key].title) or ""))
+    if top then
+        local f = pageFrames[top.key]
+        f:Show()
+        if pageDefs[top.key].onShow then pageDefs[top.key].onShow(f, top.arg) end
+    end
+end
+
+function UI:OpenPage(key, arg)
+    local def = assert(pageDefs[key], key)
+    self:Show()
+    if not pageFrames[key] then
+        local f = CreateFrame("Frame", nil, frame)
+        f:SetAllPoints(editorPane)
+        f:Hide()
+        -- Every page closes the same way, bottom left like Blizzard panels
+        local back = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        back:SetSize(110, 22)
+        back:SetPoint("BOTTOMLEFT", 0, 0)
+        back:SetText(BACK or L["BACK_BTN"])
+        back:SetScript("OnClick", function() UI:ClosePage() end)
+        f.backButton = back
+        def.build(f)
+        pageFrames[key] = f
+    end
+    local top = pageStack[#pageStack]
+    if top and top.key == key then
+        top.arg = arg
+    else
+        -- A page already in the stack moves to the top instead of doubling
+        for i = #pageStack, 1, -1 do
+            if pageStack[i].key == key then table.remove(pageStack, i) end
+        end
+        table.insert(pageStack, { key = key, arg = arg })
+    end
+    PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+    ShowTopPage()
+end
+
+function UI:ClosePage()
+    if #pageStack == 0 then return end
+    table.remove(pageStack)
+    ShowTopPage()
+end
+
+function UI:CloseAllPages()
+    if #pageStack == 0 then return end
+    wipe(pageStack)
+    ShowTopPage()
+end
+
+function UI:CurrentPage()
+    local top = pageStack[#pageStack]
+    return top and top.key
 end
 
 ---------------------------------------------------
@@ -1202,6 +1278,7 @@ end
 
 -- Called by the editor when it shows content / is cleared
 function UI:ShowEditorContent(shown)
+    if shown then self:CloseAllPages() end
     if shown and detailHost then
         detail = nil
         detailHost.frame:Hide()
