@@ -7,7 +7,6 @@ local _, MF_NS = ...
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local LibDeflate = LibStub("LibDeflate")
-local AceGUI = LibStub("AceGUI-3.0")
 
 local Share = {}
 
@@ -103,56 +102,6 @@ function Share:DecodeLegacy(encoded, prefix)
     }
 end
 
----------------------------------------------------
--- Share Export UI
----------------------------------------------------
-function Share:OpenExport(name, icon, body)
-    local encoded = self:Encode(name, icon, body)
-
-    local f = AceGUI:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["SHARE_EXPORT_TITLE"])
-    f:SetWidth(480)
-    f:SetHeight(280)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    local infoLbl = AceGUI:Create("Label")
-    infoLbl:SetFullWidth(true)
-    infoLbl:SetFontObject(GameFontNormal)
-    infoLbl:SetText(MF.C.gold .. name .. "|r — " .. MF.C.grey .. format(L["SHARE_CHARS"], #body) .. "|r")
-    f:AddChild(infoLbl)
-
-    local helpLbl = AceGUI:Create("Label")
-    helpLbl:SetFullWidth(true)
-    helpLbl:SetFontObject(GameFontNormalSmall)
-    helpLbl:SetText(MF.C.cyan .. L["SHARE_COPY_HELP"] .. "|r\n" ..
-        MF.C.grey .. L["SHARE_IMPORT_HELP"] .. "|r")
-    f:AddChild(helpLbl)
-
-    local eb = AceGUI:Create("MultiLineEditBox")
-    eb:SetLabel(L["SHARE_CODE_LABEL"])
-    eb:SetFullWidth(true)
-    eb:SetNumLines(5)
-    eb:SetText(encoded)
-    eb:DisableButton(true)
-    f:AddChild(eb)
-
-    C_Timer.After(0.1, function()
-        local edit = eb.editBox or eb.editbox
-        if edit then
-            edit:HighlightText()
-            edit:SetFocus()
-        end
-    end)
-
-    f:Show()
-end
-
 -- One entry point for everything pasted: a share code, or plain macro text
 -- (a guide, a forum). Returns macro, err, kind ("code" or "text").
 function Share:ParseImport(text)
@@ -167,164 +116,180 @@ function Share:ParseImport(text)
 end
 
 ---------------------------------------------------
--- Import UI
+-- Share page (main window): Import and Export tabs
+--   Import: paste a share code or plain macro text, preview, open or create
+--   Export: share code + plain text (select all, Ctrl+C), send to a player
 ---------------------------------------------------
-function Share:OpenImport()
-    local f = AceGUI:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["SHARE_IMPORT_TITLE"])
-    f:SetWidth(480)
-    f:SetHeight(420)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
+local function BuildSharePage(page)
+    local W = MF.Widgets
+    local state = { macro = nil, decoded = nil }
 
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
+    -- Tabs, like the main window's sidebar
+    local tabHost = CreateFrame("Frame", nil, page)
+    tabHost:SetPoint("TOPLEFT", 4, 0)
+    tabHost:SetSize(300, 30)
+    tabHost.Tabs = {}
+    local panes = {}
+    local function SelectTab(i)
+        PanelTemplates_SetTab(tabHost, i)
+        for k, pane in ipairs(panes) do pane:SetShown(k == i) end
+        page.tab = i
+    end
+    for i, label in ipairs({ L["IMPORT_BTN"], L["EXPORT_BTN"] }) do
+        local tab = CreateFrame("Button", nil, tabHost, "PanelTopTabButtonTemplate")
+        tab:SetID(i)
+        tab:SetText(label)
+        if i == 1 then tab:SetPoint("TOPLEFT") else tab:SetPoint("LEFT", tabHost.Tabs[i - 1], "RIGHT", 0, 0) end
+        tab:SetScript("OnClick", function()
+            PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+            SelectTab(i)
+        end)
+        tabHost.Tabs[i] = tab
+        PanelTemplates_TabResize(tab, 0)
+    end
+    PanelTemplates_SetNumTabs(tabHost, 2)
 
-    local helpLbl = AceGUI:Create("Label")
-    helpLbl:SetFullWidth(true)
-    helpLbl:SetFontObject(GameFontNormalSmall)
-    helpLbl:SetText(MF.C.cyan .. L["SHARE_PASTE_HELP"] .. "|r")
-    f:AddChild(helpLbl)
-
-    local eb = AceGUI:Create("MultiLineEditBox")
-    eb:SetLabel(L["SHARE_CODE_LABEL"])
-    eb:SetFullWidth(true)
-    eb:SetNumLines(8)
-    eb:DisableButton(true)
-    f:AddChild(eb)
-
-    local pvHeading = AceGUI:Create("Heading")
-    pvHeading:SetFullWidth(true)
-    pvHeading:SetText(L["BUILDER_PREVIEW"])
-    f:AddChild(pvHeading)
-
-    local pvLabel = AceGUI:Create("Label")
-    pvLabel:SetFullWidth(true)
-    pvLabel:SetFontObject(GameFontNormalSmall)
-    pvLabel:SetText(MF.C.grey .. L["SHARE_PREVIEW"] .. "|r")
-    f:AddChild(pvLabel)
-
-    local decodedMacro = nil
-
-    eb:SetCallback("OnTextChanged", function(w)
-        local macro, err, kind = Share:ParseImport(w:GetText())
-        decodedMacro = macro
-        if macro then
-            local An = MF:GetModule("Analyzer")
-            local colored = An and An:ColorizeBody(macro.body) or macro.body
-            pvLabel:SetText(MF.C.grey .. L[kind == "code" and "IMPORT_KIND_CODE" or "IMPORT_KIND_TEXT"] .. "|r\n"
-                .. MF.C.gold .. macro.name .. "|r\n" .. colored)
-        elseif kind then
-            pvLabel:SetText(MF.C.red .. (err or L["SHARE_ERROR"]) .. "|r")
-        else
-            pvLabel:SetText(MF.C.grey .. L["SHARE_PREVIEW"] .. "|r")
-        end
-    end)
-
-    local btnRow = AceGUI:Create("SimpleGroup")
-    btnRow:SetFullWidth(true)
-    btnRow:SetLayout("Flow")
-
-    local btnEditor = AceGUI:Create("Button")
-    btnEditor:SetText(L["SHARE_OPEN_EDITOR"])
-    btnEditor:SetWidth(180)
-    btnEditor:SetCallback("OnClick", function()
-        if decodedMacro then
-            local E = MF:GetModule("Editor")
-            if E then
-                local macro = decodedMacro
-                E:OpenNew(true, nil, function()
-                    E:LoadContent(macro.name, macro.body, macro.icon)
-                end)
-            end
-            f:Release()
-        else
-            MF:Print(MF.C.red .. L["SHARE_NO_DECODED"] .. "|r")
-        end
-    end)
-    btnRow:AddChild(btnEditor)
-
-    local btnCreate = AceGUI:Create("Button")
-    btnCreate:SetText(L["SHARE_CREATE_DIRECT"])
-    btnCreate:SetWidth(150)
-    btnCreate:SetCallback("OnClick", function()
-        if decodedMacro then
-            local P = MF:GetModule("Profiles")
-            if P then
-                P:CreateNewMacro(decodedMacro.name, decodedMacro.icon, decodedMacro.body, true)
-                local UI = MF:GetModule("UI")
-                if UI then C_Timer.After(0.3, function() UI:Refresh() end) end
-                MF:Print(MF.C.green .. format(L["SHARE_IMPORTED"], decodedMacro.name) .. "|r")
-            end
-            f:Release()
-        else
-            MF:Print(MF.C.red .. L["SHARE_NO_DECODED"] .. "|r")
-        end
-    end)
-    btnRow:AddChild(btnCreate)
-
-    f:AddChild(btnRow)
-    f:Show()
-end
-
----------------------------------------------------
--- Direct send via AceComm (Point 6)
----------------------------------------------------
-function Share:OpenSend()
-    local E = MF:GetModule("Editor")
-    if not E or not E.cur then
-        MF:Print(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r")
-        return
+    for i = 1, 2 do
+        local pane = CreateFrame("Frame", nil, page)
+        pane:SetPoint("TOPLEFT", 0, -34)
+        pane:SetPoint("BOTTOMRIGHT", 0, 0)
+        panes[i] = pane
     end
 
-    local f = AceGUI:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["SEND_MACRO"])
-    f:SetWidth(400)
-    f:SetHeight(180)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    local lbl = AceGUI:Create("Label")
-    lbl:SetFullWidth(true)
-    lbl:SetFontObject(GameFontNormal)
-    lbl:SetText(MF.C.gold .. (E.cur.name or "?") .. "|r")
-    f:AddChild(lbl)
-
-    local targetEB = AceGUI:Create("EditBox")
-    targetEB:SetLabel(L["SEND_TARGET"])
-    targetEB:SetFullWidth(true)
-    targetEB:DisableButton(true)
-    f:AddChild(targetEB)
-
-    local btnSend = AceGUI:Create("Button")
-    btnSend:SetText(L["SEND_MACRO"])
-    btnSend:SetWidth(150)
-    btnSend:SetCallback("OnClick", function()
-        local target = targetEB:GetText()
-        if not target or target == "" then
-            MF:Print(MF.C.red .. L["SEND_NO_TARGET"] .. "|r")
-            return
-        end
-        local data = {
-            name = E.cur.name or "",
-            icon = E.cur.icon or 134400,
-            body = E.cur.body or "",
-        }
-        local serialized = MF:Serialize(data)
-        MF:SendCommMessage("MacroForge", serialized, "WHISPER", target)
-        MF:Print(MF.C.green .. format(L["SEND_SUCCESS"], target) .. "|r")
-        f:Release()
+    -- Import
+    local imp = panes[1]
+    local help = W:Text(imp, "GameFontHighlight", L["SHARE_PASTE_HELP"])
+    help:SetPoint("TOPLEFT", 4, -4)
+    help:SetPoint("RIGHT", imp, "RIGHT", -4, 0)
+    local input = W:CodeBox(imp)
+    input:SetPoint("TOPLEFT", help, "BOTTOMLEFT", -4, -8)
+    input:SetPoint("RIGHT", imp, "RIGHT", 0, 0)
+    input:SetHeight(140)
+    local pvTitle = W:Text(imp, "GameFontNormal", L["BUILDER_PREVIEW"])
+    pvTitle:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 4, -12)
+    local preview = W:Text(imp, "GameFontHighlight")
+    preview:SetPoint("TOPLEFT", pvTitle, "BOTTOMLEFT", 0, -6)
+    preview:SetPoint("RIGHT", imp, "RIGHT", -4, 0)
+    preview:SetJustifyV("TOP")
+    local btnOpen = W:Button(imp, L["SHARE_OPEN_EDITOR"], 170, function()
+        local macro = state.decoded
+        if not macro then return end
+        local E = MF:GetModule("Editor")
+        E:OpenNew(true, nil, function() E:LoadContent(macro.name, macro.body, macro.icon) end)
     end)
-    f:AddChild(btnSend)
+    btnOpen:SetPoint("BOTTOMRIGHT", 0, 0)
+    local btnCreate = W:Button(imp, L["SHARE_CREATE_DIRECT"], 170, function()
+        local macro = state.decoded
+        if not macro then return end
+        MF:GetModule("Profiles"):CreateNewMacro(macro.name, macro.icon, macro.body, true)
+        C_Timer.After(0.3, function() MF:GetModule("UI"):Refresh() end)
+    end)
+    btnCreate:SetPoint("RIGHT", btnOpen, "LEFT", -6, 0)
 
-    f:Show()
+    local function RenderImport(text)
+        local macro, err, kind = Share:ParseImport(text)
+        state.decoded = macro
+        btnOpen:SetEnabled(macro ~= nil)
+        btnCreate:SetEnabled(macro ~= nil)
+        if macro then
+            local An = MF:GetModule("Analyzer")
+            preview:SetText(MF.C.grey .. L[kind == "code" and "IMPORT_KIND_CODE" or "IMPORT_KIND_TEXT"] .. "|r\n"
+                .. MF.C.gold .. macro.name .. "|r\n" .. (An and An:ColorizeBody(macro.body) or macro.body))
+        elseif kind then
+            preview:SetText(MF.C.red .. (err or L["SHARE_ERROR"]) .. "|r")
+        else
+            preview:SetText(MF.C.grey .. L["SHARE_PREVIEW"] .. "|r")
+        end
+    end
+    input:OnChange(RenderImport)
+
+    -- Export
+    local exp = panes[2]
+    local macroTitle = W:Text(exp, "GameFontNormalLarge")
+    macroTitle:SetPoint("TOPLEFT", 4, -4)
+    local codeLabel = W:Text(exp, "GameFontNormal", L["EXPORT_CODE_LABEL"])
+    codeLabel:SetPoint("TOPLEFT", macroTitle, "BOTTOMLEFT", 0, -12)
+    local codeHelp = W:Text(exp, "GameFontHighlightSmall", L["SHARE_COPY_HELP"] .. " " .. L["SHARE_IMPORT_HELP"])
+    codeHelp:SetPoint("LEFT", codeLabel, "RIGHT", 10, 0)
+    codeHelp:SetPoint("RIGHT", exp, "RIGHT", -4, 0)
+    codeHelp:SetWordWrap(false)
+    local code = W:CodeBox(exp, true)
+    code:SetPoint("TOPLEFT", codeLabel, "BOTTOMLEFT", -4, -6)
+    code:SetPoint("RIGHT", exp, "RIGHT", 0, 0)
+    code:SetHeight(70)
+    local textLabel = W:Text(exp, "GameFontNormal", L["EXPORT_TEXT_LABEL"])
+    textLabel:SetPoint("TOPLEFT", code, "BOTTOMLEFT", 4, -12)
+    local raw = W:CodeBox(exp, true)
+    raw:SetPoint("TOPLEFT", textLabel, "BOTTOMLEFT", -4, -6)
+    raw:SetPoint("RIGHT", exp, "RIGHT", 0, 0)
+    raw:SetHeight(110)
+    local sendLabel = W:Text(exp, "GameFontNormal", L["SEND_TARGET"])
+    sendLabel:SetPoint("TOPLEFT", raw, "BOTTOMLEFT", 4, -16)
+    local target = W:Input(exp, 180)
+    target:SetPoint("LEFT", sendLabel, "RIGHT", 12, 0)
+    local btnSend = W:Button(exp, L["SEND_MACRO"], 150)
+    btnSend:SetPoint("LEFT", target, "RIGHT", 8, 0)
+    local noMacro = W:Text(exp, "GameFontDisableLarge", L["OPEN_MACRO_FIRST_SHARE"], "CENTER")
+    noMacro:SetPoint("CENTER")
+
+    local function Send()
+        local who = (target:GetText() or ""):match("^%s*(.-)%s*$")
+        if not state.macro then return end
+        if who == "" then return MF:Notify(MF.C.red .. L["SEND_NO_TARGET"] .. "|r") end
+        MF:SendCommMessage("MacroForge", MF:Serialize(state.macro), "WHISPER", who)
+        MF:Notify(MF.C.green .. format(L["SEND_SUCCESS"], who) .. "|r")
+    end
+    btnSend:SetScript("OnClick", Send)
+    target:SetScript("OnEnterPressed", function(box) box:ClearFocus(); Send() end)
+
+    local exportParts = { macroTitle, codeLabel, codeHelp, code, textLabel, raw, sendLabel, target, btnSend }
+    function page.Fill(arg)
+        arg = arg or {}
+        if arg.macro then state.macro = arg.macro end
+        local m = state.macro
+        for _, part in ipairs(exportParts) do part:SetShown(m ~= nil) end
+        noMacro:SetShown(m == nil)
+        if m then
+            macroTitle:SetText(MF.C.gold .. ((m.name or ""):match("^%s*$") and L["MACRO_UNNAMED"] or m.name)
+                .. "|r  " .. MF.C.grey .. format(L["SHARE_CHARS"], #m.body) .. "|r")
+            code:SetText(Share:Encode(m.name, m.icon, m.body))
+            raw:SetText(((m.name or ""):match("^%s*$") and "" or (m.name .. "\n")) .. m.body)
+        end
+        RenderImport(input:GetText())
+        SelectTab(arg.mode == "export" and 2 or arg.mode == "import" and 1 or page.tab or 1)
+        if arg.mode == "export" and m then
+            if arg.send then target:SetFocus() else code:SelectAll() end
+        end
+    end
+end
+
+local function OpenSharePage(arg)
+    local UI = MF:GetModule("UI")
+    if not Share.pageRegistered then
+        Share.pageRegistered = true
+        UI:RegisterPage("share", {
+            title = L["SHARE_EXPORT_TITLE"],
+            build = BuildSharePage,
+            onShow = function(page, a) page.Fill(a) end,
+        })
+    end
+    UI:OpenPage("share", arg)
+end
+
+function Share:OpenImport()
+    OpenSharePage({ mode = "import" })
+end
+
+-- name/icon/body of the macro to share (the editor passes what is typed)
+function Share:OpenExport(name, icon, body)
+    OpenSharePage({ mode = "export", macro = { name = name or "", icon = icon or 134400, body = body or "" } })
+end
+
+function Share:OpenSend()
+    local E = MF:GetModule("Editor")
+    local name, icon, body = E:GetContent()
+    if not body then return MF:Notify(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r") end
+    OpenSharePage({ mode = "export", send = true, macro = { name = name, icon = icon, body = body } })
 end
 
 MF:RegisterModule("Share", Share)

@@ -163,12 +163,10 @@ local function CreateToolbar(pane)
             end
 
             root:CreateDivider()
-            root:CreateButton(L["COPY_BTN"], function() Editor:OpenCopy() end)
-            root:CreateButton(L["IMPORT_BTN"], function()
-                local S = MF:GetModule("Share")
-                if S then S:OpenImport() end
-            end)
-            root:CreateButton(L["EXPORT_BTN"], function() Editor:OpenExport() end)
+            -- One Share page: export shows the code and the plain text to copy
+            root:CreateButton(L["EXPORT_BTN"] .. " / " .. L["COPY_BTN"], function() Editor:OpenExport() end)
+            root:CreateButton(L["SEND_MACRO"], function() MF:GetModule("Share"):OpenSend() end)
+            root:CreateButton(L["IMPORT_BTN"], function() MF:GetModule("Share"):OpenImport() end)
             root:CreateDivider()
             root:CreateButton(L["HISTORY_BTN"], function()
                 local H = MF:GetModule("History")
@@ -515,149 +513,20 @@ function Editor:ApplyFontSize(size)
 end
 
 ---------------------------------------------------
--- Copy macro body to "clipboard" (EditBox popup)
+-- Copy / Export: the Share page, with what is typed in the editor
 ---------------------------------------------------
-function Editor:OpenCopy()
-    local gui = G()
-    local body = bodyWidget and bodyWidget:GetText() or ""
-    local name = nameWidget and nameWidget:GetText() or ""
-    local text = name ~= "" and (name .. "\n" .. body) or body
-
-    local f = gui:Create("Frame")
-    f:SetTitle(L["COPY_MACRO_TITLE"])
-    f:SetWidth(420)
-    f:SetHeight(200)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    local lbl = gui:Create("Label")
-    lbl:SetFullWidth(true)
-    lbl:SetFontObject(GameFontNormalSmall)
-    lbl:SetText(MF.C.cyan .. L["COPY_BELOW_MSG"] .. "|r")
-    f:AddChild(lbl)
-
-    local eb = gui:Create("MultiLineEditBox")
-    eb:SetLabel("")
-    eb:SetFullWidth(true)
-    eb:SetNumLines(6)
-    eb:SetText(text)
-    eb:DisableButton(true)
-    f:AddChild(eb)
-
-    -- Select all on focus
-    C_Timer.After(0.1, function()
-        local edit = eb.editBox or eb.editbox
-        if edit then
-            edit:HighlightText()
-            edit:SetFocus()
-        end
-    end)
-
-    f:Show()
+-- name, icon, body currently in the editor, or nil when nothing is open
+function Editor:GetContent()
+    if not (bodyWidget and (self.cur or self.isNew)) then return nil end
+    return nameWidget:GetText(), self.selectedIcon or 134400, bodyWidget:GetText()
 end
 
----------------------------------------------------
--- Load content into the editor (for templates/share import)
--- Does NOT change isNew/cur state — assumes OpenNew was called first
----------------------------------------------------
-function Editor:LoadContent(name, body, icon)
-    if nameWidget then nameWidget:SetText(name or "") end
-    if bodyWidget then bodyWidget:SetText(body or "") end
-    if icon and iconButton then
-        self.selectedIcon = icon
-        iconButton:SetImage(icon)
-    end
-    -- Reset undo with new content
-    wipe(undoStack); wipe(redoStack)
-    lastSnapshot = nil
-    PushUndo(name or "", body or "", icon or 134400)
-    self:OnChanged()
-end
-
----------------------------------------------------
--- Insert text at cursor position in body
----------------------------------------------------
-function Editor:InsertText(text)
-    if bodyWidget then
-        local eb = bodyWidget.editBox or bodyWidget.editbox
-        if eb then
-            eb:Insert(text)
-            Editor:OnChanged()
-        else
-            -- Fallback: append
-            local current = bodyWidget:GetText() or ""
-            bodyWidget:SetText(current .. text)
-            Editor:OnChanged()
-        end
-    end
-end
-
----------------------------------------------------
--- Shorten macro body
----------------------------------------------------
-function Editor:Shorten()
-    if not bodyWidget then return end
-    local body = bodyWidget:GetText()
-    if not body or body == "" then return end
-
-    local An = MF:GetModule("Analyzer")
-    if An and An.ShortenMacro then
-        local shortened, saved = An:ShortenMacro(body)
-        bodyWidget:SetText(shortened)
-        self:OnChanged()
-        if saved > 0 then
-            MF:Print(MF.C.green .. format(L["SHORTENED_MSG"], saved) .. "|r")
-        else
-            MF:Print(MF.C.grey .. L["ALREADY_OPTIMIZED"] .. "|r")
-        end
-    end
-end
-
----------------------------------------------------
--- Import/Export
----------------------------------------------------
 function Editor:OpenExport()
-    local gui = G()
-    local name = nameWidget and nameWidget:GetText() or ""
-    local body = bodyWidget and bodyWidget:GetText() or ""
-    local text = name .. "\n" .. body
-
-    local f = gui:Create("Frame")
-    f:SetTitle(L["EXPORT_MACRO_TITLE"])
-    f:SetWidth(420)
-    f:SetHeight(250)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    local eb = gui:Create("MultiLineEditBox")
-    eb:SetLabel(L["COPY_BELOW_LABEL"])
-    eb:SetFullWidth(true)
-    eb:SetNumLines(8)
-    eb:SetText(text)
-    eb:DisableButton(true)
-    f:AddChild(eb)
-
-    -- Select all on focus
-    C_Timer.After(0.1, function()
-        local edit = eb.editBox or eb.editbox
-        if edit then
-            edit:HighlightText()
-            edit:SetFocus()
-        end
-    end)
-
-    f:Show()
+    local name, icon, body = self:GetContent()
+    if not body then return MF:Notify(MF.C.yellow .. L["OPEN_MACRO_FIRST"] .. "|r") end
+    MF:GetModule("Share"):OpenExport(name, icon, body)
 end
+Editor.OpenCopy = Editor.OpenExport
 
 ---------------------------------------------------
 -- Open (edit existing)
