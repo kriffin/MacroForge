@@ -24,16 +24,19 @@ No syntax check. No spell verification. No history. Blizzard's macro frame is a 
 - **Live analysis** — every command, condition and spell checked against your own spellbook
 - **"Did you mean…?"** — `/csatsequence` becomes `/castsequence`, a misspelt spell gets the closest match
 - **Plain-English explanation** of every line, right next to the code
-- **Test button** — resolves the macro against your current state: which clause fires, on which target, or nothing at all. Hold Shift to test your Shift branch
+- **One-click fixes** — click an issue to jump to its line, click **Fix** to correct a mistyped command
+- **Live test** — one click and the panel shows which clause fires right now, on which target, and follows as you change target, hover a unit or hold Shift
 - **Live 255-character counter**, with the shortener one click away
 
 ## One window, built for speed
 
-Search by name **or content**. Filter to what is broken, what sits on a bar, what nobody uses. Drag a macro straight onto your action bars. Right-click for duplicate, share, move between Character and Account, or its full history.
+Everything opens inside it: templates, history, sharing and duplicates are pages of the window (`Esc` goes back), and the spell list, commands, condition builder and icon picker slide in next to the code. Search by name **or content**. Filter to what is broken, what sits on a bar, what nobody uses. Drag a macro straight onto your action bars. Right-click for duplicate, share, move between Character and Account, or its full history.
 
 `Ctrl+S` save · `Ctrl+Z` undo · `Ctrl+F` search · `↑ ↓` walk the list · `Del` delete
 
 ![The MacroForge window](docs/assets/shots/window.png)
+
+![Icon picker next to the code](docs/assets/shots/drawer.png)
 
 ## Your macros follow your spec
 
@@ -52,13 +55,19 @@ Save your character macros as a **set** — Raid, M+, PvP, whatever you run. Bin
 
 ## Also in the box
 
-**50+ class templates** — interrupt chains, stealth openers, defensive stacks, mouseover heals, arena targeting. Spell names are resolved from spell IDs, so they are always in the client's language.
+**190 templates** — stances, traps, totems, seals, curses, druid forms, focus interrupts, mouseover heals: 11 for every class and 16 to 21 per class on WoW Forever, every spell checked in the client. Browse any class, not only yours. Spell names are resolved from spell IDs, so they are always in the client's language.
 
 **Audit** — one panel listing every macro that needs attention, worst first.
 
-**Share** — export a macro as a short code (LibDeflate + AceSerializer), or send it straight to another MacroForge user in game.
+**Share** — export a macro as a short code, send it to another MacroForge user in game, or paste any macro copied from a guide: it is named for you.
 
-**Condition builder** — build `[@mouseover,harm,nodead]` from dropdowns instead of memorising it.
+**Condition builder** — build `[@mouseover,harm,nodead]` from menus instead of memorising it.
+
+**Blizzard's /macro window** gets a MacroForge button: the macro you selected there opens here.
+
+![Templates of every class](docs/assets/shots/templates.png)
+
+![The MacroForge button in /macro](docs/assets/shots/macroframe.png)
 
 ---
 
