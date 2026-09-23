@@ -1010,6 +1010,10 @@ local function BuildAudit(container)
     local rows = ProblemMacros()
     local An = MF:GetModule("Analyzer")
     AddLabel(container, MF.C.gold .. format(L["AUDIT_TITLE"], #rows) .. "|r", GameFontNormalLarge)
+    AddActionButton(container, L["DUPES_TITLE"], 200, function()
+        local D = MF:GetModule("DuplicateDetector")
+        if D then D:OpenBrowser() end
+    end)
     if #rows == 0 then
         AddLabel(container, MF.C.green .. L["AUDIT_CLEAN"] .. "|r")
         return

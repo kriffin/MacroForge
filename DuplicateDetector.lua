@@ -5,12 +5,6 @@
 local MF = LibStub("AceAddon-3.0"):GetAddon("MacroForge")
 local L = LibStub("AceLocale-3.0"):GetLocale("MacroForge")
 local Detector = {}
-local AceGUI
-
-local function G()
-    if not AceGUI then AceGUI = LibStub("AceGUI-3.0") end
-    return AceGUI
-end
 
 ---------------------------------------------------
 -- Normalize body for comparison (trim whitespace, lowercase)
@@ -62,115 +56,107 @@ function Detector:FindDuplicates()
 end
 
 ---------------------------------------------------
--- Duplicate Browser UI
+-- Duplicates page (main window): groups on the left, the selected group
+-- on the right with its code and one row per copy (keep the first one)
 ---------------------------------------------------
-function Detector:OpenBrowser()
-    local gui = G()
-    local dupes = self:FindDuplicates()
-
-    local f = gui:Create("Frame")
-    f:SetTitle("|cff00ccffMacroForge|r - " .. L["DUPES_TITLE"])
-    f:SetWidth(520)
-    f:SetHeight(400)
-    f:SetLayout("Fill")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-
-    local scroll = gui:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    f:AddChild(scroll)
-
-    if #dupes == 0 then
-        local lbl = gui:Create("Label")
-        lbl:SetFullWidth(true)
-        lbl:SetFontObject(GameFontNormal)
-        lbl:SetText(MF.C.green .. L["DUPES_NONE"] .. "|r")
-        scroll:AddChild(lbl)
-        f:Show()
-        return
-    end
-
-    local totalDupes = 0
-    for _, group in ipairs(dupes) do
-        totalDupes = totalDupes + #group - 1
-    end
-
-    local summary = gui:Create("Label")
-    summary:SetFullWidth(true)
-    summary:SetFontObject(GameFontNormal)
-    summary:SetText(MF.C.yellow .. format(L["DUPES_GROUPS"], #dupes, totalDupes) .. "|r")
-    scroll:AddChild(summary)
-
-    local An = MF:GetModule("Analyzer")
-
-    for gi, group in ipairs(dupes) do
-        local grp = gui:Create("InlineGroup")
-        grp:SetFullWidth(true)
-        grp:SetTitle(MF.C.gold .. format(L["DUPES_GROUP_N"], gi) .. "|r — " .. format(L["DUPES_IDENTICAL"], #group))
-        grp:SetLayout("List")
-
-        -- Show shared body preview
-        local previewLbl = gui:Create("Label")
-        previewLbl:SetFullWidth(true)
-        previewLbl:SetFontObject(GameFontNormalSmall)
-        local colored = An and An:ColorizeBody(group[1].body) or group[1].body
-        previewLbl:SetText(colored)
-        grp:AddChild(previewLbl)
-
-        for mi, macro in ipairs(group) do
-            local row = gui:Create("SimpleGroup")
-            row:SetFullWidth(true)
-            row:SetLayout("Flow")
-
-            local scope = macro._scope == "character" and MF.C.cyan .. "[" .. L["MACROS_PERSO"] .. "]" or MF.C.yellow .. "[" .. L["MACROS_COMPTE"] .. "]"
-            local info = gui:Create("Label")
-            info:SetWidth(280)
-            info:SetFontObject(GameFontNormal)
-            info:SetText(scope .. "|r " .. MF.C.white .. (macro.name or L["MACRO_UNNAMED"]) .. "|r " ..
-                MF.C.grey .. "#" .. (macro.index or "?") .. "|r")
-            row:AddChild(info)
-
-            -- Only show delete button for non-first entry in group
-            if mi > 1 then
-                local btnDel = gui:Create("Button")
-                btnDel:SetText(L["DELETE"])
-                btnDel:SetWidth(90)
-                btnDel:SetCallback("OnClick", function()
-                    StaticPopupDialogs["MACROFORGE_DUPE_DELETE"] = {
-                        text = format(L["DELETE_CONFIRM"], macro.name or "?"),
-                        button1 = L["DELETE_YES"],
-                        button2 = L["DELETE_NO"],
-                        OnAccept = function()
-                            local P = MF:GetModule("Profiles")
-                            if P and macro.index then
-                                P:DeleteMacroByIndex(macro.index)
-                                MF.Helpers:Print(MF.C.red .. format(L["DUPES_DELETED"], macro.name or "") .. "|r")
-                                f:Release()
-                                C_Timer.After(0.3, function() Detector:OpenBrowser() end)
-                            end
-                        end,
-                        timeout = 0,
-                        whileDead = true,
-                        hideOnEscape = true,
-                        preferredIndex = 3,
-                    }
-                    StaticPopup_Show("MACROFORGE_DUPE_DELETE")
-                end)
-                row:AddChild(btnDel)
-            else
-                local keepLbl = gui:Create("Label")
-                keepLbl:SetWidth(90)
-                keepLbl:SetFontObject(GameFontNormalSmall)
-                keepLbl:SetText(MF.C.green .. L["DUPES_KEEP"] .. "|r")
-                row:AddChild(keepLbl)
-            end
-
-            grp:AddChild(row)
+StaticPopupDialogs["MACROFORGE_DUPE_DELETE"] = {
+    text = L["DELETE_CONFIRM"],
+    button1 = L["DELETE_YES"],
+    button2 = L["DELETE_NO"],
+    OnAccept = function(_, macro)
+        local P = MF:GetModule("Profiles")
+        if P and macro.index and P:DeleteMacroByIndex(macro.index) then
+            MF:Notify(MF.C.red .. format(L["DUPES_DELETED"], macro.name or "") .. "|r")
         end
+        C_Timer.After(0.3, function()
+            MF:GetModule("UI"):Refresh()
+            if Detector.page then Detector.page.Fill() end
+        end)
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
 
-        scroll:AddChild(grp)
+local MAX_COPIES_SHOWN = 8
+
+local function BuildPage(page)
+    local W = MF.Widgets
+    local summary = W:Text(page, "GameFontNormal")
+    summary:SetPoint("TOPLEFT", 4, -4)
+    local list, card = W:ListAndCard(page, {
+        icon = function(group) local m = group[1]; return (m.icon and m.icon ~= 0) and m.icon or 134400 end,
+        name = function(group) return group[1].name:match("^%s*$") and L["MACRO_UNNAMED"] or group[1].name end,
+        sub = function(group) return format(L["DUPES_IDENTICAL"], #group) end,
+        onSelect = function(group) page.ShowGroup(group) end,
+        empty = L["DUPES_NONE"],
+    }, 26)
+
+    local preview = W:Text(card, "GameFontHighlight")
+    preview:SetPoint("TOPLEFT", 14, -14)
+    preview:SetPoint("RIGHT", card, "RIGHT", -14, 0)
+    preview:SetJustifyV("TOP")
+    local copies = {}
+    for i = 1, MAX_COPIES_SHOWN do
+        local row = CreateFrame("Frame", nil, card)
+        row:SetHeight(24)
+        row:SetPoint("LEFT", 14, 0)
+        row:SetPoint("RIGHT", -14, 0)
+        if i == 1 then row:SetPoint("TOP", preview, "BOTTOM", 0, -16) else row:SetPoint("TOP", copies[i - 1], "BOTTOM", 0, -4) end
+        row.text = W:Text(row, "GameFontHighlight")
+        row.text:SetPoint("LEFT")
+        row.del = W:Button(row, L["DELETE"], 100)
+        row.del:SetPoint("RIGHT")
+        row.keep = W:Text(row, "GameFontDisableSmall", L["DUPES_KEEP"], "RIGHT")
+        row.keep:SetPoint("RIGHT", -8, 0)
+        copies[i] = row
     end
 
-    f:Show()
+    function page.ShowGroup(group)
+        card:SetShown(group ~= nil)
+        if not group then return end
+        local An = MF:GetModule("Analyzer")
+        preview:SetText(An and An:ColorizeBody(group[1].body) or group[1].body)
+        for i, row in ipairs(copies) do
+            local m = group[i]
+            row:SetShown(m ~= nil)
+            if m then
+                local scope = m._scope == "character" and (MF.C.cyan .. L["SCOPE_CHAR"]) or (MF.C.yellow .. L["SCOPE_ACCOUNT"])
+                row.text:SetText(scope .. "|r  " .. MF.C.white .. (m.name:match("^%s*$") and L["MACRO_UNNAMED"] or m.name)
+                    .. "|r  " .. MF.C.grey .. "#" .. (m.index or "?") .. "|r")
+                row.del:SetShown(i > 1)
+                row.keep:SetShown(i == 1)
+                row.del:SetScript("OnClick", function()
+                    StaticPopup_Show("MACROFORGE_DUPE_DELETE", m.name or "?", nil, m)
+                end)
+            end
+        end
+    end
+
+    function page.Fill()
+        local dupes = Detector:FindDuplicates()
+        local extra = 0
+        for _, group in ipairs(dupes) do extra = extra + #group - 1 end
+        summary:SetText(#dupes == 0 and (MF.C.green .. L["DUPES_NONE"] .. "|r")
+            or (MF.C.yellow .. format(L["DUPES_GROUPS"], #dupes, extra) .. "|r"))
+        list.selected = nil
+        list:SetRows(dupes)
+    end
+    Detector.page = page
+end
+
+function Detector:OpenBrowser()
+    local UI = MF:GetModule("UI")
+    if not self.pageRegistered then
+        self.pageRegistered = true
+        UI:RegisterPage("dupes", {
+            title = L["DUPES_TITLE"],
+            build = BuildPage,
+            onShow = function(page) page.Fill() end,
+        })
+    end
+    UI:OpenPage("dupes")
 end
 
 MF:RegisterModule("DuplicateDetector", Detector)
