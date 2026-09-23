@@ -4,6 +4,10 @@ on:
   push:
     tags: ['v*']
 
+# The packager creates the GitHub release: the default token is read-only
+permissions:
+  contents: write
+
 jobs:
   package:
     runs-on: ubuntu-latest
