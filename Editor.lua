@@ -160,7 +160,10 @@ local function CreateToolbar(pane)
 
             root:CreateDivider()
             root:CreateButton(L["COPY_BTN"], function() Editor:OpenCopy() end)
-            root:CreateButton(L["IMPORT_BTN"], function() Editor:OpenImport() end)
+            root:CreateButton(L["IMPORT_BTN"], function()
+                local S = MF:GetModule("Share")
+                if S then S:OpenImport() end
+            end)
             root:CreateButton(L["EXPORT_BTN"], function() Editor:OpenExport() end)
             root:CreateDivider()
             root:CreateButton(L["HISTORY_BTN"], function()
@@ -612,56 +615,6 @@ end
 ---------------------------------------------------
 -- Import/Export
 ---------------------------------------------------
-function Editor:OpenImport()
-    local gui = G()
-    local f = gui:Create("Frame")
-    f:SetTitle(L["IMPORT_MACRO_TITLE"])
-    f:SetWidth(420)
-    f:SetHeight(250)
-    f:SetLayout("Flow")
-    f:SetCallback("OnClose", function(w) w:Release() end)
-
-    local bg = f.frame:CreateTexture(nil, "BACKGROUND", nil, -1)
-    bg:SetColorTexture(0.05, 0.05, 0.08, 0.95)
-    bg:SetPoint("TOPLEFT", f.content, -5, 5)
-    bg:SetPoint("BOTTOMRIGHT", f.content, 5, -5)
-
-    local eb = gui:Create("MultiLineEditBox")
-    eb:SetLabel(L["PASTE_MACRO_TEXT_LABEL"])
-    eb:SetFullWidth(true)
-    eb:SetNumLines(8)
-    eb:DisableButton(true)
-    f:AddChild(eb)
-
-    local btnOk = gui:Create("Button")
-    btnOk:SetText(L["IMPORT_BTN"])
-    btnOk:SetWidth(100)
-    btnOk:SetCallback("OnClick", function()
-        local text = eb:GetText()
-        if text and text ~= "" then
-            -- Parse: first line could be macro name
-            local firstLine, rest = text:match("^([^\n]*)\n(.*)$")
-            if firstLine and rest then
-                -- If first line starts with # or /, treat entire thing as body
-                if firstLine:match("^#") or firstLine:match("^/") then
-                    bodyWidget:SetText(text)
-                else
-                    nameWidget:SetText(firstLine:sub(1, 16))
-                    bodyWidget:SetText(rest)
-                end
-            else
-                bodyWidget:SetText(text)
-            end
-            self:OnChanged()
-            MF:Print(MF.C.green .. L["MACRO_IMPORTED"] .. "|r")
-        end
-        f:Release()
-    end)
-    f:AddChild(btnOk)
-
-    f:Show()
-end
-
 function Editor:OpenExport()
     local gui = G()
     local name = nameWidget and nameWidget:GetText() or ""

@@ -8,6 +8,10 @@
   offered back. The Home view shows a "Resume the draft" button.
 - A draft is no longer wiped by opening another macro first, and discarding
   or cancelling your edits drops it.
+- **Import**: one window for everything you paste. A MacroForge code, or the
+  plain text of a macro copied from a guide or a forum - the name comes from
+  its first line, or from the spell it casts. The preview says which one it
+  read, and why it refuses anything else.
 
 ## 7.3.0 — 2026-09-20
 

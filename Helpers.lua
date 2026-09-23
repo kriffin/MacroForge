@@ -250,6 +250,29 @@ function MF.Helpers:GetSpellbookSpells()
     return self:BuildSpellbookCache()
 end
 
+-- Macro text pasted from a guide or a forum. A first line that is not a
+-- command (# or /) is the name; otherwise the name comes from the spell
+-- the macro shows or casts first.
+function MF.Helpers:ParseMacroText(text)
+    if type(text) ~= "string" then return nil, L["IMPORT_EMPTY"] end
+    text = text:gsub("\r\n?", "\n"):match("^%s*(.-)%s*$")
+    if text == "" then return nil, L["IMPORT_EMPTY"] end
+    local name, body = text:match("^([^\n]*)\n(.*)$")
+    if not name or name:match("^%s*[#/]") then
+        name, body = nil, text
+    end
+    body = body:match("^%s*(.-)%s*$")
+    if not body:match("^[#/]") then return nil, L["IMPORT_NOT_MACRO"] end
+    if not name or name:match("^%s*$") then
+        local spell = self:ParseShowTooltip(body) or self:ParseSpells(body)[1]
+            or body:match("/cast%a+%s+%[.-%]%s*([^\n]+)") or body:match("/cast%a+%s+([^\n]+)")
+        -- "/cast [mod:shift] A; B" or "reset=8 A, B": keep the first spell
+        spell = spell and spell:gsub("^reset=%S+%s*", ""):match("^([^;,]+)")
+        name = spell and spell:match("^%s*(.-)%s*$") or "Macro"
+    end
+    return self:SanitizeMacro({ name = name, body = body, icon = self.DYNAMIC_ICON })
+end
+
 -- Drafts: one unsaved edit per character. An existing macro's draft is keyed
 -- by scope + saved name, not by index: WoW sorts macros by name, so an index
 -- moves as soon as a macro is created or renamed.

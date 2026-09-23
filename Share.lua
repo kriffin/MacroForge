@@ -153,14 +153,27 @@ function Share:OpenExport(name, icon, body)
     f:Show()
 end
 
+-- One entry point for everything pasted: a share code, or plain macro text
+-- (a guide, a forum). Returns macro, err, kind ("code" or "text").
+function Share:ParseImport(text)
+    text = type(text) == "string" and text:match("^%s*(.-)%s*$") or ""
+    if text == "" then return nil end
+    if text:match("^MF%d+:") then
+        local macro, err = self:Decode(text)
+        return macro, err, "code"
+    end
+    local macro, err = MF.Helpers:ParseMacroText(text)
+    return macro, err, "text"
+end
+
 ---------------------------------------------------
--- Share Import UI
+-- Import UI
 ---------------------------------------------------
 function Share:OpenImport()
     local f = AceGUI:Create("Frame")
     f:SetTitle("|cff00ccffMacroForge|r - " .. L["SHARE_IMPORT_TITLE"])
     f:SetWidth(480)
-    f:SetHeight(350)
+    f:SetHeight(420)
     f:SetLayout("Flow")
     f:SetCallback("OnClose", function(w) w:Release() end)
 
@@ -178,7 +191,7 @@ function Share:OpenImport()
     local eb = AceGUI:Create("MultiLineEditBox")
     eb:SetLabel(L["SHARE_CODE_LABEL"])
     eb:SetFullWidth(true)
-    eb:SetNumLines(4)
+    eb:SetNumLines(8)
     eb:DisableButton(true)
     f:AddChild(eb)
 
@@ -196,20 +209,16 @@ function Share:OpenImport()
     local decodedMacro = nil
 
     eb:SetCallback("OnTextChanged", function(w)
-        local text = w:GetText()
-        if text and (text:match("^MF%d+:") or text:match("^MF5:") or text:match("^MF6:") or text:match("^MF7:")) then
-            local macro, err = Share:Decode(text)
-            if macro then
-                decodedMacro = macro
-                local An = MF:GetModule("Analyzer")
-                local colored = An and An:ColorizeBody(macro.body) or macro.body
-                pvLabel:SetText(MF.C.gold .. macro.name .. "|r\n" .. colored)
-            else
-                decodedMacro = nil
-                pvLabel:SetText(MF.C.red .. (err or L["SHARE_ERROR"]) .. "|r")
-            end
+        local macro, err, kind = Share:ParseImport(w:GetText())
+        decodedMacro = macro
+        if macro then
+            local An = MF:GetModule("Analyzer")
+            local colored = An and An:ColorizeBody(macro.body) or macro.body
+            pvLabel:SetText(MF.C.grey .. L[kind == "code" and "IMPORT_KIND_CODE" or "IMPORT_KIND_TEXT"] .. "|r\n"
+                .. MF.C.gold .. macro.name .. "|r\n" .. colored)
+        elseif kind then
+            pvLabel:SetText(MF.C.red .. (err or L["SHARE_ERROR"]) .. "|r")
         else
-            decodedMacro = nil
             pvLabel:SetText(MF.C.grey .. L["SHARE_PREVIEW"] .. "|r")
         end
     end)
