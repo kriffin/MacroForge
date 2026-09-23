@@ -384,13 +384,51 @@ function MF.Templates:GetPlayerClass()
     return cls or "WARRIOR"
 end
 
+local GetSpellName = C_Spell and C_Spell.GetSpellName
+    or function(id) return (GetSpellInfo(id)) end
+
+-- A template only shows when every spell it names exists in this client:
+-- retail spells are missing from WoW Forever and the other way round, and
+-- a name that falls back to English would never cast.
+local available = setmetatable({}, { __mode = "k" })
+function MF.Templates:IsAvailable(tmpl)
+    if available[tmpl] == nil then
+        local ok = true
+        for id in (tmpl.body or ""):gmatch("{spell:(%d+):") do
+            if not GetSpellName(tonumber(id)) then ok = false; break end
+        end
+        available[tmpl] = ok
+    end
+    return available[tmpl]
+end
+
+-- Classes of this client that have at least one usable template
+function MF.Templates:GetClasses()
+    local playable = {}
+    if GetNumClasses and GetClassInfo then
+        for i = 1, GetNumClasses() do
+            local _, file = GetClassInfo(i)
+            if file then playable[file] = true end
+        end
+    end
+    local classes = {}
+    for cls, list in pairs(CLASS_TEMPLATES) do
+        if not next(playable) or playable[cls] then
+            for _, tmpl in ipairs(list) do
+                if self:IsAvailable(tmpl) then table.insert(classes, cls); break end
+            end
+        end
+    end
+    return classes
+end
+
 -- Universal templates + those of a class (the player's by default)
 function MF.Templates:GetTemplatesForPlayer(categoryFilter, cls)
     cls = cls or self:GetPlayerClass()
     local result = {}
     -- Universal first
     for _, t in ipairs(UNIVERSAL) do
-        if not categoryFilter or categoryFilter == "" or t.category == categoryFilter then
+        if (not categoryFilter or categoryFilter == "" or t.category == categoryFilter) and self:IsAvailable(t) then
             t._source = "universal"
             table.insert(result, t)
         end
@@ -399,7 +437,7 @@ function MF.Templates:GetTemplatesForPlayer(categoryFilter, cls)
     local cTemplates = CLASS_TEMPLATES[cls]
     if cTemplates then
         for _, t in ipairs(cTemplates) do
-            if not categoryFilter or categoryFilter == "" or t.category == categoryFilter then
+            if (not categoryFilter or categoryFilter == "" or t.category == categoryFilter) and self:IsAvailable(t) then
                 t._source = cls
                 table.insert(result, t)
             end
@@ -417,8 +455,6 @@ end
 --                    does not exist in this client, e.g. another flavor)
 --   {ph:KEY}         placeholder to replace by hand (L["TPL_PH_KEY"])
 ---------------------------------------------------
-local GetSpellName = C_Spell and C_Spell.GetSpellName
-    or function(id) return (GetSpellInfo(id)) end
 
 function MF.Templates:ResolveBody(body)
     if not body then return "" end
@@ -636,8 +672,7 @@ function MF.Templates:BuildPage(page)
     classButton:SetScript("OnClick", function(btn)
         MenuUtil.CreateContextMenu(btn, function(_, root)
             root:CreateTitle(L["TPL_CLASS"])
-            local classes = {}
-            for c in pairs(T.CLASS_TEMPLATES) do table.insert(classes, c) end
+            local classes = T:GetClasses()
             table.sort(classes, function(a, b) return ClassName(a) < ClassName(b) end)
             for _, c in ipairs(classes) do
                 local label = ColoredClass(c) .. (c == playerClass and (MF.C.grey .. "  " .. L["TPL_YOUR_CLASS"] .. "|r") or "")

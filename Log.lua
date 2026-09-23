@@ -110,3 +110,79 @@ function MF:StartLogSession()
         end)
     end
 end
+
+---------------------------------------------------
+-- Client dump (/mf dump): what this client really offers, written to the
+-- SavedVariables (MacroForgeDB.global.dump) so it can be read off disk:
+-- API documentation of this build, playable classes, the spells behind the
+-- templates, how each macro condition parses, the character's spellbook.
+---------------------------------------------------
+local function Signature(fn)
+    local args, rets = {}, {}
+    for _, a in ipairs(fn.Arguments or {}) do table.insert(args, a.Name .. ":" .. tostring(a.Type)) end
+    for _, r in ipairs(fn.Returns or {}) do table.insert(rets, r.Name .. ":" .. tostring(r.Type)) end
+    return fn.Name .. "(" .. table.concat(args, ", ") .. ")" .. (#rets > 0 and (" -> " .. table.concat(rets, ", ")) or "")
+end
+
+function MF:DumpClient()
+    local dump = { time = date("%Y-%m-%d %H:%M:%S"), locale = GetLocale() }
+    local _, build, _, interface = GetBuildInfo()
+    dump.build, dump.interface = build, interface
+
+    -- API documentation (what /api browses)
+    local load = C_AddOns and C_AddOns.LoadAddOn or LoadAddOn
+    pcall(load, "Blizzard_APIDocumentationGenerated")
+    pcall(load, "Blizzard_APIDocumentation")
+    dump.api = {}
+    local doc = _G.APIDocumentation
+    for _, sys in ipairs(doc and doc.systems or {}) do
+        local entry = { functions = {}, events = {} }
+        for _, fn in ipairs(sys.Functions or {}) do table.insert(entry.functions, Signature(fn)) end
+        for _, ev in ipairs(sys.Events or {}) do table.insert(entry.events, ev.LiteralName or ev.Name) end
+        dump.api[(sys.Namespace or sys.Name or "?")] = entry
+    end
+
+    -- Playable classes
+    dump.classes = {}
+    for i = 1, (GetNumClasses and GetNumClasses() or 0) do
+        local name, file, id = GetClassInfo(i)
+        if file then table.insert(dump.classes, { id = id, file = file, name = name }) end
+    end
+
+    -- Every spell ID used by a template, resolved in this client
+    dump.templateSpells = {}
+    local T = self:GetModule("Templates")
+    local lists = { T and T.UNIVERSAL or {} }
+    for _, l in pairs(T and T.CLASS_TEMPLATES or {}) do table.insert(lists, l) end
+    for _, l in ipairs(lists) do
+        for _, tmpl in ipairs(l) do
+            for id in (tmpl.body or ""):gmatch("{spell:(%d+):") do
+                dump.templateSpells[id] = C_Spell.GetSpellName(tonumber(id)) or false
+            end
+        end
+    end
+
+    -- How each builder condition parses here (unknown ones error or never match)
+    dump.conditions = {}
+    local B = self:GetModule("Builder")
+    for _, c in ipairs(B and B.CONDITIONS or {}) do
+        if c.value ~= "" then
+            local test = c.hasArg and (c.value .. ":1") or c.value
+            local ok, res = pcall(SecureCmdOptionParse, "[" .. test .. "] yes; no")
+            dump.conditions[c.value] = ok and tostring(res) or ("ERROR " .. tostring(res))
+        end
+    end
+
+    -- The logged character's spellbook (names and IDs as this client has them)
+    dump.spellbook = {}
+    for _, sp in ipairs(MF.Helpers:GetSpellbookSpells()) do
+        table.insert(dump.spellbook, (sp.id or "?") .. " " .. sp.name)
+    end
+    dump.class = select(2, UnitClass("player"))
+
+    self.db.global.dump = dump
+    local n = 0
+    for _ in pairs(dump.api) do n = n + 1 end
+    self:Print(format("dump: %d API systems, %d classes, %d spells. /reload to write it to disk.",
+        n, #dump.classes, #dump.spellbook))
+end

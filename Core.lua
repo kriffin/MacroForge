@@ -278,6 +278,8 @@ function MF:HandleSlash(msg)
     elseif cmd == "commands" or cmd == "cmd" then
         local CP = self:GetModule("CommandPalette")
         if CP then CP:Toggle() end
+    elseif cmd == "dump" then
+        self:DumpClient()
     elseif cmd == "news" or cmd == "whatsnew" then
         if UI then UI:ShowNews() end
     elseif cmd == "templates" then

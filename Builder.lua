@@ -70,6 +70,8 @@ local CONDITIONS = {
     { value = "cursor",        label = "cursor",         hasArg = false, desc = L["BUILDER_DESC_CURSOR"] },
 }
 
+Builder.CONDITIONS = CONDITIONS
+
 local MOD_KEYS = {
     { value = "",      label = L["BUILDER_ANY"] },
     { value = "shift", label = "shift" },
