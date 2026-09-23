@@ -504,10 +504,11 @@ function A:Analyze(body, name)
     if ob ~= cb then self:AddIssue(r, "ERR", 0, L["ANALYZER_BRACKETS_MISMATCH"]:format(ob, cb)) end
     if op ~= cp then self:AddIssue(r, "WARN", 0, L["ANALYZER_PARENS_MISMATCH"]:format(op, cp)) end
 
+    -- Real line numbers (blank lines count), as the editor gutter shows them
     local ln = 0
-    for line in body:gmatch("[^\n]+") do
+    for line in (body .. "\n"):gmatch("([^\n]*)\n") do
         ln = ln + 1
-        self:AnalyzeLine(line, ln, r)
+        if line ~= "" then self:AnalyzeLine(line, ln, r) end
     end
 
     for _, i in ipairs(r.issues) do
@@ -533,11 +534,9 @@ function A:AnalyzeLine(line, ln, r)
     -- Command validation with "did you mean"
     if not self:IsKnownCommand(cmd) then
         local best, dist = self:FindBestMatch(cmd:sub(2):lower())
-        local msg = L["ANALYZER_UNKNOWN_COMMAND"]:format(cmd)
-        if best and best ~= "" and dist <= 4 then
-            msg = msg .. "  -> /" .. best
-        end
-        self:AddIssue(r, "WARN", ln, msg, { fixType = "name", fix = best and ("/" .. best) or nil })
+        local close = best and best ~= "" and dist <= 4
+        self:AddIssue(r, "WARN", ln, L["ANALYZER_UNKNOWN_COMMAND"]:format(cmd),
+            { fixType = "command", fixFrom = close and cmd or nil, fix = close and ("/" .. best) or nil })
         return
     end
 

@@ -15,7 +15,10 @@ local function G()
 end
 
 local editorFrame
-local nameWidget, bodyWidget, errorsLabel, explainLabel
+local nameWidget, bodyWidget, errorsGroup, explainLabel
+local editorRoot       -- top AceGUI container, relaid out when the issue list changes
+local issuesShown      -- signature of the issues on screen: rebuild only on change
+local RenderIssues     -- defined next to OnChanged
 local iconButton, _iconTexture
 local testLabel        -- "what would happen now" result of the Test button
 local testButton       -- toolbar button, reads "Stop test" while the test is live
@@ -202,6 +205,7 @@ local function CreateEditor()
     local pane = UI:GetEditorPane()
     local f = gui:Create("SimpleGroup")
     f:SetLayout("Fill")
+    editorRoot = f
     f.frame:SetParent(pane)
     f.frame:ClearAllPoints()
     f.frame:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, -TOOLBAR_HEIGHT)
@@ -441,11 +445,12 @@ local function CreateEditor()
     rightCol:AddChild(analysisHeading)
 
     -- Errors display (hidden when clean)
-    errorsLabel = gui:Create("Label")
-    errorsLabel:SetFullWidth(true)
-    errorsLabel:SetFontObject(GameFontNormalSmall)
-    errorsLabel:SetText("")
-    rightCol:AddChild(errorsLabel)
+    -- Errors: one clickable row per issue (go to the line), plus a fix row
+    -- when the analyzer knows the correction
+    errorsGroup = gui:Create("SimpleGroup")
+    errorsGroup:SetFullWidth(true)
+    errorsGroup:SetLayout("List")
+    rightCol:AddChild(errorsGroup)
 
     -- Algorithmic explanation
     explainLabel = gui:Create("Label")
@@ -895,6 +900,85 @@ end
 ---------------------------------------------------
 -- Live analysis + preview update
 ---------------------------------------------------
+-- Selects line n in the code box
+function Editor:GoToLine(n)
+    local eb = bodyWidget and (bodyWidget.editBox or bodyWidget.editbox)
+    local s, e = MF.Helpers:LineSpan(bodyWidget and bodyWidget:GetText(), n)
+    if not eb or not s then return end
+    eb:SetFocus()
+    eb:SetCursorPosition(e)
+    eb:HighlightText(s, e)
+end
+
+function Editor:ApplyFix(issue)
+    local body, name = MF.Helpers:ApplyIssueFix(bodyWidget:GetText(), nameWidget:GetText(), issue)
+    if not body then return end
+    if name ~= nameWidget:GetText() then nameWidget:SetText(name) end
+    if body ~= bodyWidget:GetText() then bodyWidget:SetText(body) end
+    self:OnChanged()
+    if issue.line and issue.line > 0 then self:GoToLine(issue.line) end
+end
+
+local MAX_ISSUES_SHOWN = 6
+
+local function IssueRow(text, font, onClick, tip)
+    local row = AceGUI:Create("InteractiveLabel")
+    row:SetFullWidth(true)
+    row:SetFontObject(font)
+    row:SetText(text)
+    if onClick then
+        row:SetHighlight("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        row:SetCallback("OnClick", onClick)
+    end
+    if tip then
+        row:SetCallback("OnEnter", function(w)
+            GameTooltip:SetOwner(w.frame, "ANCHOR_LEFT")
+            GameTooltip:AddLine(tip, 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        row:SetCallback("OnLeave", GameTooltip_Hide)
+    end
+    errorsGroup:AddChild(row)
+end
+
+RenderIssues = function(issues)
+    local An = MF:GetModule("Analyzer")
+    local sig = {}
+    for i, iss in ipairs(issues) do
+        if i > MAX_ISSUES_SHOWN then break end
+        sig[#sig + 1] = iss.severity .. iss.line .. iss.message .. (iss.fix or "")
+    end
+    sig = table.concat(sig, "\0") .. "#" .. #issues
+    if sig == issuesShown then return end
+    issuesShown = sig
+
+    errorsGroup:PauseLayout()
+    errorsGroup:ReleaseChildren()
+    for idx, iss in ipairs(issues) do
+        if idx > MAX_ISSUES_SHOWN then
+            IssueRow(MF.C.grey .. L["AND_MORE_ISSUES"]:format(#issues - MAX_ISSUES_SHOWN) .. "|r", GameFontNormalSmall)
+            break
+        end
+        local ln = iss.line > 0 and (MF.C.grey .. "L" .. iss.line .. "|r ") or ""
+        local text = An:FmtSev(iss.severity) .. " " .. ln .. iss.message
+        if iss.fixType == "spell" then
+            text = text .. "  " .. MF.C.yellow .. L["CHECK_GRIMOIRE_HINT"] .. "|r"
+        end
+        if iss.line > 0 then
+            IssueRow(text, GameFontNormalSmall, function() Editor:GoToLine(iss.line) end, L["ISSUE_GOTO_TIP"])
+        else
+            IssueRow(text, GameFontNormalSmall)
+        end
+        if iss.fix and (iss.fixType == "name" or iss.fixFrom) then
+            IssueRow("    " .. MF.C.green .. format(L["ISSUE_FIX"], iss.fix) .. "|r", GameFontNormalSmall,
+                function() Editor:ApplyFix(iss) end, L["ISSUE_FIX_TIP"])
+        end
+    end
+    errorsGroup:ResumeLayout()
+    errorsGroup:DoLayout()
+    if editorRoot then editorRoot:DoLayout() end
+end
+
 function Editor:OnChanged(skipUndo)
     local body = bodyWidget:GetText()
     local name = nameWidget:GetText()
@@ -923,30 +1007,7 @@ function Editor:OnChanged(skipUndo)
         bodyWidget:SetLabel(L["MACRO_BODY_LABEL_COUNT"]:format(cc, len))
     end
 
-    -- Errors: inline display, hide when clean
-    if #res.issues == 0 then
-        errorsLabel:SetText("")
-        errorsLabel.frame:Hide()
-    else
-        local lines = {}
-        for idx, iss in ipairs(res.issues) do
-            if idx > 6 then
-                table.insert(lines, MF.C.grey .. L["AND_MORE_ISSUES"]:format(#res.issues - 6) .. "|r")
-                break
-            end
-            local ln = iss.line > 0 and ("L" .. iss.line .. " ") or ""
-            local sevIcon = An:FmtSev(iss.severity)
-            local errLine = sevIcon .. " " .. ln .. iss.message
-            if iss.fixType == "name" and iss.fix then
-                errLine = errLine .. "  " .. MF.C.green .. L["FIX_SUGGESTION"]:format(iss.fix) .. "|r"
-            elseif iss.fixType == "spell" then
-                errLine = errLine .. "  " .. MF.C.yellow .. L["CHECK_GRIMOIRE_HINT"] .. "|r"
-            end
-            table.insert(lines, errLine)
-        end
-        errorsLabel:SetText(table.concat(lines, "\n"))
-        errorsLabel.frame:Show()
-    end
+    RenderIssues(res.issues)
 
     -- Algorithmic explanation
     local explained = An:ExplainBody(body)

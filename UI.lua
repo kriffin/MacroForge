@@ -1003,7 +1003,8 @@ local function BuildAudit(container)
         local lines = {}
         for _, iss in ipairs(res.issues) do
             table.insert(lines, An:FmtSev(iss.severity) .. " "
-                .. (iss.line > 0 and (MF.C.grey .. "L" .. iss.line .. "|r ") or "") .. iss.message)
+                .. (iss.line > 0 and (MF.C.grey .. "L" .. iss.line .. "|r ") or "") .. iss.message
+                .. (iss.fix and ("  " .. MF.C.green .. format(L["FIX_SUGGESTION"], iss.fix) .. "|r") or ""))
         end
         AddLabel(grp, table.concat(lines, "\n"), GameFontHighlightSmall)
         AddActionButton(grp, L["EDIT"], 110, function() MF:GetModule("Editor"):Open(macro) end)

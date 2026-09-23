@@ -273,6 +273,33 @@ function MF.Helpers:ParseMacroText(text)
     return self:SanitizeMacro({ name = name, body = body, icon = self.DYNAMIC_ICON })
 end
 
+-- Cursor offsets (0-based, as EditBox:SetCursorPosition wants them) of the
+-- start and end of line n of body, or nil past the last line
+function MF.Helpers:LineSpan(body, n)
+    local pos, i = 0, 0
+    for line in ((body or "") .. "\n"):gmatch("([^\n]*)\n") do
+        i = i + 1
+        if i == n then return pos, pos + #line end
+        pos = pos + #line + 1
+    end
+end
+
+-- Applies an analyzer fix: returns the new body and name, or nil when the
+-- issue has no fix or the text it points at is gone
+function MF.Helpers:ApplyIssueFix(body, name, issue)
+    if not issue or not issue.fix then return nil end
+    if issue.fixType == "name" then return body, issue.fix end
+    if issue.fixType == "command" and issue.fixFrom then
+        local s, e = self:LineSpan(body, issue.line)
+        if not s then return nil end
+        local line = body:sub(s + 1, e)
+        local lead = line:match("^%s*")
+        if line:sub(#lead + 1, #lead + #issue.fixFrom) ~= issue.fixFrom then return nil end
+        line = lead .. issue.fix .. line:sub(#lead + #issue.fixFrom + 1)
+        return body:sub(1, s) .. line .. body:sub(e + 1), name
+    end
+end
+
 -- Drafts: one unsaved edit per character. An existing macro's draft is keyed
 -- by scope + saved name, not by index: WoW sorts macros by name, so an index
 -- moves as soon as a macro is created or renamed.

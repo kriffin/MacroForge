@@ -20,6 +20,11 @@
   with Shift down. Click again (Stop test) to turn it off; saving keeps it on.
 - **French**: every string has its accents back (the locale had none), and
   the whole interface now says "vous", like Blizzard's own French UI.
+- **Clickable analysis**: click an issue to select its line in the code, and
+  click "Fix: /castsequence" under a mistyped command (or a name over 16
+  characters) to apply the correction. Line numbers now match the editor
+  gutter: blank lines used to be skipped, so every issue below one pointed
+  one line too high.
 
 ## 7.3.0 — 2026-09-20
 
