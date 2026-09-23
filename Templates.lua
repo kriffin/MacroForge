@@ -284,7 +284,7 @@ local CLASS_TEMPLATES = {
             body = "#showtooltip\n/cast [@mouseover,help,nodead][@target,help,nodead][@player] {spell:774:Rejuvenation}",
         },
         {
-            category = "utility", name = "Form Cancel + Cast",
+            category = "utility", name = "Cancel Form+Cast",
             description = L["TPL_DESC_DRUID_FORM_CANCEL_CAST"],
             body = "#showtooltip\n/cancelform [form:1/2/3/4]\n/cast {ph:SORT}",
         },
@@ -506,6 +506,32 @@ local FOREVER_TEMPLATES = {
         { flavor = "forever", category = "cc", name = L["TPL_N_WLK_BANISH"], description = L["TPL_D_WLK_BANISH"],
           body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:710:Banish}" },
     },
+    DRUID = {
+        { flavor = "forever", category = "cc", name = L["TPL_N_DRU_ROOTS"], description = L["TPL_D_DRU_ROOTS"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:339:Entangling Roots}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_DRU_REJUV"], description = L["TPL_D_DRU_REJUV"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:774:Rejuvenation}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_DRU_HT"], description = L["TPL_D_DRU_HT"],
+          body = "#showtooltip {spell:5185:Healing Touch}\n/cancelform [form]\n/cast [mod:shift,@player][@mouseover,help,nodead][help,nodead][@player] {spell:5185:Healing Touch}" },
+        { flavor = "forever", category = "tank", name = L["TPL_N_DRU_BEAR"], description = L["TPL_D_DRU_BEAR"],
+          body = "#showtooltip\n/startattack\n/cast [noform:1] {spell:5487:Bear Form}; [mod:shift] {spell:779:Swipe}; {spell:6807:Maul}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_DRU_CAT"], description = L["TPL_D_DRU_CAT"],
+          body = "#showtooltip\n/cast [noform:3] {spell:768:Cat Form}; [stealth] {spell:6785:Ravage}; {spell:1082:Claw}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_DRU_PROWL"], description = L["TPL_D_DRU_PROWL"],
+          body = "#showtooltip {spell:5215:Prowl}\n/cast [noform:3] {spell:768:Cat Form}; [nostealth] {spell:5215:Prowl}" },
+        { flavor = "forever", category = "interrupt", name = L["TPL_N_DRU_BASH"], description = L["TPL_D_DRU_BASH"],
+          body = "#showtooltip {spell:5211:Bash}\n/cast [noform:1] {spell:5487:Bear Form}; [@focus,harm,nodead][] {spell:5211:Bash}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_DRU_TRAVEL"], description = L["TPL_D_DRU_TRAVEL"],
+          body = "#showtooltip\n/cast [swimming] {spell:1066:Aquatic Form}; [outdoors] {spell:783:Travel Form}; {spell:768:Cat Form}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_DRU_REBIRTH"], description = L["TPL_D_DRU_REBIRTH"],
+          body = "#showtooltip\n/cast [@mouseover,help,dead][] {spell:20484:Rebirth}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_DRU_INNERV"], description = L["TPL_D_DRU_INNERV"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:29166:Innervate}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_DRU_NS"], description = L["TPL_D_DRU_NS"],
+          body = "#showtooltip {spell:17116:Nature's Swiftness}\n/cancelform [form]\n/cast {spell:17116:Nature's Swiftness}\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:5185:Healing Touch}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_DRU_MOON"], description = L["TPL_D_DRU_MOON"],
+          body = "#showtooltip\n/cast [@mouseover,harm,nodead][] {spell:8921:Moonfire}" },
+    },
 }
 for cls, list in pairs(FOREVER_TEMPLATES) do
     CLASS_TEMPLATES[cls] = CLASS_TEMPLATES[cls] or {}
@@ -555,12 +581,7 @@ end
 -- Classes of this client that have at least one usable template
 function MF.Templates:GetClasses()
     local playable = {}
-    if GetNumClasses and GetClassInfo then
-        for i = 1, GetNumClasses() do
-            local _, file = GetClassInfo(i)
-            if file then playable[file] = true end
-        end
-    end
+    for _, c in ipairs(MF.Helpers:PlayableClasses()) do playable[c.file] = true end
     local classes = {}
     for cls, list in pairs(CLASS_TEMPLATES) do
         if not next(playable) or playable[cls] then

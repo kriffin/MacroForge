@@ -284,6 +284,23 @@ function MF.Helpers:ApplyIssueFix(body, name, issue)
     end
 end
 
+-- Playable classes of this client: { id, file, name }. GetClassInfo takes a
+-- class ID and IDs have holes (WoW Forever: 1-5, 7-9 and 11, the druid),
+-- so walking 1..GetNumClasses() misses classes.
+function MF.Helpers:PlayableClasses()
+    local ids = C_SpecializationInfo and C_SpecializationInfo.GetAllClassIDs and C_SpecializationInfo.GetAllClassIDs()
+    if not ids then
+        ids = {}
+        for id = 1, 30 do ids[#ids + 1] = id end
+    end
+    local classes = {}
+    for _, id in ipairs(ids) do
+        local ok, name, file = pcall(GetClassInfo, id)
+        if ok and file then table.insert(classes, { id = id, file = file, name = name }) end
+    end
+    return classes
+end
+
 -- Drafts: one unsaved edit per character. An existing macro's draft is keyed
 -- by scope + saved name, not by index: WoW sorts macros by name, so an index
 -- moves as soon as a macro is created or renamed.

@@ -144,10 +144,7 @@ function MF:DumpClient()
 
     -- Playable classes
     dump.classes = {}
-    for i = 1, (GetNumClasses and GetNumClasses() or 0) do
-        local name, file, id = GetClassInfo(i)
-        if file then table.insert(dump.classes, { id = id, file = file, name = name }) end
-    end
+    dump.classes = MF.Helpers:PlayableClasses()
 
     -- Every spell ID used by a template, resolved in this client
     dump.templateSpells = {}
