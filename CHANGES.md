@@ -29,6 +29,12 @@
   it, Blizzard style. Templates is the first: search and filter on top, the
   list on the left, the selected template on the right. The title shows where
   you are; Back (or Esc) returns to what was open, unsaved edits included.
+- **Templates of every class**: a class button lists them all (yours marked).
+- **Status line**: saves and creations show at the bottom of the window
+  instead of piling up in chat; Ctrl+S on an unchanged macro writes nothing.
+- **What's new** is a page (logo, title, features with icons), also in the
+  ? menu, instead of a popup of packed lines.
+- **Flat logo** on the minimap button and in the addon list.
 
 ## 7.3.0 — 2026-09-20
 
