@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Dev tunnel to the running WoW client (see tools/bridge/MacroForgeBridge).
 # Usage: tools/bridge.sh 'out(C_Spell.GetSpellName(1766))'   or   tools/bridge.sh -f query.lua
-# Writes the query, presses CTRL-SHIFT-ALT-F12 (ReloadUI) twice in the WoW
+# Writes the query, presses CTRL-SHIFT-F9 (ReloadUI) twice in the WoW
 # window, then prints what the query recorded. Takes ~20-30 s.
 # RELOAD_WAIT: seconds to wait for the UI to come back after the 1st reload (default 15)
 set -euo pipefail
 WOW_DIR=${MF_WOW_DIR:-"$HOME/Games/battlenet/drive_c/Program Files (x86)/World of Warcraft/_classic_beta_"}
-HERE=$(cd "$(dirname "$0")" && pwd)
+HERE=$(builtin cd "$(dirname "$0")" && pwd)
 QUEUE="$HERE/bridge/MacroForgeBridge/Queue.lua"
 SV=$(find "$WOW_DIR/WTF/Account" -mindepth 3 -maxdepth 3 -path '*#*/SavedVariables/MacroForgeBridge.lua' | head -1 || true)
 [[ -z $SV ]] && SV=$(find "$WOW_DIR/WTF/Account" -mindepth 2 -maxdepth 2 -type d -name SavedVariables -path '*#*' | head -1)/MacroForgeBridge.lua
@@ -19,7 +19,7 @@ printf 'MFBridgeQueue = { id = "%s", code = [%s[\n%s\n]%s] }\n' "$id" "$level" "
 export DISPLAY=${DISPLAY:-:0}
 win=$(xdotool search --name '^World of Warcraft$' | head -1)
 [[ -n $win ]] || { echo "WoW window not found" >&2; exit 1; }
-press() { xdotool windowactivate --sync "$win"; sleep 0.4; xdotool key --clearmodifiers ctrl+shift+alt+F12; }
+press() { xdotool windowactivate --sync "$win"; sleep 0.4; xdotool key --clearmodifiers ctrl+shift+F9; }
 
 press
 sleep "${RELOAD_WAIT:-15}"

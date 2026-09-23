@@ -223,7 +223,7 @@ local CLASS_TEMPLATES = {
     },
     MAGE = {
         {
-            category = "interrupt", name = "Counterspell Priority",
+            category = "interrupt", name = "CS Priority",
             description = L["TPL_DESC_MAGE_COUNTERSPELL_PRIORITY"],
             body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:2139:Counterspell}",
         },
@@ -363,6 +363,155 @@ local CLASS_TEMPLATES = {
     },
 }
 
+-- WoW Forever (vanilla spells). Names and descriptions are localized:
+-- the name becomes the macro name. flavor = "forever" hides them on retail.
+local FOREVER_TEMPLATES = {
+    WARRIOR = {
+        { flavor = "forever", category = "offensive", name = L["TPL_N_WAR_CHARGE"], description = L["TPL_D_WAR_CHARGE"],
+          body = "#showtooltip\n/cast [stance:1] {spell:100:Charge}; [stance:3] {spell:20252:Intercept}; {spell:2457:Battle Stance}" },
+        { flavor = "forever", category = "interrupt", name = L["TPL_N_WAR_KICK"], description = L["TPL_D_WAR_KICK"],
+          body = "#showtooltip\n/cast [stance:3,@focus,harm,nodead][stance:3] {spell:6552:Pummel}; [@focus,harm,nodead][] {spell:72:Shield Bash}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_WAR_OVERPOWER"], description = L["TPL_D_WAR_OVERPOWER"],
+          body = "#showtooltip {spell:7384:Overpower}\n/cast [stance:1] {spell:7384:Overpower}; {spell:2457:Battle Stance}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_WAR_EXECUTE"], description = L["TPL_D_WAR_EXECUTE"],
+          body = "#showtooltip {spell:5308:Execute}\n/cast [stance:2] {spell:2457:Battle Stance}; {spell:5308:Execute}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_WAR_HS"], description = L["TPL_D_WAR_HS"],
+          body = "#showtooltip\n/startattack\n/cast [mod:shift] {spell:845:Cleave}; {spell:78:Heroic Strike}" },
+        { flavor = "forever", category = "tank", name = L["TPL_N_WAR_TAUNT"], description = L["TPL_D_WAR_TAUNT"],
+          body = "#showtooltip\n/cast [mod:shift,@mouseover,harm,nodead][mod:shift] {spell:694:Mocking Blow}; [@mouseover,harm,nodead][] {spell:355:Taunt}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_WAR_WALL"], description = L["TPL_D_WAR_WALL"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:12975:Last Stand}; [stance:2] {spell:871:Shield Wall}; {spell:71:Defensive Stance}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_WAR_RAGE"], description = L["TPL_D_WAR_RAGE"],
+          body = "#showtooltip\n/cast [stance:3] {spell:18499:Berserker Rage}; {spell:2687:Bloodrage}" },
+    },
+    PALADIN = {
+        { flavor = "forever", category = "cc", name = L["TPL_N_PAL_HOJ"], description = L["TPL_D_PAL_HOJ"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:853:Hammer of Justice}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_PAL_FLASH"], description = L["TPL_D_PAL_FLASH"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:19750:Flash of Light}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_PAL_HOLY"], description = L["TPL_D_PAL_HOLY"],
+          body = "#showtooltip\n/cast [mod:shift,@player][@mouseover,help,nodead][help,nodead][@player] {spell:635:Holy Light}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_PAL_CLEANSE"], description = L["TPL_D_PAL_CLEANSE"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:4987:Cleanse}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_PAL_BUBBLE"], description = L["TPL_D_PAL_BUBBLE"],
+          body = "#showtooltip\n/stopcasting\n/cast [mod:shift,@player] {spell:633:Lay on Hands}; {spell:642:Divine Shield}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_PAL_BOP"], description = L["TPL_D_PAL_BOP"],
+          body = "#showtooltip\n/cast [mod:shift,@mouseover,help,nodead][mod:shift] {spell:1044:Blessing of Freedom}; [@mouseover,help,nodead][] {spell:1022:Blessing of Protection}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_PAL_SEAL"], description = L["TPL_D_PAL_SEAL"],
+          body = "#showtooltip {spell:20271:Judgement}\n/castsequence reset=8 {spell:20154:Seal of Righteousness}, {spell:20271:Judgement}" },
+    },
+    HUNTER = {
+        { flavor = "forever", category = "offensive", name = L["TPL_N_HUN_OPEN"], description = L["TPL_D_HUN_OPEN"],
+          body = "#showtooltip {spell:1130:Hunter's Mark}\n/cast [@target,harm,nodead] {spell:1130:Hunter's Mark}\n/petattack\n/cast !{spell:75:Auto Shot}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_HUN_PET"], description = L["TPL_D_HUN_PET"],
+          body = "#showtooltip\n/cast [nopet] {spell:883:Call Pet}; [@pet,dead] {spell:982:Revive Pet}; {spell:136:Mend Pet}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_HUN_PETCTL"], description = L["TPL_D_HUN_PETCTL"],
+          body = "/petattack [nomod,harm]\n/petfollow [mod:shift]\n/petpassive [mod:ctrl]" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_HUN_FD"], description = L["TPL_D_HUN_FD"],
+          body = "#showtooltip {spell:5384:Feign Death}\n/stopattack\n/petfollow\n/cast {spell:5384:Feign Death}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_HUN_ASPECT"], description = L["TPL_D_HUN_ASPECT"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:13163:Aspect of the Monkey}; [combat] {spell:13165:Aspect of the Hawk}; {spell:5118:Aspect of the Cheetah}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_HUN_SCATTER"], description = L["TPL_D_HUN_SCATTER"],
+          body = "#showtooltip\n/cast [mod:shift,@focus,harm,nodead][mod:shift] {spell:5116:Concussive Shot}; [@focus,harm,nodead][] {spell:19503:Scatter Shot}" },
+        { flavor = "forever", category = "pvp", name = L["TPL_N_HUN_TRANQ"], description = L["TPL_D_HUN_TRANQ"],
+          body = "#showtooltip\n/cast [@mouseover,harm,nodead][@focus,harm,nodead][] {spell:19801:Tranquilizing Shot}" },
+    },
+    ROGUE = {
+        { flavor = "forever", category = "offensive", name = L["TPL_N_ROG_BUILD"], description = L["TPL_D_ROG_BUILD"],
+          body = "#showtooltip\n/cast [stealth] {spell:8676:Ambush}; {spell:1752:Sinister Strike}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_ROG_FINISH"], description = L["TPL_D_ROG_FINISH"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:408:Kidney Shot}; [mod:ctrl] {spell:5171:Slice and Dice}; {spell:2098:Eviscerate}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_ROG_SAP"], description = L["TPL_D_ROG_SAP"],
+          body = "#showtooltip\n/cast [@mouseover,harm,nodead][] {spell:6770:Sap}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_ROG_PICK"], description = L["TPL_D_ROG_PICK"],
+          body = "#showtooltip\n/castsequence reset=target {spell:921:Pick Pocket}, {spell:6770:Sap}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_ROG_STEALTH"], description = L["TPL_D_ROG_STEALTH"],
+          body = "#showtooltip {spell:1784:Stealth}\n/cast [nostealth] {spell:1784:Stealth}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_ROG_DEF"], description = L["TPL_D_ROG_DEF"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:1856:Vanish}; [mod:ctrl] {spell:1966:Feint}; {spell:5277:Evasion}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_ROG_GOUGE"], description = L["TPL_D_ROG_GOUGE"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][] {spell:1776:Gouge}" },
+    },
+    PRIEST = {
+        { flavor = "forever", category = "healer", name = L["TPL_N_PRI_SHIELD"], description = L["TPL_D_PRI_SHIELD"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:17:Power Word: Shield}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_PRI_RENEW"], description = L["TPL_D_PRI_RENEW"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:139:Renew}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_PRI_FLASH"], description = L["TPL_D_PRI_FLASH"],
+          body = "#showtooltip\n/cast [mod:shift,@player][@mouseover,help,nodead][help,nodead][@player] {spell:2061:Flash Heal}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_PRI_DISPEL"], description = L["TPL_D_PRI_DISPEL"],
+          body = "#showtooltip\n/cast [@mouseover,exists,nodead][] {spell:527:Dispel Magic}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_PRI_PANIC"], description = L["TPL_D_PRI_PANIC"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:586:Fade}; {spell:8122:Psychic Scream}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_PRI_SHADOW"], description = L["TPL_D_PRI_SHADOW"],
+          body = "#showtooltip\n/castsequence reset=target {spell:589:Shadow Word: Pain}, {spell:8092:Mind Blast}, {spell:15407:Mind Flay}" },
+        { flavor = "forever", category = "interrupt", name = L["TPL_N_PRI_SILENCE"], description = L["TPL_D_PRI_SILENCE"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:15487:Silence}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_PRI_SHACKLE"], description = L["TPL_D_PRI_SHACKLE"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][] {spell:9484:Shackle Undead}" },
+    },
+    SHAMAN = {
+        { flavor = "forever", category = "interrupt", name = L["TPL_N_SHA_KICK"], description = L["TPL_D_SHA_KICK"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:8042:Earth Shock}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_SHA_SHOCKS"], description = L["TPL_D_SHA_SHOCKS"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:8056:Frost Shock}; [mod:ctrl] {spell:8050:Flame Shock}; {spell:8042:Earth Shock}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_SHA_HEAL"], description = L["TPL_D_SHA_HEAL"],
+          body = "#showtooltip\n/cast [mod:shift,@player] {spell:8004:Lesser Healing Wave}; [@mouseover,help,nodead][help,nodead][@player] {spell:331:Healing Wave}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_SHA_CHAIN"], description = L["TPL_D_SHA_CHAIN"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:1064:Chain Heal}" },
+        { flavor = "forever", category = "healer", name = L["TPL_N_SHA_NS"], description = L["TPL_D_SHA_NS"],
+          body = "#showtooltip {spell:16188:Nature's Swiftness}\n/cast {spell:16188:Nature's Swiftness}\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:331:Healing Wave}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_SHA_PURGE"], description = L["TPL_D_SHA_PURGE"],
+          body = "#showtooltip\n/cast [@mouseover,harm,nodead][] {spell:370:Purge}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_SHA_WOLF"], description = L["TPL_D_SHA_WOLF"],
+          body = "#showtooltip {spell:2645:Ghost Wolf}\n/cast [noform] {spell:2645:Ghost Wolf}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_SHA_TOTEMS"], description = L["TPL_D_SHA_TOTEMS"],
+          body = "#showtooltip\n/castsequence reset=combat {spell:5394:Healing Stream Totem}, {spell:8071:Stoneskin Totem}, {spell:8075:Strength of Earth Totem}" },
+        { flavor = "forever", category = "pvp", name = L["TPL_N_SHA_TREMOR"], description = L["TPL_D_SHA_TREMOR"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:8177:Grounding Totem}; {spell:8143:Tremor Totem}" },
+    },
+    MAGE = {
+        { flavor = "forever", category = "interrupt", name = L["TPL_N_MAG_CS"], description = L["TPL_D_MAG_CS"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:2139:Counterspell}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_MAG_POLY"], description = L["TPL_D_MAG_POLY"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:118:Polymorph}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_MAG_BLOCK"], description = L["TPL_D_MAG_BLOCK"],
+          body = "#showtooltip {spell:11958:Ice Block}\n/stopcasting\n/cancelaura {spell:11958:Ice Block}\n/cast {spell:11958:Ice Block}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_MAG_BLINK"], description = L["TPL_D_MAG_BLINK"],
+          body = "#showtooltip\n/stopcasting [mod:shift]\n/cast [mod:shift] {spell:1953:Blink}; {spell:122:Frost Nova}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_MAG_POM"], description = L["TPL_D_MAG_POM"],
+          body = "#showtooltip {spell:11366:Pyroblast}\n/cast {spell:12043:Presence of Mind}\n/stopcasting\n/cast {spell:11366:Pyroblast}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_MAG_FOOD"], description = L["TPL_D_MAG_FOOD"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:587:Conjure Food}; {spell:5504:Conjure Water}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_MAG_ARMOR"], description = L["TPL_D_MAG_ARMOR"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:6117:Mage Armor}; {spell:7302:Ice Armor}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_MAG_DECURSE"], description = L["TPL_D_MAG_DECURSE"],
+          body = "#showtooltip\n/cast [@mouseover,help,nodead][help,nodead][@player] {spell:475:Remove Lesser Curse}" },
+    },
+    WARLOCK = {
+        { flavor = "forever", category = "cc", name = L["TPL_N_WLK_FEAR"], description = L["TPL_D_WLK_FEAR"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:5782:Fear}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_WLK_DOT"], description = L["TPL_D_WLK_DOT"],
+          body = "#showtooltip\n/cast [@mouseover,harm,nodead][] {spell:172:Corruption}" },
+        { flavor = "forever", category = "offensive", name = L["TPL_N_WLK_CURSE"], description = L["TPL_D_WLK_CURSE"],
+          body = "#showtooltip\n/cast [mod:shift,@mouseover,harm,nodead][mod:shift] {spell:1714:Curse of Tongues}; [mod:ctrl,@mouseover,harm,nodead][mod:ctrl] {spell:704:Curse of Recklessness}; [@mouseover,harm,nodead][] {spell:980:Curse of Agony}" },
+        { flavor = "forever", category = "defensive", name = L["TPL_N_WLK_COIL"], description = L["TPL_D_WLK_COIL"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:5484:Howl of Terror}; [@focus,harm,nodead][] {spell:6789:Death Coil}" },
+        { flavor = "forever", category = "utility", name = L["TPL_N_WLK_PETS"], description = L["TPL_D_WLK_PETS"],
+          body = "#showtooltip\n/cast [mod:shift] {spell:712:Summon Succubus}; [mod:ctrl] {spell:691:Summon Felhunter}; [mod:alt] {spell:688:Summon Imp}; {spell:697:Summon Voidwalker}" },
+        { flavor = "forever", category = "interrupt", name = L["TPL_N_WLK_LOCK"], description = L["TPL_D_WLK_LOCK"],
+          body = "#showtooltip {spell:19244:Spell Lock}\n/cast [@focus,harm,nodead][] {spell:19244:Spell Lock}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_WLK_SEDUCE"], description = L["TPL_D_WLK_SEDUCE"],
+          body = "#showtooltip {spell:6358:Seduction}\n/cast [@focus,harm,nodead][] {spell:6358:Seduction}" },
+        { flavor = "forever", category = "cc", name = L["TPL_N_WLK_BANISH"], description = L["TPL_D_WLK_BANISH"],
+          body = "#showtooltip\n/cast [@focus,harm,nodead][@mouseover,harm,nodead][] {spell:710:Banish}" },
+    },
+}
+for cls, list in pairs(FOREVER_TEMPLATES) do
+    CLASS_TEMPLATES[cls] = CLASS_TEMPLATES[cls] or {}
+    for _, tmpl in ipairs(list) do table.insert(CLASS_TEMPLATES[cls], tmpl) end
+end
+
 MF.Templates.CLASS_TEMPLATES = CLASS_TEMPLATES
 MF.Templates.UNIVERSAL = UNIVERSAL
 
@@ -391,9 +540,10 @@ local GetSpellName = C_Spell and C_Spell.GetSpellName
 -- retail spells are missing from WoW Forever and the other way round, and
 -- a name that falls back to English would never cast.
 local available = setmetatable({}, { __mode = "k" })
+local IS_FOREVER = select(4, GetBuildInfo()) < 20000  -- WoW Forever: 16001
 function MF.Templates:IsAvailable(tmpl)
     if available[tmpl] == nil then
-        local ok = true
+        local ok = tmpl.flavor ~= "forever" or IS_FOREVER
         for id in (tmpl.body or ""):gmatch("{spell:(%d+):") do
             if not GetSpellName(tonumber(id)) then ok = false; break end
         end

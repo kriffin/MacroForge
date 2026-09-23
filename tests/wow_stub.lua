@@ -77,4 +77,6 @@ wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 geterrorhandler = function() return function(e) error(e) end end
 dofile(ROOT .. "/Log.lua")
 dofile(ROOT .. "/Helpers.lua")
+-- Retail build by default; tests can override
+function GetBuildInfo() return "12.0.1", "1", "", 120001 end
 return W

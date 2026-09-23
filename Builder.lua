@@ -72,6 +72,15 @@ local CONDITIONS = {
 
 Builder.CONDITIONS = CONDITIONS
 
+-- WoW Forever has no PvP talents, dragonriding, pet battles or vehicles:
+-- those conditions are left out of the builder there (checked in game)
+if select(4, GetBuildInfo()) < 20000 then
+    local HIDDEN = { pvptalent = true, advflyable = true, petbattle = true, vehicleui = true, canexitvehicle = true }
+    for i = #CONDITIONS, 1, -1 do
+        if HIDDEN[CONDITIONS[i].value] then table.remove(CONDITIONS, i) end
+    end
+end
+
 local MOD_KEYS = {
     { value = "",      label = L["BUILDER_ANY"] },
     { value = "shift", label = "shift" },

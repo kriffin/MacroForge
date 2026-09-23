@@ -111,6 +111,10 @@ end
 -- Returns a clean {name, icon, body} copy, or nil + localized error.
 -- The name loses control chars and "|" (no escape sequences in popups or
 -- chat), the body is rejected past the macro limit instead of silently cut.
+-- Macro limits count characters, not bytes: "É" is one of the 16
+function MF.Helpers:CharLen(s) return Utf8Len(s or "") end
+function MF.Helpers:TruncateChars(s, n) return Utf8Truncate(s or "", n) end
+
 function MF.Helpers:SanitizeMacro(data)
     if type(data) ~= "table" or type(data.name) ~= "string" or type(data.body) ~= "string" then
         return nil, L["SHARE_BAD_STRUCT"]

@@ -1,7 +1,7 @@
 ---------------------------------------------------
 -- MacroForge Bridge (dev only, not part of the addon)
 -- tools/bridge.sh writes Queue.lua (MFBridgeQueue = { id, code }) and
--- presses CTRL-SHIFT-ALT-F12 (bound here to ReloadUI) twice:
+-- presses CTRL-SHIFT-F9 (bound here to ReloadUI) twice:
 --   1st reload: this file runs the query and keeps the result in MFBridgeDB
 --   2nd reload: the client writes MFBridgeDB to SavedVariables, read off disk
 -- Inside the query: out(...) records values, dump(v) serializes a table.
@@ -65,7 +65,7 @@ end
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
 f:SetScript("OnEvent", function(self)
-    SetOverrideBindingClick(self, true, "CTRL-SHIFT-ALT-F12", "MFBridgeReload")
+    SetOverrideBindingClick(self, true, "CTRL-SHIFT-F9", "MFBridgeReload")
     -- Give the client a moment to load spells, items and the like
     C_Timer.After(2, Run)
 end)

@@ -328,6 +328,9 @@ end
 ---------------------------------------------------
 -- Condition Validation (from MacroToolkit)
 ---------------------------------------------------
+local IS_FOREVER = select(4, GetBuildInfo()) < 20000
+local FOREVER_UNSUPPORTED = { pvptalent = true, advflyable = true, petbattle = true }
+
 function A:ValidateCondition(cond, args)
     -- Strip leading 'no' prefix for checking
     local rawCond = cond
@@ -339,6 +342,11 @@ function A:ValidateCondition(cond, args)
     end
 
     local ctype = CONDITIONS[rawCond]
+    -- WoW Forever parses these but has no such thing: an unknown condition
+    -- is TRUE there, so [pvptalent:1] would always fire (checked in game)
+    if IS_FOREVER and FOREVER_UNSUPPORTED[rawCond] then
+        return false, MF.C.yellow .. L["ANALYZER_NOT_ON_FOREVER"]:format(cond) .. "|r"
+    end
     if ctype == nil then
         -- Unknown condition — find best match
         local best = self:FindBestCondition(rawCond)
@@ -485,13 +493,15 @@ function A:Analyze(body, name)
         self:AddIssue(r, "WARN", 0, L["ANALYZER_EMPTY_MACRO"])
         return r
     end
-    if name and #name > 16 then
-        self:AddIssue(r, "ERR", 0, L["ANALYZER_NAME_TOO_LONG"]:format(#name, 16), { fixType="name", fix=name:sub(1,16) })
+    local H = MF.Helpers
+    local nameLen, bodyLen = H:CharLen(name), H:CharLen(body)
+    if name and nameLen > 16 then
+        self:AddIssue(r, "ERR", 0, L["ANALYZER_NAME_TOO_LONG"]:format(nameLen, 16), { fixType="name", fix=H:TruncateChars(name, 16) })
     end
-    if #body > 255 then
-        self:AddIssue(r, "ERR", 0, L["ANALYZER_BODY_TOO_LONG"]:format(#body, 255))
-    elseif #body > 240 then
-        self:AddIssue(r, "WARN", 0, L["ANALYZER_BODY_ALMOST_FULL"]:format(#body, 255))
+    if bodyLen > 255 then
+        self:AddIssue(r, "ERR", 0, L["ANALYZER_BODY_TOO_LONG"]:format(bodyLen, 255))
+    elseif bodyLen > 240 then
+        self:AddIssue(r, "WARN", 0, L["ANALYZER_BODY_ALMOST_FULL"]:format(bodyLen, 255))
     end
 
     -- Check matched brackets

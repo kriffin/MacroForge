@@ -32,4 +32,8 @@ assert(iss and iss.line == 3 and iss.fixFrom == "/csatsequence" and iss.fix == "
 assert(H:ApplyIssueFix(body, "Mage", iss) == fixed)
 -- Nothing close enough: no fix offered
 for _, i in ipairs(An:Analyze("/zzzzzzzzzzzz x", "m").issues) do assert(not i.fix, i.fix) end
+-- Lengths count characters: "Éclair mouseover" is 16, not 17
+for _, i in ipairs(An:Analyze("/cast Blink", "Éclair mouseover").issues) do assert(i.fixType ~= "name", i.message) end
+local long = An:Analyze("/cast Blink", "Éclair mouseover!").issues[1]
+assert(long and long.fixType == "name" and long.fix == "Éclair mouseover", long and long.fix)
 print("fix ok")

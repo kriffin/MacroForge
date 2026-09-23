@@ -34,6 +34,15 @@
   and the icon picker open in a drawer next to the code, in place of the
   analysis. /mf trash and /mf sets open their tabs. Everything is built
   from Blizzard templates.
+- **WoW Forever templates**: 62 new ones for its 8 classes (stances, traps,
+  totems, pets, seals...), 8 to 10 per class, every spell checked in the
+  Forever client, names and descriptions translated. Templates whose spells
+  do not exist in the client are hidden, and so are classes it lacks.
+- **WoW Forever conditions**: pvptalent, advflyable and petbattle are flagged
+  (an unknown condition is always true there) and left out of the builder
+  with vehicleui and canexitvehicle.
+- Name and code lengths count characters, not bytes: "Éclair mouseover" is
+  16 characters, not 17.
 - **Templates of every class**: a class button lists them all (yours marked).
 - **Status line**: saves and creations show at the bottom of the window
   instead of piling up in chat; Ctrl+S on an unchanged macro writes nothing.

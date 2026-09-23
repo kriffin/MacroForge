@@ -942,7 +942,7 @@ function Editor:OnChanged(skipUndo)
 
     -- Full analysis
     local res = An:Analyze(body, name)
-    local len = #body
+    local len = MF.Helpers:CharLen(body)
     -- Update char count in body label
     local cc = len > 240 and MF.C.red or len > 200 and MF.C.yellow or MF.C.green
     if bodyWidget then
