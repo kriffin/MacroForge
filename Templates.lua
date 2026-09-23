@@ -384,8 +384,9 @@ function MF.Templates:GetPlayerClass()
     return cls or "WARRIOR"
 end
 
-function MF.Templates:GetTemplatesForPlayer(categoryFilter)
-    local cls = self:GetPlayerClass()
+-- Universal templates + those of a class (the player's by default)
+function MF.Templates:GetTemplatesForPlayer(categoryFilter, cls)
+    cls = cls or self:GetPlayerClass()
     local result = {}
     -- Universal first
     for _, t in ipairs(UNIVERSAL) do
@@ -444,6 +445,15 @@ local function StripColor(text)
     return (text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
 end
 
+local function ClassName(cls)
+    local names = LOCALIZED_CLASS_NAMES_MALE
+    return (names and names[cls]) or cls
+end
+
+local function ColoredClass(cls)
+    return (CLASS_COLORS[cls] or "|cffffffff") .. ClassName(cls) .. "|r"
+end
+
 local function CategoryName(id)
     for _, cat in ipairs(MF.Templates.CATEGORIES) do
         if cat.id == id then return StripColor(cat.name) end
@@ -453,23 +463,20 @@ end
 
 function MF.Templates:BuildPage(page)
     local T = self
-    local cls = self:GetPlayerClass()
-    local clsColor = CLASS_COLORS[cls] or "|cffffffff"
-    local clsName = UnitClass("player") or cls
-    local state = { cat = "", src = "", query = "" }
+    local playerClass = self:GetPlayerClass()
+    local state = { cat = "", src = "", query = "", class = playerClass }
 
     -- Top row: search and filter
     local search = CreateFrame("EditBox", nil, page, "SearchBoxTemplate")
     search:SetSize(230, 20)
     search:SetPoint("TOPLEFT", 8, -2)
+    -- Any class: browsing the rogue's macros from a priest is allowed
+    local classButton = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    classButton:SetSize(140, 22)
+    classButton:SetPoint("LEFT", search, "RIGHT", 10, 0)
     local filter = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     filter:SetSize(140, 22)
-    filter:SetPoint("LEFT", search, "RIGHT", 10, 0)
-    local header = page:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    header:SetPoint("LEFT", filter, "RIGHT", 12, 0)
-    header:SetPoint("RIGHT", page, "RIGHT", -4, 0)
-    header:SetJustifyH("RIGHT")
-    header:SetText(clsColor .. clsName .. "|r  " .. MF.C.grey .. L["TPL_HEADER"] .. "|r")
+    filter:SetPoint("LEFT", classButton, "RIGHT", 6, 0)
 
     -- Left: the list
     local listInset = CreateFrame("Frame", nil, page, "InsetFrameTemplate")
@@ -537,7 +544,7 @@ function MF.Templates:BuildPage(page)
         icon:SetTexture(TemplateIcon(tmpl))
         title:SetText(tmpl.name or "?")
         tag:SetText((tmpl._source == "universal" and (MF.C.grey .. L["TPL_SRC_UNIVERSAL"] .. "|r")
-            or (clsColor .. clsName .. "|r")) .. MF.C.grey .. "  -  " .. CategoryName(tmpl.category) .. "|r")
+            or ColoredClass(tmpl._source)) .. MF.C.grey .. "  -  " .. CategoryName(tmpl.category) .. "|r")
         desc:SetText(tmpl.description or "")
         local An = MF:GetModule("Analyzer")
         local body = T:ResolveBody(tmpl.body)
@@ -579,7 +586,8 @@ function MF.Templates:BuildPage(page)
     ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
 
     local function Matches(tmpl)
-        if state.src ~= "" and tmpl._source ~= state.src then return false end
+        if state.src == "universal" and tmpl._source ~= "universal" then return false end
+        if state.src == "class" and tmpl._source == "universal" then return false end
         if state.query == "" then return true end
         local q = state.query:lower()
         for _, field in ipairs({ tmpl.name, tmpl.description, T:ResolveBody(tmpl.body) }) do
@@ -590,10 +598,11 @@ function MF.Templates:BuildPage(page)
 
     local function Populate()
         local rows = {}
-        for _, tmpl in ipairs(T:GetTemplatesForPlayer(state.cat)) do
+        for _, tmpl in ipairs(T:GetTemplatesForPlayer(state.cat, state.class)) do
             if Matches(tmpl) then table.insert(rows, tmpl) end
         end
         filter:SetText(state.cat == "" and L["TPL_ALL"] or CategoryName(state.cat))
+        classButton:SetText(ColoredClass(state.class))
         emptyText:SetShown(#rows == 0)
         local keep
         for _, t in ipairs(rows) do if t == selected then keep = t end end
@@ -617,9 +626,23 @@ function MF.Templates:BuildPage(page)
             end
             root:CreateDivider()
             root:CreateTitle(L["TPL_SOURCE"])
-            for _, src in ipairs({ { "", L["TPL_ALL"] }, { "universal", L["TPL_SRC_UNIVERSAL"] }, { cls, clsName } }) do
+            for _, src in ipairs({ { "", L["TPL_ALL"] }, { "universal", L["TPL_SRC_UNIVERSAL"] }, { "class", ColoredClass(state.class) } }) do
                 root:CreateRadio(src[2], function() return state.src == src[1] end,
                     function() state.src = src[1]; Populate() end)
+            end
+        end)
+    end)
+
+    classButton:SetScript("OnClick", function(btn)
+        MenuUtil.CreateContextMenu(btn, function(_, root)
+            root:CreateTitle(L["TPL_CLASS"])
+            local classes = {}
+            for c in pairs(T.CLASS_TEMPLATES) do table.insert(classes, c) end
+            table.sort(classes, function(a, b) return ClassName(a) < ClassName(b) end)
+            for _, c in ipairs(classes) do
+                local label = ColoredClass(c) .. (c == playerClass and (MF.C.grey .. "  " .. L["TPL_YOUR_CLASS"] .. "|r") or "")
+                root:CreateRadio(label, function() return state.class == c end,
+                    function() state.class = c; Populate() end)
             end
         end)
     end)
