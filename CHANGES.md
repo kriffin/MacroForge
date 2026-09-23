@@ -18,6 +18,8 @@
 - **Test is live**: click it once and the result follows your target, focus,
   the unit under your cursor, combat and the keys you hold - no more clicking
   with Shift down. Click again (Stop test) to turn it off; saving keeps it on.
+- **French**: every string has its accents back (the locale had none), and
+  the whole interface now says "vous", like Blizzard's own French UI.
 
 ## 7.3.0 — 2026-09-20
 
