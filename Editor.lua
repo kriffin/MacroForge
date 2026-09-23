@@ -761,7 +761,15 @@ end
 ---------------------------------------------------
 -- Open (new)
 ---------------------------------------------------
+-- perChar: true = character, false = account, nil = the scope picked last
+-- time (Ctrl+N, Home), character the first time
 function Editor:OpenNew(perChar, force, onOpened)
+    local char = MF.db and MF.db.char
+    if perChar == nil then
+        perChar = not (char and char.lastNewScope == "account")
+    elseif char then
+        char.lastNewScope = perChar and "character" or "account"
+    end
     if not force and self:IsDirty() then
         return self:ConfirmLeave(function() self:OpenNew(perChar, true, onOpened) end)
     end

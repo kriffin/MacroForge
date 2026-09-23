@@ -50,10 +50,17 @@ local function ShowContextMenu(macro)
         rootDescription:CreateButton("|cff00ff88" .. L["DUPLICATE"] .. "|r", function()
             local P = MF:GetModule("Profiles")
             if P then
-                local newName = (macro.name or "Macro"):sub(1, 11) .. " (cp)"
-                local perChar = macro.scope == "character"
-                P:CreateNewMacro(newName, macro.icon or 134400, macro.body or "", perChar)
-                C_Timer.After(0.3, function() UI:Refresh() end)
+                -- "<name> (cp)" in 16 characters (UTF-8 safe), then open the copy
+                local base = (macro.name or ""):match("^%s*(.-)%s*$")
+                if base == "" then base = MF.Helpers:ParseShowTooltip(macro.body) or "Macro" end
+                local newName = MF.Helpers:TruncateChars(base, 11) .. " (cp)"
+                local index = P:CreateNewMacro(newName, macro.icon or 134400, macro.body or "", macro.scope == "character")
+                C_Timer.After(0.3, function()
+                    UI:Refresh()
+                    for _, m in ipairs(index and P:ReadMacros(macro.scope) or {}) do
+                        if m.name == newName and m.body == macro.body then return MF:GetModule("Editor"):Open(m) end
+                    end
+                end)
             end
         end)
 
@@ -933,8 +940,9 @@ local function BuildHome(container)
     actions:SetFullWidth(true)
     actions:SetLayout("Flow")
     container:AddChild(actions)
-    AddActionButton(actions, L["SIDEBAR_NEW_CHARACTER"], 180, function()
-        MF:GetModule("Editor"):OpenNew(true)
+    local lastAccount = MF.db.char.lastNewScope == "account"
+    AddActionButton(actions, L[lastAccount and "SIDEBAR_NEW_ACCOUNT" or "SIDEBAR_NEW_CHARACTER"], 180, function()
+        MF:GetModule("Editor"):OpenNew()
     end)
     AddActionButton(actions, L["TEMPLATES"], 140, function()
         local T = MF:GetModule("Templates")
@@ -977,10 +985,15 @@ local function BuildHome(container)
         AddHeading(container, "|cffffff33" .. format(L["HOME_PROBLEMS"], #problems) .. "|r")
         for i = 1, math.min(#problems, 3) do
             local row = problems[i]
-            AddLabel(container, MF.C.red .. (row.analysis.score or 0) .. "%|r  "
+            local btn = AceGUI:Create("InteractiveLabel")
+            btn:SetFullWidth(true)
+            btn:SetFontObject(GameFontHighlightSmall)
+            btn:SetHighlight("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+            btn:SetText(MF.C.red .. (row.analysis.score or 0) .. "%|r  "
                 .. MF.C.white .. DisplayName(row.macro) .. "|r  "
-                .. MF.C.grey .. (row.analysis.issues[1] and row.analysis.issues[1].message or "") .. "|r",
-                GameFontHighlightSmall)
+                .. MF.C.grey .. (row.analysis.issues[1] and row.analysis.issues[1].message or "") .. "|r")
+            btn:SetCallback("OnClick", function() MF:GetModule("Editor"):Open(row.macro) end)
+            container:AddChild(btn)
         end
         AddActionButton(container, L["HOME_OPEN_AUDIT"], 220, function() UI:ShowDetail("audit", "all") end)
     end
@@ -1290,7 +1303,7 @@ function UI:HandleKey(key)
         elseif key == "Z" then E:Undo()
         elseif key == "Y" then E:Redo()
         elseif key == "F" then searchBox:SetFocus(); searchBox:HighlightText()
-        elseif key == "N" then E:OpenNew(true)
+        elseif key == "N" then E:OpenNew()
         else return false end
         return true
     end
