@@ -7,6 +7,7 @@
 -- Inside the query: out(...) records values, dump(v) serializes a table.
 ---------------------------------------------------
 local MAX_DEPTH, MAX_ITEMS = 4, 300
+local STALE_AFTER = 300  -- seconds
 
 local function Dump(v, depth, seen)
     depth, seen = depth or 0, seen or {}
@@ -36,6 +37,11 @@ local function Run()
     MFBridgeDB = MFBridgeDB or {}
     local q = MFBridgeQueue
     if not q or not q.id or q.id == MFBridgeDB.id then return end
+    -- The id is bridge.sh's `date +%s%N`: a query left behind by a run whose
+    -- result never reached disk (client closed first) must not replay at the
+    -- next normal login and pop the UI open
+    local born = tonumber(q.id:sub(1, 10))
+    if not born or time() - born > STALE_AFTER then return end
     local out = {}
     local env = setmetatable({
         out = function(...)
