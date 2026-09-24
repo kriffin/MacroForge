@@ -1,5 +1,25 @@
 # Changes
 
+## 7.5.0 — 2026-09-24
+
+MacroForge speaks your language: eight more translations.
+
+### Languages
+
+- **German, Spanish (Spain and Mexico), Italian, Brazilian Portuguese,
+  Russian, Korean, Simplified and Traditional Chinese**, on top of English
+  and French. The whole interface, the analysis, the line explanations and
+  the template names follow the client's language.
+
+### Small things
+
+- **Home**: the macros that need attention open on click, like the recent
+  ones.
+- **Ctrl+N** and Home's New button reuse the scope (character or account)
+  picked last time; the button says which.
+- **Duplicate** names the copy `<name> (cp)` within 16 characters and opens
+  it in the editor.
+
 ## 7.4.0 — 2026-09-23
 
 One window, Blizzard style, and a real WoW Forever release: 190 templates

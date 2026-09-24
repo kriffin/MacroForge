@@ -24,7 +24,7 @@ No syntax check. No spell verification. No history. Blizzard's macro frame is a 
 
 - **Live analysis** — every command, condition and spell checked against your own spellbook
 - **"Did you mean…?"** — `/csatsequence` becomes `/castsequence`, a misspelt spell gets the closest match
-- **Plain-English explanation** of every line, right next to the code
+- **Plain-language explanation** of every line, right next to the code
 - **One-click fixes** — click an issue to jump to its line, click **Fix** to correct a mistyped command
 - **Live test** — one click and the panel shows which clause fires right now, on which target, and follows as you change target, hover a unit or hold Shift
 - **Live 255-character counter**, with the shortener one click away
@@ -75,6 +75,10 @@ Macros that exist in both sets **keep their action bar slots**, and anything you
 **Share** — export a macro as a short code, send it to another MacroForge user in game, or paste any macro copied from a guide: it is named for you.
 
 **Condition builder** — build `[@mouseover,harm,nodead]` from menus instead of memorising it.
+
+**Your language** — the whole addon, analysis and explanations included, follows your client's language:
+
+![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/gb.png) English · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/fr.png) Français · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/de.png) Deutsch · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/es.png) Español · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/mx.png) Español (México) · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/it.png) Italiano · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/br.png) Português (Brasil) · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/ru.png) Русский · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/kr.png) 한국어 · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/cn.png) 简体中文 · ![](https://github.com/kriffin/MacroForge/raw/main/docs/assets/flags/tw.png) 繁體中文
 
 **Blizzard's /macro window** gets a MacroForge button: the macro you selected there opens here.
 

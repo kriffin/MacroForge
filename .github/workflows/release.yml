@@ -15,8 +15,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Builds the zip from .pkgmeta and uploads it to CurseForge and the
-      # GitHub release. Needs the CF_API_KEY secret in the repository settings.
+      # Builds the zip from .pkgmeta and uploads it to CurseForge (project ID in
+      # the .toc, token in the CF_API_KEY secret) and to the GitHub release.
       # CurseForge upload only when the CF_API_KEY secret is set; without it
       # the packager still builds the zip and attaches it to the release.
       - uses: BigWigsMods/packager@v2
