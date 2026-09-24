@@ -33,6 +33,11 @@ Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 # Locales
 Locales\enUS.lua
 Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\zhCN.lua
 
 # Core
 Core.lua

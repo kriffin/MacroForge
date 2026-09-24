@@ -28,14 +28,21 @@ jobs:
           import re, glob, sys
           key = re.compile(r'^L\["([^"]+)"\]\s*=', re.M)
           en = set(key.findall(open('Locales/enUS.lua').read()))
-          fr = set(key.findall(open('Locales/frFR.lua').read()))
           used = set()
           for f in glob.glob('*.lua'):
               used |= set(re.findall(r'L\["([A-Z0-9_]+)"\]', open(f).read()))
           missing = (used - en) - {'TPL_PH_KEY'}
-          if missing or en ^ fr:
+          bad = False
+          if missing:
               print('undefined keys:', sorted(missing))
-              print('enUS/frFR mismatch:', sorted(en ^ fr))
+              bad = True
+          locales = sorted(f for f in glob.glob('Locales/*.lua') if not f.endswith('enUS.lua'))
+          for f in locales:
+              diff = en ^ set(key.findall(open(f).read()))
+              if diff:
+                  print(f, 'mismatch with enUS:', sorted(diff))
+                  bad = True
+          if bad:
               sys.exit(1)
-          print(len(en), 'keys, both locales in sync')
+          print(len(en), 'keys,', len(locales) + 1, 'locales in sync')
           PY
