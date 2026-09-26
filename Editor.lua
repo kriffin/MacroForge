@@ -24,6 +24,7 @@ local testLabel        -- "what would happen now" result of the Test button
 local testButton       -- toolbar button, reads "Stop test" while the test is live
 local syntaxOverlay    -- FontString overlay for inline syntax highlighting
 local lineNumOverlay   -- FontString for line numbers
+local errorBar         -- red strip at the bottom of the code box: first error + Fix
 local spellIconGroup   -- Container for spell/item icons with native tooltips
 local currentFontSize = 13  -- default font size
 local insertLinkHooked = false  -- Shift+Click link insertion hook installed
@@ -332,6 +333,39 @@ local function CreateEditor()
     leftCol:AddChild(bodyWidget)
     if Editor.FitPane then Editor.FitPane() end
 
+    -- First error of the macro, inside the code box where the eye already
+    -- is (the analysis column is hidden while a drawer is open)
+    if not errorBar then
+        local box = bodyWidget.scrollBG
+        errorBar = CreateFrame("Button", nil, box)
+        errorBar:SetFrameLevel(box:GetFrameLevel() + 10)
+        errorBar:SetPoint("BOTTOMLEFT", 4, 4)
+        errorBar:SetPoint("BOTTOMRIGHT", -4, 4)
+        errorBar:SetHeight(26)
+        local bg = errorBar:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.35, 0.04, 0.04, 0.95)
+        errorBar.fix = MF.Widgets:Button(errorBar, L["ISSUE_FIX_BTN"], 90)
+        errorBar.fix:SetPoint("RIGHT", -3, 0)
+        errorBar.fix:SetScript("OnClick", function() Editor:ApplyFix(errorBar.issue) end)
+        errorBar.fix:SetScript("OnEnter", function(b)
+            GameTooltip:SetOwner(b, "ANCHOR_TOP")
+            GameTooltip:AddLine(format(L["ISSUE_FIX"], errorBar.issue.fix), 0.3, 1, 0.5, true)
+            GameTooltip:AddLine(L["ISSUE_FIX_TIP"], 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        errorBar.fix:SetScript("OnLeave", GameTooltip_Hide)
+        errorBar.text = errorBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        errorBar.text:SetPoint("LEFT", 8, 0)
+        errorBar.text:SetPoint("RIGHT", errorBar.fix, "LEFT", -6, 0)
+        errorBar.text:SetJustifyH("LEFT")
+        errorBar.text:SetWordWrap(false)
+        errorBar:SetScript("OnClick", function()
+            if errorBar.issue.line > 0 then Editor:GoToLine(errorBar.issue.line) end
+        end)
+        errorBar:Hide()
+    end
+
     -- Primary actions under the code
     local actions = gui:Create("SimpleGroup")
     actions:SetFullWidth(true)
@@ -623,6 +657,16 @@ function Editor:InsertText(text)
             Editor:OnChanged()
         end
     end
+end
+
+-- A [condition] from the builder goes at the start of the cursor's clause,
+-- not in the middle of a spell name
+function Editor:InsertCondition(cond)
+    local eb = bodyWidget and (bodyWidget.editBox or bodyWidget.editbox)
+    if not eb then return self:InsertText(cond .. " ") end
+    local at, before = MF.Helpers:ConditionInsertPos(bodyWidget:GetText(), eb:GetCursorPosition())
+    eb:SetCursorPosition(at)
+    self:InsertText(before .. cond .. " ")
 end
 
 ---------------------------------------------------
@@ -990,6 +1034,33 @@ RenderIssues = function(issues)
     if editorRoot then editorRoot:DoLayout() end
 end
 
+-- Red frame, red line numbers and the error strip when the macro has errors
+local function ShowErrorState(issues, lineCount)
+    local first, bad = nil, {}
+    for _, iss in ipairs(issues) do
+        if iss.severity == "ERR" then
+            first = first or iss
+            if iss.line > 0 then bad[iss.line] = true end
+        end
+    end
+    if lineNumOverlay then
+        local nums = {}
+        for i = 1, lineCount do nums[i] = (bad[i] and MF.C.red or MF.C.grey) .. i .. "|r" end
+        lineNumOverlay:SetText(table.concat(nums, "\n"))
+    end
+    if bodyWidget.scrollBG then
+        if first then bodyWidget.scrollBG:SetBackdropBorderColor(1, 0.2, 0.2)
+        else bodyWidget.scrollBG:SetBackdropBorderColor(0.4, 0.4, 0.4) end
+    end
+    if not errorBar then return end
+    errorBar.issue = first
+    errorBar:SetShown(first ~= nil)
+    if not first then return end
+    local where = first.line > 0 and (L["ERROR_BAR_LINE"]:format(first.line) .. " ") or ""
+    errorBar.text:SetText(MF.C.red .. where .. "|r" .. first.message)
+    errorBar.fix:SetShown(first.fix ~= nil and (first.fixType == "name" or first.fixFrom ~= nil))
+end
+
 function Editor:OnChanged(skipUndo)
     local body = bodyWidget:GetText()
     local name = nameWidget:GetText()
@@ -1000,14 +1071,6 @@ function Editor:OnChanged(skipUndo)
     local colored = An:ColorizeBody(body)
     if syntaxOverlay then syntaxOverlay:SetText(colored) end
 
-    -- Line numbers
-    if lineNumOverlay then
-        local lineCount = 1
-        for _ in body:gmatch("\n") do lineCount = lineCount + 1 end
-        local nums = {}
-        for i = 1, lineCount do nums[i] = tostring(i) end
-        lineNumOverlay:SetText(MF.C.grey .. table.concat(nums, "\n") .. "|r")
-    end
 
     -- Full analysis
     local res = An:Analyze(body, name)
@@ -1019,6 +1082,10 @@ function Editor:OnChanged(skipUndo)
     end
 
     RenderIssues(res.issues)
+    -- Line numbers, red where a line has an error
+    local lineCount = 1
+    for _ in body:gmatch("\n") do lineCount = lineCount + 1 end
+    ShowErrorState(res.issues, lineCount)
 
     -- Algorithmic explanation
     local explained = An:ExplainBody(body)

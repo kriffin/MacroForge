@@ -313,7 +313,7 @@ local function BuildDrawer(body)
         if cond == "" then return end
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
         local E = MF:GetModule("Editor")
-        E:InsertText(cond .. " ")
+        E:InsertCondition(cond)
         E:FocusBody()
     end)
     insert:SetPoint("BOTTOMLEFT", 2, 2)

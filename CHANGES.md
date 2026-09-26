@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Syntax checker**: a line whose [ ] or ; are broken turns the code box's
+  frame and line number red, and a strip at the bottom of the box says what
+  is wrong, with a Fix button when the intent is clear: conditions typed
+  after the spell (`/target Boss[@mouseover]`), a missing `;` between two
+  clauses, spaces instead of commas (`[combat mod:shift]`), a `[` never
+  closed, a stray `]`, `[[`. One click fixes every mistake of the line
+  that has a clear fix; ambiguous ones (`[known:Fire Blast Fire Blast`)
+  are reported without a guess. Works for every command that takes
+  conditions, not only /cast.
+- **Condition Builder** inserts at the start of the clause the cursor is
+  in, never in the middle of a spell name.
 - **Condition Builder** reads as three steps: who the spell goes on, the
   conditions that must all be true, and the result. Conditions are added one
   at a time (+ Add, X to remove) instead of five empty slots; hovering one,

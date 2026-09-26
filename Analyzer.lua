@@ -495,6 +495,242 @@ function A:ColorizeBody(body)
 end
 
 ---------------------------------------------------
+-- Syntax of the options: [conditions] come first in each ;-separated
+-- clause of a command that takes them. Finds the first mistake on a line
+-- and, when the intent is clear, the corrected line.
+---------------------------------------------------
+-- Conditions whose argument may hold spaces ([known:Fire Blast]): a space
+-- after one of them can be part of the argument, never a safe split point
+local SPACED_ARG = { [CTYPE_TEXTUAL] = true, [CTYPE_ALPHANUMERIC] = true, [CTYPE_ALPHANUM_SPACES] = true }
+
+local function trim(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
+
+-- A single condition phrase with nothing wrong: @unit, target=unit, or a
+-- known condition with valid arguments
+local function IsCondPhrase(phrase)
+    phrase = trim(phrase)
+    if phrase:match("^@[%w]+$") or phrase:match("^target=[%w]+$") then return true end
+    local cond, argStr = phrase:match("^(%a+):?(.*)$")
+    if not cond then return false end
+    cond = cond:lower()
+    local args = {}
+    for a in (argStr .. "/"):gmatch("([^/]*)/") do
+        a = trim(a)
+        if a ~= "" then args[#args + 1] = a end
+    end
+    local ok = A:ValidateCondition(cond, args)
+    return ok, cond, #args > 0
+end
+
+local function TakesSpacedArg(phrase)
+    local ok, cond, hasArg = IsCondPhrase(phrase)
+    if not ok or not hasArg then return false end
+    return SPACED_ARG[CONDITIONS[cond:gsub("^no", "")] or CONDITIONS[cond]] or false
+end
+
+-- Every comma-separated phrase of s is a valid condition, with no space inside
+local function AllCondPhrases(s)
+    if trim(s) == "" then return false end
+    for phrase in (s .. ","):gmatch("([^,]*),") do
+        phrase = trim(phrase)
+        if phrase ~= "" and (phrase:find("%s") or not IsCondPhrase(phrase)) then return false end
+    end
+    return true
+end
+
+-- Tokens of the text after the command: cond ([...]), text, semi (;).
+-- Stops at the first bracket error: { kind, at [, reopen] }
+local function Tokenize(rest)
+    local toks, pos, n = {}, 1, #rest
+    while pos <= n do
+        local c = rest:sub(pos, pos)
+        if c == "[" then
+            local close = rest:find("]", pos + 1, true)
+            local reopen = rest:find("[", pos + 1, true)
+            if reopen and (not close or reopen < close) then
+                return toks, { kind = "nested", at = pos, reopen = reopen }
+            end
+            if not close then return toks, { kind = "unclosed", at = pos } end
+            toks[#toks + 1] = { t = "cond", s = pos, e = close, body = rest:sub(pos + 1, close - 1) }
+            pos = close + 1
+        elseif c == "]" then
+            return toks, { kind = "stray", at = pos }
+        elseif c == ";" then
+            toks[#toks + 1] = { t = "semi", s = pos, e = pos }
+            pos = pos + 1
+        else
+            local stop = rest:find("[%[%];]", pos) or n + 1
+            local txt = rest:sub(pos, stop - 1)
+            if txt:find("%S") then toks[#toks + 1] = { t = "text", s = pos, e = stop - 1, body = txt } end
+            pos = stop
+        end
+    end
+    return toks
+end
+
+local function Splice(rest, s, e, with) return rest:sub(1, s - 1) .. with .. rest:sub(e + 1) end
+
+-- First mistake in rest (the text after the command): message, fixed rest or nil
+local function FirstSyntaxError(rest, isSeq)
+    local toks, err = Tokenize(rest)
+
+    -- Inside the brackets, left to right, up to the first bracket error
+    for _, t in ipairs(toks) do
+        if t.t == "cond" then
+            if t.body:find(";", 1, true) then
+                return L["SYNTAX_SEMICOLON_IN_COND"]
+            end
+            local pos = 1
+            for phrase in (t.body .. ","):gmatch("([^,]*),") do
+                local p = trim(phrase)
+                -- [known:Fire Blast]: the space belongs to the argument
+                if p:find("%s") and not TakesSpacedArg(p:match("^%S+")) then
+                    local pieces, fixable = {}, true
+                    for piece in p:gmatch("%S+") do
+                        pieces[#pieces + 1] = piece
+                        if not IsCondPhrase(piece) then fixable = false end
+                    end
+                    local msg = L["SYNTAX_SPACE_IN_COND"]:format(p)
+                    if not fixable then return msg end
+                    local ps = t.s + pos + (phrase:find(p, 1, true) - 1)
+                    return msg, Splice(rest, ps, ps + #p - 1, table.concat(pieces, ","))
+                end
+                pos = pos + #phrase + 1
+            end
+        end
+    end
+
+    -- Clause shape: [conditions] then the argument, nothing after
+    local clause, clauses = {}, {}
+    for _, t in ipairs(toks) do
+        if t.t == "semi" then clauses[#clauses + 1] = clause; clause = {}
+        else clause[#clause + 1] = t end
+    end
+    clauses[#clauses + 1] = clause
+    -- A bracket error cuts the last clause short: judge only whole ones
+    if err then clauses[#clauses] = nil end
+    for _, cl in ipairs(clauses) do
+        local ti
+        for i, t in ipairs(cl) do
+            if t.t == "text" then ti = i; break end
+        end
+        local j
+        for i = (ti or #cl) + 1, #cl do
+            if cl[i].t == "cond" then j = i; break end
+        end
+        if j then
+            local k
+            for i = j + 1, #cl do
+                if cl[i].t == "text" then k = i; break end
+            end
+            local arg = trim(cl[ti].body)
+            local resetOnly = isSeq and arg:match("^reset=%S+$")
+            if k and not resetOnly then
+                -- /cast [combat] A [nocombat] B: the ; is missing
+                local head = rest:sub(1, cl[j].s - 1):gsub("%s+$", "")
+                return L["SYNTAX_MISSING_SEMICOLON"]:format(rest:sub(cl[j].s, cl[j].e)),
+                    head .. "; " .. rest:sub(cl[j].s)
+            end
+            local msg = L["SYNTAX_COND_AFTER"]:format(arg)
+            -- Conditions on both sides of the argument: the intent is unclear
+            if ti > 1 and not resetOnly then return msg end
+            local conds, texts = {}, {}
+            for _, t in ipairs(cl) do
+                if t.t == "cond" then conds[#conds + 1] = rest:sub(t.s, t.e)
+                else texts[#texts + 1] = trim(t.body) end
+            end
+            local fixed = table.concat(conds) .. " " .. table.concat(texts, " ")
+            local s = cl[1].s
+            while s > 1 and rest:sub(s - 1, s - 1):match("%s") do s = s - 1 end
+            -- One space after the command or the ;
+            return msg, Splice(rest, s, cl[#cl].e, " " .. fixed)
+        end
+    end
+
+    if not err then return nil end
+    local at = err.at
+    if err.kind == "nested" then
+        local msg = L["SYNTAX_NESTED"]
+        -- [[combat]: one [ too many
+        if err.reopen == at + 1 then return msg, Splice(rest, at, at, "") end
+        return msg
+    elseif err.kind == "stray" then
+        local msg = L["SYNTAX_STRAY_CLOSE"]
+        local prev = toks[#toks]
+        -- [combat]]: one ] too many
+        if prev and prev.e == at - 1 and prev.t == "cond" then return msg, Splice(rest, at, at, "") end
+        -- /cast combat] X: the [ is missing
+        local cs = (prev and prev.t == "semi") and prev.e + 1 or 1
+        if not prev or prev.t == "semi" or prev.t == "text" then
+            if prev and prev.t == "text" then
+                -- the text right before ] must be the clause's first token
+                local before = toks[#toks - 1]
+                cs = prev.s
+                if before and before.t ~= "semi" then return msg, Splice(rest, at, at, "") end
+            end
+            local pre = rest:sub(cs, at - 1)
+            if AllCondPhrases(pre) then
+                local first = cs + #pre:match("^%s*")
+                return msg, Splice(rest, first, first - 1, "[")
+            end
+        end
+        return msg, Splice(rest, at, at, "")
+    else
+        local msg = L["SYNTAX_UNCLOSED"]
+        -- The ] goes before the first space that follows a whole condition
+        local stop = rest:find(";", at + 1, true) or #rest + 1
+        local seg = rest:sub(at + 1, stop - 1)
+        local i = 1
+        while true do
+            local ws, we = seg:find("%s+", i)
+            if not ws then
+                if AllCondPhrases(seg) then
+                    local tail = at + #(seg:gsub("%s+$", ""))
+                    return msg, Splice(rest, tail + 1, tail, "]")
+                end
+                return msg
+            end
+            local prefix = seg:sub(1, ws - 1)
+            if prefix:sub(-1) ~= "," and ws > 1 then
+                local last = trim(prefix:match("([^,]*)$"))
+                if AllCondPhrases(prefix) and not TakesSpacedArg(last)
+                    and seg:sub(we + 1):find("%S") then
+                    return msg, Splice(rest, at + ws, at + ws - 1, "]")
+                end
+                return msg
+            end
+            i = we + 1
+        end
+    end
+end
+
+-- The line's first syntax mistake: message and the line with every mistake
+-- that has a clear fix corrected (a fix can reveal the next one), or nil
+function A:CheckSyntax(line)
+    local cmd = line:match("^(/[%a]+)")
+    if not cmd then return nil end
+    local isSeq = self:IsSeqCmd(cmd)
+    local rest = line:sub(#cmd + 1)
+    local msg, fixed = FirstSyntaxError(rest, isSeq)
+    if not msg then return nil end
+    local cur = fixed
+    for _ = 1, 8 do
+        if not cur then break end
+        local m2, f2 = FirstSyntaxError(cur, isSeq)
+        if not m2 then break end
+        if not f2 then break end
+        fixed, cur = f2, f2
+    end
+    return msg, fixed and (cmd .. fixed) or nil
+end
+
+-- Commands whose text goes through the macro options parser
+function A:TakesOptions(cmd)
+    if IsSecureCmd then return IsSecureCmd(cmd) and true or false end
+    return self:IsCastCmd(cmd) or self:IsSeqCmd(cmd)
+end
+
+---------------------------------------------------
 -- Full Analysis (enhanced with MT features)
 ---------------------------------------------------
 function A:Analyze(body, name)
@@ -516,14 +752,11 @@ function A:Analyze(body, name)
         self:AddIssue(r, "WARN", 0, L["ANALYZER_BODY_ALMOST_FULL"]:format(bodyLen, 255))
     end
 
-    -- Check matched brackets
-    local ob, cb = 0, 0
+    -- Brackets are checked per line (CheckSyntax), where they matter
     local op, cp = 0, 0
-    for c in body:gmatch(".") do
-        if c == "[" then ob = ob + 1 elseif c == "]" then cb = cb + 1 end
-        if c == "(" then op = op + 1 elseif c == ")" then cp = cp + 1 end
+    for c in body:gmatch("[()]") do
+        if c == "(" then op = op + 1 else cp = cp + 1 end
     end
-    if ob ~= cb then self:AddIssue(r, "ERR", 0, L["ANALYZER_BRACKETS_MISMATCH"]:format(ob, cb)) end
     if op ~= cp then self:AddIssue(r, "WARN", 0, L["ANALYZER_PARENS_MISMATCH"]:format(op, cp)) end
 
     -- Real line numbers (blank lines count), as the editor gutter shows them
@@ -560,6 +793,15 @@ function A:AnalyzeLine(line, ln, r)
         self:AddIssue(r, "WARN", ln, L["ANALYZER_UNKNOWN_COMMAND"]:format(cmd),
             { fixType = "command", fixFrom = close and cmd or nil, fix = close and ("/" .. best) or nil })
         return
+    end
+
+    -- Broken [ ] or ; : the rest of the line cannot be read reliably
+    if self:TakesOptions(cmd) then
+        local msg, fixed = self:CheckSyntax(line)
+        if msg then
+            self:AddIssue(r, "ERR", ln, msg, { fixType = "line", fixFrom = line, fix = fixed })
+            return
+        end
     end
 
     -- For cast/use commands: validate spell names and conditions

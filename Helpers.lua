@@ -282,6 +282,37 @@ function MF.Helpers:ApplyIssueFix(body, name, issue)
         line = lead .. issue.fix .. line:sub(#lead + #issue.fixFrom + 1)
         return body:sub(1, s) .. line .. body:sub(e + 1), name
     end
+    -- The whole line rewritten, when it still reads as analysed
+    if issue.fixType == "line" and issue.fixFrom then
+        local s, e = self:LineSpan(body, issue.line)
+        if not s or body:sub(s + 1, e) ~= issue.fixFrom then return nil end
+        return body:sub(1, s) .. issue.fix .. body:sub(e + 1), name
+    end
+end
+
+-- Where a [condition] typed with the cursor at offset cursor (0-based)
+-- belongs: the start of the cursor's ;-clause, right after the command or
+-- the ;. Returns the offset and the text to put before the condition.
+function MF.Helpers:ConditionInsertPos(body, cursor)
+    body = body or ""
+    local pos = 0
+    for line in (body .. "\n"):gmatch("([^\n]*)\n") do
+        if cursor <= pos + #line then
+            local cmd = line:match("^/%S+")
+            if not cmd then return cursor, "" end
+            local col, start, depth = cursor - pos, #cmd, 0
+            for i = #cmd + 1, col do
+                local c = line:sub(i, i)
+                if c == "[" then depth = depth + 1
+                elseif c == "]" then depth = math.max(0, depth - 1)
+                elseif c == ";" and depth == 0 then start = i end
+            end
+            local spaces = #line:sub(start + 1):match("^%s*")
+            return pos + start + spaces, spaces == 0 and " " or ""
+        end
+        pos = pos + #line + 1
+    end
+    return cursor, ""
 end
 
 -- Playable classes of this client: { id, file, name }. GetClassInfo takes a
