@@ -10,7 +10,7 @@ read_globals = {
   "format", "strsplit", "strjoin", "strtrim", "wipe", "tinsert", "tremove", "date", "time", "print",
   "geterrorhandler", "hooksecurefunc", "securecallfunction", "issecurevariable",
   -- API used by the addon
-  "CreateFrame", "UIParent", "GameTooltip", "GameTooltip_Hide", "GameFontNormal", "GameFontNormalLarge",
+  "CreateFrame", "UIParent", "GameTooltip", "GameTooltip_Hide", "GameTooltip_SetTitle", "GameTooltip_AddNormalLine", "GameFontNormal", "GameFontNormalLarge",
   "GameFontNormalSmall", "GameFontHighlight", "GameFontHighlightSmall", "GameFontDisable",
   "GameFontDisableLarge", "GameFontDisableSmall", "UISpecialFrames", "StaticPopupDialogs",
   "StaticPopup_Show", "StaticPopup_Visible", "PlaySound", "SOUNDKIT", "MenuUtil", "HelpTip",

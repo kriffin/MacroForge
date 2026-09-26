@@ -1,5 +1,14 @@
 # Changes
 
+## Unreleased
+
+- **Condition Builder** reads as three steps: who the spell goes on, the
+  conditions that must all be true, and the result. Conditions are added one
+  at a time (+ Add, X to remove) instead of five empty slots; hovering one,
+  in the list or in its row, says what it checks. Insert stays greyed out
+  while there is nothing to insert. Fixed: empty argument buttons showed
+  next to unused slots.
+
 ## 7.5.0 — 2026-09-24
 
 MacroForge speaks your language: eight more translations.
