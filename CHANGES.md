@@ -1,6 +1,8 @@
 # Changes
 
-## Unreleased
+## 7.6.0 — 2026-09-26
+
+Broken macros turn red, and one click fixes them.
 
 - **Syntax checker**: a line whose [ ] or ; are broken turns the code box's
   frame and line number red, and a strip at the bottom of the box says what

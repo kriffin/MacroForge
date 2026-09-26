@@ -19,6 +19,14 @@ jobs:
       # the .toc, token in the CF_API_KEY secret) and to the GitHub release.
       # CurseForge upload only when the CF_API_KEY secret is set; without it
       # the packager still builds the zip and attaches it to the release.
+      # The file changelog on CurseForge and GitHub: this version's section
+      # of CHANGES.md (## X.Y.Z — date ... up to the next ## heading)
+      - name: Release notes from CHANGES.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '/^## /{f = index($0, "## " v " ") == 1; next} f' CHANGES.md > RELEASE_NOTES.md
+          test -s RELEASE_NOTES.md || { echo "no CHANGES.md section for $v"; exit 1; }
+          cat RELEASE_NOTES.md
       - uses: BigWigsMods/packager@v2
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}

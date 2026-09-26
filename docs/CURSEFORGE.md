@@ -25,7 +25,8 @@ No syntax check. No spell verification. No history. Blizzard's macro frame is a 
 - **Live analysis** — every command, condition and spell checked against your own spellbook
 - **"Did you mean…?"** — `/csatsequence` becomes `/castsequence`, a misspelt spell gets the closest match
 - **Plain-language explanation** of every line, right next to the code
-- **One-click fixes** — click an issue to jump to its line, click **Fix** to correct a mistyped command
+- **Broken lines turn red** — a `[` never closed, conditions typed after the spell (`/target Boss[@mouseover]`), a missing `;`, a mistyped condition like `[noddead]`: the code frame and the line number go red, and a strip under the code says what is wrong
+- **One-click fixes** — click **Fix** and the line is rewritten (`/target [@mouseover] Boss`); when the intent is not clear, MacroForge says so instead of guessing
 - **Live test** — one click and the panel shows which clause fires right now, on which target, and follows as you change target, hover a unit or hold Shift
 - **Live 255-character counter**, with the shortener one click away
 
@@ -74,7 +75,7 @@ Macros that exist in both sets **keep their action bar slots**, and anything you
 
 **Share** — export a macro as a short code, send it to another MacroForge user in game, or paste any macro copied from a guide: it is named for you.
 
-**Condition builder** — build `[@mouseover,harm,nodead]` from menus instead of memorising it.
+**Condition builder** — build `[@mouseover,harm,nodead]` in three steps (on whom, only if, result) instead of memorising it; it lands at the right place in the line.
 
 **Your language** — the whole addon, analysis and explanations included, follows your client's language:
 

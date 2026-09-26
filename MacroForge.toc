@@ -2,7 +2,7 @@
 ## Title: |cff00ccffMacro|r|cffffd700Forge|r
 ## Notes: Editeur de macros complet - une fenetre unique (liste + editeur), analyse temps reel, auto-completion, sets de macros lies aux spes, revisions et corbeille, templates, partage.
 ## Author: kriffin
-## Version: 7.5.0
+## Version: 7.6.0
 ## X-Curse-Project-ID: 1494025
 ## SavedVariables: MacroForgeDB, MacroForgeLog
 ## IconTexture: Interface\AddOns\MacroForge\icons\MacroForge_flat_128
