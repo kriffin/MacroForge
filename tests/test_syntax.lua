@@ -84,4 +84,24 @@ assert(ins("/cast [a;b] A", 13, "[mod]") == "/cast [mod] [a;b] A")
 assert(ins("#showtooltip\n/cast", 18, "[mod]") == "#showtooltip\n/cast [mod] ")
 assert(ins("", 0, "[mod]") == "[mod] ")
 assert(ins("/cast X\n/use Y", 14, "[combat]") == "/cast X\n/use [combat] Y")
+
+-- Unknown conditions: an error on every command that takes conditions,
+-- with the typo fixed when the intended name is clear
+local function lineIssue(body)
+    for _, i in ipairs(An:Analyze(body, "m").issues) do
+        if i.severity == "ERR" and i.line == 1 then return i end
+    end
+end
+local i = lineIssue("/cib [noddead] Contre")
+assert(i and i.fix == "/cib [nodead] Contre", i and tostring(i.fix))
+i = lineIssue("/cast [@focus, combta,mod:shift] Polymorph")
+assert(i and i.fix == "/cast [@focus, combat,mod:shift] Polymorph", i and tostring(i.fix))
+i = lineIssue("/cast [nocombta] A")
+assert(i and i.fix == "/cast [nocombat] A", i and tostring(i.fix))
+-- Nothing close: reported, no guess
+i = lineIssue("/cast [zzqxw] A")
+assert(i and not i.fix)
+-- Valid ones stay quiet, including those starting with "no" by themselves
+assert(not lineIssue("/cib [nodead,exists] Contre"))
+assert(not lineIssue("/cast [nomod,noexists] A"))
 print("syntax ok")

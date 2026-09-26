@@ -11,6 +11,9 @@
   that has a clear fix; ambiguous ones (`[known:Fire Blast Fire Blast`)
   are reported without a guess. Works for every command that takes
   conditions, not only /cast.
+- **Unknown conditions** (`[noddead]`) are errors now, on every command that
+  takes conditions (they were warnings, and only checked on /cast): Fix
+  renames the typo to the closest condition (`[nodead]`) when it is clear.
 - **Condition Builder** inserts at the start of the clause the cursor is
   in, never in the middle of a spell name.
 - **Condition Builder** reads as three steps: who the spell goes on, the

@@ -346,7 +346,7 @@ local FOREVER_UNSUPPORTED = { pvptalent = true, advflyable = true, petbattle = t
 function A:ValidateCondition(cond, args)
     -- Strip leading 'no' prefix for checking
     local rawCond = cond
-    if cond:sub(1, 2) == "no" then rawCond = cond:sub(3) end
+    if cond:sub(1, 2) == "no" and not CONDITIONS[cond] then rawCond = cond:sub(3) end
 
     -- Is it a target spec? @X or target=X
     if cond:match("^@") or cond:match("^target%s*=") then
@@ -357,7 +357,7 @@ function A:ValidateCondition(cond, args)
     -- WoW Forever parses these but has no such thing: an unknown condition
     -- is TRUE there, so [pvptalent:1] would always fire (checked in game)
     if IS_FOREVER and FOREVER_UNSUPPORTED[rawCond] then
-        return false, MF.C.yellow .. L["ANALYZER_NOT_ON_FOREVER"]:format(cond) .. "|r"
+        return false, MF.C.yellow .. L["ANALYZER_NOT_ON_FOREVER"]:format(cond) .. "|r", "forever"
     end
     if ctype == nil then
         -- Unknown condition — find best match
@@ -366,7 +366,7 @@ function A:ValidateCondition(cond, args)
         if best and best ~= "" then
             msg = msg .. "  " .. MF.C.green .. "-> " .. best .. "|r"
         end
-        return false, msg
+        return false, msg, "unknown"
     end
 
     -- Check if arguments are required/valid
@@ -411,13 +411,27 @@ function A:ValidateCondition(cond, args)
     return true, nil
 end
 
+-- Closest condition name and its distance; ties go to the shorter, then
+-- alphabetical name, so the answer does not depend on pairs() order
 function A:FindBestCondition(source)
     local diff, best = 99, ""
-    for k, _ in pairs(CONDITIONS) do
+    for k in pairs(CONDITIONS) do
         local d = getLevenshtein(source, k)
-        if d < diff then diff = d; best = k end
+        if d < diff or (d == diff and (#k < #best or (#k == #best and k < best))) then
+            diff, best = d, k
+        end
     end
-    return best
+    return best, diff
+end
+
+-- The condition name a typo stands for ("noddead" -> "nodead"), or nil
+-- when nothing is close enough to be sure
+function A:ConditionTypoFix(cond)
+    cond = cond:lower()
+    local no = cond:sub(1, 2) == "no" and not CONDITIONS[cond] and "no" or ""
+    local raw = cond:sub(#no + 1)
+    local best, d = self:FindBestCondition(raw)
+    if best ~= "" and d <= 2 and d < #raw / 2 then return no .. best end
 end
 
 ---------------------------------------------------
@@ -807,11 +821,16 @@ function A:AnalyzeLine(line, ln, r)
     -- For cast/use commands: validate spell names and conditions
     if self:IsCastCmd(cmd) or self:IsSeqCmd(cmd) then
         local rest = line:sub(#cmd + 1):match("^%s*(.-)%s*$") or ""
-        self:AnalyzeCastLine(rest, ln, r)
+        self:AnalyzeCastLine(rest, ln, r, line)
+    elseif self:TakesOptions(cmd) then
+        -- /target, /focus...: the syntax is sound, every [ ] is conditions
+        for condBlock in line:gmatch("%[(.-)%]") do
+            self:ValidateConditions(condBlock, ln, r, line)
+        end
     end
 end
 
-function A:AnalyzeCastLine(text, ln, r)
+function A:AnalyzeCastLine(text, ln, r, line)
     -- Parse [conditions] and spell names
     for seg in (text .. ";"):gmatch("([^;]*);") do
         seg = seg:match("^%s*(.-)%s*$")
@@ -821,7 +840,7 @@ function A:AnalyzeCastLine(text, ln, r)
             while true do
                 local condBlock, after = rem:match("^%[(.-)%]%s*(.*)")
                 if condBlock then
-                    self:ValidateConditions(condBlock, ln, r)
+                    self:ValidateConditions(condBlock, ln, r, line)
                     rem = after
                 else break end
             end
@@ -849,7 +868,21 @@ function A:AnalyzeCastLine(text, ln, r)
     end
 end
 
-function A:ValidateConditions(condBlock, ln, r)
+-- line with cond renamed to fix inside its [condBlock], or nil
+local function RenameCondition(line, condBlock, phrase, cond, fix)
+    local bs, be = line:find("[" .. condBlock .. "]", 1, true)
+    if not bs then return nil end
+    local parts = {}
+    for part in (condBlock .. ","):gmatch("([^,]*),") do
+        if part:match("^%s*(.-)%s*$") == phrase then
+            part = part:gsub(escape(cond), (fix:gsub("%%", "%%%%")), 1)
+        end
+        parts[#parts + 1] = part
+    end
+    return line:sub(1, bs) .. table.concat(parts, ",") .. line:sub(be)
+end
+
+function A:ValidateConditions(condBlock, ln, r, line)
     for phrase in condBlock:gmatch("[^,]+") do
         phrase = phrase:match("^%s*(.-)%s*$")
         if phrase ~= "" then
@@ -870,9 +903,19 @@ function A:ValidateConditions(condBlock, ln, r)
                             if a ~= "" then table.insert(args, a) end
                         end
                     end
-                    local ok, err = self:ValidateCondition(cond, args)
+                    local ok, err, kind = self:ValidateCondition(cond, args)
                     if not ok and err then
-                        self:AddIssue(r, "WARN", ln, err)
+                        -- An unknown condition breaks the line (WoW Forever
+                        -- even reads it as always true): an error, with the
+                        -- typo fixed when the intended name is clear
+                        if kind == "unknown" or kind == "forever" then
+                            local fix = kind == "unknown" and line and self:ConditionTypoFix(cond)
+                            local fixed = fix and RenameCondition(line, condBlock, phrase, cond, fix)
+                            self:AddIssue(r, "ERR", ln, err,
+                                { fixType = "line", fixFrom = fixed and line or nil, fix = fixed or nil })
+                        else
+                            self:AddIssue(r, "WARN", ln, err)
+                        end
                     end
                 end
             end
