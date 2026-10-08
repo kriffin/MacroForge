@@ -1,5 +1,17 @@
 # Changes
 
+## 7.7.0 — 2026-10-08
+
+MacroForge says when it is out of date.
+
+- **Update notice**: at login and when the group changes, MacroForge tells
+  the guild and the group which version it runs (an invisible addon
+  message, never inside an instance). Hearing a newer one prints a chat
+  line in your language, once per session and again at every login until
+  you update; hearing an older one whispers yours back, so a player who
+  just logged in learns about it from anyone up to date. Settings has a
+  checkbox to turn the notice off.
+
 ## 7.6.1 — 2026-10-08
 
 Spell ranks on WoW Forever: the picker offers every rank you know.

@@ -28,4 +28,5 @@ read_globals = {
   "GetItemInfo", "MAX_ACCOUNT_MACROS", "MAX_CHARACTER_MACROS",
   "MacroFrame", "MacroDeleteButton", "HideUIPanel", "EventUtil",
   "CreateScrollBoxListLinearView", "CreateDataProvider", "BACK", "LOCALIZED_CLASS_NAMES_MALE", "ChatFontNormal", "IsSecureCmd", "GetMacroIcons", "GetMacroItemIcons", "GetLooseMacroIcons", "GetNumClasses", "GetClassInfo", "GetLocale", "LoadAddOn",
+  "GetTime", "IsInInstance", "IsInGuild", "IsInGroup", "IsInRaid",
 }

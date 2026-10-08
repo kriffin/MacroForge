@@ -6,6 +6,9 @@ if not L then return end
 
 -- General
 L["ADDON_LOADED"] = "MacroForge v%s - %s"
+L["UPDATE_AVAILABLE"] = "MacroForge %s 已发布（你当前为 %s）：请通过插件管理器或 CurseForge 更新。"
+L["OPT_UPDATE_NOTICE"] = "更新提示"
+L["OPT_UPDATE_NOTICE_DESC"] = "当公会或队伍成员使用更新版本的 MacroForge 时在聊天中提示。"
 L["UNKNOWN_CMD"] = "未知命令：%s - /mf help"
 L["OPEN_MACRO_FIRST"] = "请先打开一个宏以查看其历史。"
 

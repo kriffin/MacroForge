@@ -6,6 +6,9 @@ if not L then return end
 
 -- General
 L["ADDON_LOADED"] = "MacroForge v%s - %s"
+L["UPDATE_AVAILABLE"] = "MacroForge %s ist erschienen (du hast %s): aktualisiere es über deinen Addon-Manager oder auf CurseForge."
+L["OPT_UPDATE_NOTICE"] = "Update-Hinweis"
+L["OPT_UPDATE_NOTICE_DESC"] = "Im Chat melden, wenn ein Gilden- oder Gruppenmitglied ein neueres MacroForge nutzt."
 L["UNKNOWN_CMD"] = "Unbekannter Befehl: %s - /mf help"
 L["OPEN_MACRO_FIRST"] = "Öffne zuerst ein Makro, um seinen Verlauf zu sehen."
 

@@ -87,6 +87,15 @@ function Settings:GetOptionsTable()
                 get = function() return MF.db.profile.soundEffects end,
                 set = function(_, v) MF.db.profile.soundEffects = v end,
             },
+            updateNotice = {
+                type = "toggle",
+                name = L["OPT_UPDATE_NOTICE"],
+                desc = L["OPT_UPDATE_NOTICE_DESC"],
+                order = 6.5,
+                width = "full",
+                get = function() return MF.db.profile.updateNotice ~= false end,
+                set = function(_, v) MF.db.profile.updateNotice = v end,
+            },
             showMinimapButton = {
                 type = "toggle",
                 name = L["OPT_MINIMAP"],

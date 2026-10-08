@@ -58,6 +58,7 @@ local DB_DEFAULTS = {
         syntaxColors = true,
         autoSaveDraft = true,
         soundEffects = true,
+        updateNotice = true,  -- chat line when a newer version is around (Version.lua)
     },
     char = {
         -- Per-character data
