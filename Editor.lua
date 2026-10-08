@@ -883,17 +883,20 @@ local function RefreshSpellIcons(body)
         end
     end
 
+    local An = MF:GetModule("Analyzer")
     for _, spellName in ipairs(spells) do
-        -- Try as spell
-        local spellInfo = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellName)
-        if spellInfo and spellInfo.spellID then
+        -- Try as spell: the analyzer's verdict, so "Earth Shock(Rank 1)"
+        -- shows that rank's icon and tooltip
+        local check = An and An:CheckSpell(spellName)
+        local spellInfo = check and check.type == "spell" and check.id and check
+        if spellInfo then
             local icon = gui:Create("Icon")
-            icon:SetImage(spellInfo.iconID or 134400)
+            icon:SetImage(spellInfo.icon or 134400)
             icon:SetImageSize(28, 28)
             icon:SetWidth(36)
             icon:SetHeight(44)
             icon:SetLabel("|cff71d5ff" .. (spellInfo.name or spellName) .. "|r")
-            local sid = spellInfo.spellID
+            local sid = spellInfo.id
             icon.frame:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetSpellByID(sid)

@@ -36,12 +36,18 @@ end
 local function MacroIcons()
     local icons, seen = { MF.Helpers.DYNAMIC_ICON }, { [MF.Helpers.DYNAMIC_ICON] = true }
     local E = MF:GetModule("Editor")
+    local An = MF:GetModule("Analyzer")
     local _, _, body = E:GetContent()
     for _, line in ipairs(MF.Helpers:ParseSpells(body)) do
         -- Every alternative of "A; [cond] B" and of "reset=8 A, B"
         for name in (line .. ";"):gmatch("([^;,]+)[;,]") do
             name = name:gsub("%[.-%]", ""):gsub("^%s*reset=%S+", ""):match("^%s*(.-)%s*$")
-            local tex = name ~= "" and C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(name)
+            -- The analyzer knows ranks ("Earth Shock(Rank 1)") and items
+            local check = name ~= "" and An and An:CheckSpell(name)
+            local tex = check and check.icon
+            if not tex and name ~= "" and C_Spell and C_Spell.GetSpellTexture then
+                tex = C_Spell.GetSpellTexture(name)
+            end
             if not tex and name ~= "" and C_Item and C_Item.GetItemInfoInstant then
                 tex = select(5, C_Item.GetItemInfoInstant(name))
             end

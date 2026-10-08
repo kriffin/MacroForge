@@ -38,6 +38,7 @@ target           = <a target pattern: player, focus, mouseover, party1, etc.>
 | `/` | OR between parameters | Inside `[...]` after `:` | `[mod:shift/ctrl]`, `[stance:1/2]` |
 | `@` | Target specification | Inside `[...]` | `[@mouseover]`, `[@focus]` |
 | `[ ]` | Condition boundary | Enclose conditions | `[help,nodead]` |
+| `( )` | Spell rank (WoW Forever only) | Right after the spell name | `Earth Shock(Rank 1)` — the plain name casts the highest known rank |
 
 ## Space Rules
 

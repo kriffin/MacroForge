@@ -1,5 +1,26 @@
 # Changes
 
+## 7.6.1 — 2026-10-08
+
+Spell ranks on WoW Forever: the picker offers every rank you know.
+
+- **Spell picker and autocomplete know ranks**: "Earth Shock" (the highest
+  rank you know, with its rank under the name) and "Earth Shock(Rank 1)",
+  "Earth Shock(Rank 2)" for the lower ones, each with its own tooltip. The
+  list used to show the spell once per rank, all inserting the plain name
+  and all showing the top rank. Searching "rank 1" finds them.
+- **`/use Earth Shock(Rank 1)` is verified** against your spellbook (it was
+  "Unverified"), and the detected-spells icons and the icon picker show
+  that rank.
+- **Flyouts, spells not learned yet and passives** are no longer offered
+  by the picker; a spell listed in two spellbook tabs shows once.
+- **Learning a spell** (a new rank, a trainer visit) refreshes the picker
+  and the analysis without a reload.
+- **Code colouring**: castsequence steps are checked one by one (the whole
+  line used to turn orange), `reset=` has its own colour, and a space
+  before a `;` no longer shifts the coloured overlay.
+- A pasted macro is named after its spell without the "(Rank 1)".
+
 ## 7.6.0 — 2026-09-26
 
 Broken macros turn red, and one click fixes them.

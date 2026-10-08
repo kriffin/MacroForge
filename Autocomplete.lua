@@ -199,10 +199,11 @@ local function GetCursorContext(editBox)
             local rest = currentLine:sub(#cmd + 1)
             -- Strip reset= if castsequence
             rest = rest:gsub("reset=[%w/]*%s*", "")
-            -- Find what user is currently typing (after last separator)
-            local token = rest:match("[%;,]%s*([%a][%a%s%'%-]*)$")
-                or rest:match("%]%s*([%a][%a%s%'%-]*)$")
-                or rest:match("^%s+([%a][%a%s%'%-]*)$")
+            -- Find what user is currently typing (after last separator):
+            -- letters, spaces, ' - : and a "(Rank 1)" being typed
+            local token = rest:match("[%;,]%s*([%a][%a%s%'%-:%(%)%d]*)$")
+                or rest:match("%]%s*([%a][%a%s%'%-:%(%)%d]*)$")
+                or rest:match("^%s+([%a][%a%s%'%-:%(%)%d]*)$")
             if token and #token >= MIN_QUERY_LEN then
                 return "spell", token
             end
@@ -274,11 +275,13 @@ local function BuildSpellSuggestions(partial)
     local spells = BuildSpellbookCache()
     local q = partial:lower()
 
+    -- text is what the macro casts: "Earth Shock" for the highest rank,
+    -- "Earth Shock(Rank 1)" for a lower one (WoW Forever)
     for _, sp in ipairs(spells) do
-        if sp.name:lower():find(q, 1, true) then
+        if sp.text:lower():find(q, 1, true) then
             table.insert(items, {
-                text = sp.name,
-                display = MF.C.green .. sp.name .. "|r",
+                text = sp.text,
+                display = MF.C.green .. sp.text .. "|r" .. (sp.sub and (MF.C.grey .. "  " .. sp.sub .. "|r") or ""),
                 icon = sp.icon,
             })
             if #items >= MAX_SUGGESTIONS then break end
@@ -445,7 +448,7 @@ end
 -- Initialize
 ---------------------------------------------------
 function AC:OnInitialize()
-    -- Invalidate spell cache on spec change
+    -- Invalidate spell cache on spec change (Core drops it on SPELLS_CHANGED)
     MF:RegisterMessage("MF_SPEC_CHANGED", function() InvalidateCache() end)
 end
 

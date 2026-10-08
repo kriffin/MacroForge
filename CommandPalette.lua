@@ -42,9 +42,13 @@ local function Rows(mode, query)
             end
         end
     else
+        -- A row shows what it inserts: "Earth Shock" (the highest rank) or
+        -- "Earth Shock(Rank 1)"; the rank sits under the name, and the
+        -- tooltip is that rank's. "rank 3" finds the highest rank too
         for _, sp in ipairs(MF.Helpers:GetSpellbookSpells()) do
-            if q == "" or sp.name:lower():find(q, 1, true) then
-                table.insert(rows, { text = sp.name, name = sp.name, icon = sp.icon or 134400, id = sp.id })
+            local ranked = sp.sub and (sp.name .. "(" .. sp.sub .. ")"):lower()
+            if q == "" or sp.text:lower():find(q, 1, true) or (ranked and ranked:find(q, 1, true)) then
+                table.insert(rows, { text = sp.text, name = sp.text, sub = sp.sub, icon = sp.icon or 134400, id = sp.id })
             end
         end
     end

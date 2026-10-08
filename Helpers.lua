@@ -193,45 +193,117 @@ end
 
 ---------------------------------------------------
 -- Centralized Spellbook Cache
--- Used by Autocomplete and CommandPalette
+-- Used by Autocomplete, CommandPalette and the Analyzer. One entry per
+-- spell a macro can cast: { name, sub, text, id, icon }. text is what the
+-- macro says to cast it.
+-- WoW Forever lists every known rank of a spell ("Earth Shock", Rank 1 to
+-- Rank 7, each with its own spell ID): "Earth Shock" casts the highest
+-- known rank and "Earth Shock(Rank 1)" a lower one. The highest rank keeps
+-- the plain name, the others carry their rank in text.
 ---------------------------------------------------
 local _spellbookCache = nil
+local _spellbookIndex = {}  -- lower-cased text -> entry
+
+-- name, subName, spellID, icon of spellbook slot j, or nil when a macro
+-- cannot cast it (flyout, not learned yet, passive)
+local function SpellBookItem(j, bank)
+    local info = C_SpellBook.GetSpellBookItemInfo and C_SpellBook.GetSpellBookItemInfo(j, bank)
+    if info then
+        local T = Enum and Enum.SpellBookItemType
+        if T and info.itemType and info.itemType ~= T.Spell then return nil end
+        if info.isPassive or not info.name or info.name == "" then return nil end
+        local icon = info.iconID
+        if not icon and info.spellID and C_Spell and C_Spell.GetSpellTexture then
+            icon = C_Spell.GetSpellTexture(info.spellID)
+        end
+        return info.name, info.subName, info.spellID, icon
+    end
+    local name, sub = C_SpellBook.GetSpellBookItemName(j, bank)
+    if not name or name == "" then return nil end
+    local si = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(name)
+    return name, sub, si and si.spellID, si and si.iconID
+end
+
+-- Rank number of an entry, from its subtext ("Rank 3" in every locale has
+-- the digits); the spellbook order otherwise (ranks are listed ascending)
+local function RankOf(e)
+    return tonumber(e.sub and e.sub:match("%d+")) or e.order
+end
 
 function MF.Helpers:BuildSpellbookCache()
     if _spellbookCache then return _spellbookCache end
-    _spellbookCache = {}
+    local cache, index, byName, seen = {}, {}, {}, {}
 
-    if not C_SpellBook or not C_SpellBook.GetNumSpellBookSkillLines then
-        return _spellbookCache
-    end
-
-    for tab = 1, C_SpellBook.GetNumSpellBookSkillLines() do
-        local skillInfo = C_SpellBook.GetSpellBookSkillLineInfo(tab)
-        if skillInfo then
-            for j = skillInfo.itemIndexOffset + 1, skillInfo.itemIndexOffset + skillInfo.numSpellBookItems do
-                local spName = C_SpellBook.GetSpellBookItemName(j, Enum.SpellBookSpellBank.Player)
-                if spName and spName ~= "" then
-                    local si = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spName)
-                    table.insert(_spellbookCache, {
-                        name = spName,
-                        icon = si and si.iconID or 134400,
-                        id = si and si.spellID,
-                    })
+    if C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines then
+        local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
+        for tab = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+            local skillInfo = C_SpellBook.GetSpellBookSkillLineInfo(tab)
+            if skillInfo then
+                for j = skillInfo.itemIndexOffset + 1, skillInfo.itemIndexOffset + skillInfo.numSpellBookItems do
+                    local name, sub, id, icon = SpellBookItem(j, bank)
+                    -- The same spell sits in two skill lines on retail (both
+                    -- specs): one row
+                    local key = name and (name:lower() .. "\0" .. (sub or ""):lower())
+                    if name and not seen[key] then
+                        seen[key] = true
+                        local e = { name = name, sub = sub ~= "" and sub or nil, text = name,
+                            id = id, icon = icon or 134400, order = #cache + 1 }
+                        table.insert(cache, e)
+                        byName[name] = byName[name] or {}
+                        table.insert(byName[name], e)
+                    end
                 end
             end
         end
     end
 
-    table.sort(_spellbookCache, function(a, b) return a.name < b.name end)
-    return _spellbookCache
+    -- Several entries with one name: ranks. The highest one answers to the
+    -- plain name, the others to "Name(Rank n)"
+    for _, group in pairs(byName) do
+        if #group > 1 then
+            table.sort(group, function(a, b) return RankOf(a) < RankOf(b) end)
+            for i = 1, #group - 1 do
+                local e = group[i]
+                if e.sub then e.text = e.name .. "(" .. e.sub .. ")" end
+            end
+        end
+    end
+    for _, e in ipairs(cache) do
+        index[e.text:lower()] = e
+        -- "Earth Shock (Rank 1)" with a space reads the same
+        if e.sub and e.text ~= e.name then index[(e.name .. " (" .. e.sub .. ")"):lower()] = e end
+        if e.sub and e.text == e.name then
+            index[(e.name .. "(" .. e.sub .. ")"):lower()] = e
+            index[(e.name .. " (" .. e.sub .. ")"):lower()] = e
+        end
+    end
+
+    -- Plain name first, then the ranks in order
+    table.sort(cache, function(a, b)
+        if a.name ~= b.name then return a.name < b.name end
+        local pa, pb = a.text == a.name, b.text == b.name
+        if pa ~= pb then return pa end
+        return RankOf(a) < RankOf(b)
+    end)
+    -- An empty spellbook is the client not ready yet: ask again next time
+    if #cache > 0 then _spellbookCache, _spellbookIndex = cache, index end
+    return cache
 end
 
 function MF.Helpers:InvalidateSpellbookCache()
-    _spellbookCache = nil
+    _spellbookCache, _spellbookIndex = nil, {}
 end
 
 function MF.Helpers:GetSpellbookSpells()
     return self:BuildSpellbookCache()
+end
+
+-- The spellbook entry a macro names ("Earth Shock(Rank 1)", "earth shock"),
+-- or nil when the character does not know it
+function MF.Helpers:FindSpellbookSpell(text)
+    if type(text) ~= "string" or text == "" then return nil end
+    self:BuildSpellbookCache()
+    return _spellbookIndex[text:lower():match("^%s*(.-)%s*$")]
 end
 
 -- Macro text pasted from a guide or a forum. A first line that is not a
@@ -250,8 +322,11 @@ function MF.Helpers:ParseMacroText(text)
     if not name or name:match("^%s*$") then
         local spell = self:ParseShowTooltip(body) or self:ParseSpells(body)[1]
             or body:match("/cast%a+%s+%[.-%]%s*([^\n]+)") or body:match("/cast%a+%s+([^\n]+)")
-        -- "/cast [mod:shift] A; B" or "reset=8 A, B": keep the first spell
+        -- "/cast [mod:shift] A; B" or "reset=8 A, B": keep the first spell,
+        -- without its "(Rank 1)"
         spell = spell and spell:gsub("^reset=%S+%s*", ""):match("^([^;,]+)")
+        local bare = spell and spell:gsub("%s*%b()%s*$", "")
+        if bare and bare:match("%S") then spell = bare end
         name = spell and spell:match("^%s*(.-)%s*$") or "Macro"
     end
     return self:SanitizeMacro({ name = name, body = body, icon = self.DYNAMIC_ICON })

@@ -301,14 +301,29 @@ local function buildTalentCache()
     return talentCache
 end
 
+-- Spells and talents learned or lost: every cached verdict is stale
+function A:InvalidateSpellCache()
+    wipe(spellCache)
+    talentCache = nil
+end
+
 function A:CheckSpell(name)
     if not name or name == "" or name:match("^%d+$") then return nil end
     if spellCache[name] ~= nil then return spellCache[name] end
 
+    -- The character's spellbook first: "Earth Shock(Rank 1)" names one
+    -- rank on WoW Forever, and only the spellbook knows which spell ID that
+    -- is (the spell API answers the highest rank, or nothing)
+    local sp = MF.Helpers:FindSpellbookSpell(name)
+    if sp and sp.id then
+        spellCache[name] = { type = "spell", icon = sp.icon, id = sp.id, name = sp.text }
+        return spellCache[name]
+    end
+
     -- Try spell API
     local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(name)
     if info then
-        spellCache[name] = { type = "spell", icon = info.iconID, id = info.spellID }
+        spellCache[name] = { type = "spell", icon = info.iconID, id = info.spellID, name = info.name }
         return spellCache[name]
     end
 
@@ -318,7 +333,7 @@ function A:CheckSpell(name)
     if spellID then
         local si = C_Spell.GetSpellInfo(spellID)
         if si then
-            spellCache[name] = { type = "spell", icon = si.iconID, id = si.spellID }
+            spellCache[name] = { type = "spell", icon = si.iconID, id = si.spellID, name = si.name }
             return spellCache[name]
         end
     end
@@ -476,9 +491,18 @@ function A:ColorizeLine(line)
             elseif c == " " or c == "," then
                 colored = colored .. c; pos = pos + 1
             else
-                local nameEnd = rest:find("[;]", pos) or (#rest + 1)
-                local spellName = rest:sub(pos, nameEnd - 1):match("^%s*(.-)%s*$")
-                if spellName and spellName ~= "" then
+                -- One name, up to the next clause (;) or sequence step (,).
+                -- The overlay sits on the typed text: every character
+                -- comes back, spaces included
+                local nameEnd = rest:find("[;,]", pos) or (#rest + 1)
+                local spellName, trail = rest:sub(pos, nameEnd - 1):match("^(.-)(%s*)$")
+                -- castsequence: reset=... before the first step
+                local resetArg, gap, after = spellName:match("^(reset=%S*)(%s*)(.*)$")
+                if resetArg then
+                    colored = colored .. A.SYN.seq .. resetArg .. A.SYN.r .. gap
+                    spellName = after
+                end
+                if spellName ~= "" then
                     local check = self:CheckSpell(spellName)
                     if check and check.type == "spell" then
                         colored = colored .. A.SYN.spell .. spellName .. A.SYN.r
@@ -490,6 +514,7 @@ function A:ColorizeLine(line)
                         colored = colored .. A.SYN.text .. spellName .. A.SYN.r
                     end
                 end
+                colored = colored .. trail
                 pos = nameEnd
             end
         end
@@ -943,6 +968,8 @@ end
 -- CLI entry
 ---------------------------------------------------
 function A:OnInitialize()
+    MF:RegisterMessage("MF_SPELLS_CHANGED", function() self:InvalidateSpellCache() end)
+    MF:RegisterMessage("MF_SPEC_CHANGED", function() self:InvalidateSpellCache() end)
     MF:RegisterMessage("MF_ANALYZE_ALL", function()
         self:BuildCommandList()
         local P = MF:GetModule("Profiles")

@@ -173,7 +173,7 @@ function MF:DumpClient()
     -- The logged character's spellbook (names and IDs as this client has them)
     dump.spellbook = {}
     for _, sp in ipairs(MF.Helpers:GetSpellbookSpells()) do
-        table.insert(dump.spellbook, (sp.id or "?") .. " " .. sp.name)
+        table.insert(dump.spellbook, (sp.id or "?") .. " " .. sp.text)
     end
     dump.class = select(2, UnitClass("player"))
 

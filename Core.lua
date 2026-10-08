@@ -132,6 +132,9 @@ function MF:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", "OnSpecChanged")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
     self:RegisterEvent("UPDATE_MACROS", "OnMacrosUpdated")
+    -- A spell learned (a new rank on WoW Forever) or lost: the picker and
+    -- the analysis read the spellbook again
+    self:RegisterEvent("SPELLS_CHANGED", "OnSpellsChanged")
     -- UPDATE_MACROS normally fires once macros are loaded; this covers a
     -- login where it fired before the addon was enabled.
     C_Timer.After(5, function()
@@ -158,6 +161,11 @@ end
 
 function MF:OnMacrosUpdated()
     self:SendMessage("MF_MACROS_UPDATED")
+end
+
+function MF:OnSpellsChanged()
+    MF.Helpers:InvalidateSpellbookCache()
+    self:SendMessage("MF_SPELLS_CHANGED")
 end
 
 ---------------------------------------------------
