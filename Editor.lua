@@ -278,6 +278,7 @@ local function CreateEditor()
     iconButton:SetCallback("OnClick", function()
         MF:GetModule("IconPicker"):Toggle(function(iconId)
             Editor.selectedIcon = iconId
+            Editor.iconPicked = true
             iconButton:SetImage(iconId)
             Editor:OnChanged()
         end)
@@ -761,6 +762,7 @@ function Editor:Open(macro, force, onOpened)
     CreateEditor()
     self.isNew = false; self.cur = macro
     self.selectedIcon = macro.icon
+    self.iconPicked = false
     self.baseline = { name = macro.name or "", body = macro.body or "", icon = macro.icon }
     MF.editingIndex = macro.index
 
@@ -821,6 +823,7 @@ function Editor:OpenNew(perChar, force, onOpened)
     CreateEditor()
     self.isNew = true; self.newPerChar = perChar; self.cur = nil
     self.selectedIcon = 134400
+    self.iconPicked = false
     -- Unnamed by default: WoW needs a name, a single space acts as none
     self.baseline = { name = DEFAULT_NAME, body = "#showtooltip\n/cast ", icon = 134400 }
     MF.editingIndex = nil
@@ -1146,6 +1149,18 @@ end
 ---------------------------------------------------
 -- Save
 ---------------------------------------------------
+-- Icon to hand EditMacro, nil to keep the stored one. The stored icon of a
+-- macro cannot be read (GetMacroInfo returns the icon a #showtooltip macro
+-- shows), so writing it back is what freezes a "?" icon on the spell icon:
+-- the icon is only written when the user changed it. For a macro with
+-- #showtooltip only the icon picker counts: an icon that came back with a
+-- revision or a draft is what the macro showed then, not a choice.
+function Editor:IconToWrite(icon, body)
+    local changed = (icon or 134400) ~= ((self.baseline and self.baseline.icon) or 134400)
+    if not (self.iconPicked or (changed and not MF.Helpers:HasShowTooltip(body))) then return nil end
+    return MF.Helpers:StoredMacroIcon(nil, icon, body)
+end
+
 -- Returns true when the macro was written (or queued until combat ends);
 -- on failure the edits and the draft are kept.
 function Editor:Save(noReopen)
@@ -1171,16 +1186,18 @@ function Editor:Save(noReopen)
         end
         -- Nothing can move macro slots during combat, so the index stays valid
         local cur = self.cur
+        local writeIcon = self:IconToWrite(icon, body)
         MF:RunOutOfCombat("save" .. cur.index, function()
             -- Save history snapshot before overwriting
             local H = MF:GetModule("History")
             if H then H:SaveSnapshot(cur) end
-            EditMacro(cur.index, name, icon, body)
+            EditMacro(cur.index, name, writeIcon, body)
             MF:Notify(MF.C.green .. L["MACRO_SAVED"]:format(MF.C.cyan .. name .. MF.C.r))
         end)
     end
 
     self:DropDraft()
+    self.iconPicked = false
 
     PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
     -- Stay on the saved macro: find it again once the client has written it

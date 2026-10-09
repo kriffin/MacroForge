@@ -1,9 +1,12 @@
 ---------------------------------------------------
 -- MacroForge Bridge (dev only, not part of the addon)
 -- tools/bridge.sh writes Queue.lua (MFBridgeQueue = { id, code }) and
--- presses CTRL-SHIFT-F9 (bound here to ReloadUI) twice:
---   1st reload: this file runs the query and keeps the result in MFBridgeDB
+-- presses CTRL-SHIFT-F9 (bound here to ReloadUI):
+--   1st reload: this file runs the query, keeps the result in MFBridgeDB
+--   and reloads again by itself
 --   2nd reload: the client writes MFBridgeDB to SavedVariables, read off disk
+-- (bridge.sh presses the key a second time if nothing lands, in case the
+-- reload from Lua is ever blocked)
 -- Inside the query: out(...) records values, dump(v) serializes a table.
 ---------------------------------------------------
 local MAX_DEPTH, MAX_ITEMS = 4, 300
@@ -66,6 +69,9 @@ local function Run()
     end
     MFBridgeDB = result
     print("|cff00ccffMF Bridge|r query " .. q.id .. (result.error and " |cffff4444failed|r" or " done"))
+    -- Write the result to disk now: a reload from here saves SavedVariables,
+    -- and this id is done so the next load runs nothing
+    C_Timer.After(0.5, ReloadUI)
 end
 
 local f = CreateFrame("Frame")

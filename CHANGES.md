@@ -1,5 +1,24 @@
 # Changes
 
+## 7.7.1 — 2026-10-09
+
+The "?" icon stays automatic when you save.
+
+- **Saving no longer freezes the icon** of a `#showtooltip` macro on the
+  spell it showed at that moment. WoW never tells an addon which icon a
+  macro stores, only the one it shows, and the guess MacroForge made from
+  the spell being cast moved with the game state (a castsequence step, a
+  clause not active right now): the editor then wrote the shown icon back
+  and the macro kept it. The editor now hands WoW no icon at all unless you
+  picked one, the guess also recognises every spell and item the body
+  names, and a set, a duplicate or a restored revision that carries a
+  shown icon writes "?" instead.
+- **Revisions**: a `#showtooltip` macro no longer gets a new revision each
+  time the icon it shows changes.
+- **Dev bridge** (`tools/bridge.sh`): finds the account that is logged in
+  and the addon folder the client loads; the addon reloads by itself once
+  the query ran.
+
 ## 7.7.0 — 2026-10-08
 
 MacroForge says when it is out of date.

@@ -140,30 +140,79 @@ end
 -- A macro with the "?" icon (134400) and #show/#showtooltip displays the
 -- icon of the spell or item it would use, and GetMacroInfo returns that
 -- resolved icon, not "?". Writing it back (EditMacro/CreateMacro) freezes
--- the icon. When the returned icon is exactly the resolved one, the macro is
--- treated as dynamic and "?" is returned. (A custom icon identical to the
--- spell icon is also turned into "?": same look, now dynamic.)
+-- the icon. The stored icon is not readable, so a returned icon that is
+-- the icon of anything the macro can show (the spell or item WoW resolves
+-- right now, or any spell or item the body names: a castsequence step, a
+-- clause not active at the moment) is treated as dynamic and "?" is
+-- returned. (A custom icon identical to one of them is also turned into
+-- "?": same look, now dynamic.) Writers pass nil to EditMacro when the
+-- icon did not change, so the stored one survives whatever this guesses.
 ---------------------------------------------------
 MF.Helpers.DYNAMIC_ICON = 134400
 
-local function ResolvedMacroTexture(index)
-    local spellID = GetMacroSpell and GetMacroSpell(index)
-    if spellID and C_Spell and C_Spell.GetSpellTexture then
-        local tex = C_Spell.GetSpellTexture(spellID)
-        if tex then return tex end
-    end
-    local _, itemLink = GetMacroItem and GetMacroItem(index)
-    local itemID = itemLink and tonumber(itemLink:match("item:(%d+)"))
-    if itemID and C_Item and C_Item.GetItemIconByID then
-        return C_Item.GetItemIconByID(itemID)
-    end
-    return nil
+-- #show / #showtooltip on any line: the icon follows the body
+function MF.Helpers:HasShowTooltip(body)
+    return body ~= nil and (body:match("^%s*#show") or body:match("\n%s*#show")) ~= nil
 end
 
+local SHOW_COMMANDS = { cast = true, use = true, castsequence = true, castrandom = true }
+
+-- Every spell or item name the body can show: "#showtooltip X" and the
+-- arguments of /cast, /use, /castsequence, /castrandom with the
+-- conditions, reset= and ! stripped, one name per ; or , clause
+local function BodyNames(body)
+    local names = {}
+    for line in body:gmatch("[^\n]+") do
+        local args = line:match("^%s*#show%a*%s+(.+)$")
+        if not args then
+            local cmd, rest = line:match("^%s*/(%a+)%s*(.*)$")
+            if cmd and SHOW_COMMANDS[cmd:lower()] then args = rest end
+        end
+        if args then
+            args = args:gsub("%[.-%]", ""):gsub("reset=%S+", "")
+            for clause in args:gmatch("[^;,]+") do
+                local name = clause:gsub("^%s*!", ""):match("^%s*(.-)%s*$")
+                if name ~= "" and not name:match("^%d+$") then table.insert(names, name) end
+            end
+        end
+    end
+    return names
+end
+
+local function ItemIcon(itemID)
+    if itemID and C_Item and C_Item.GetItemIconByID then return C_Item.GetItemIconByID(itemID) end
+end
+
+-- What a dynamic macro displays right now (index given) or could display
+-- (icons of everything the body names): set of textures
+local function ShownTextures(index, body)
+    local set = {}
+    if index then
+        local spellID = GetMacroSpell and GetMacroSpell(index)
+        local tex = spellID and C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(spellID)
+        if tex then set[tex] = true end
+        local _, itemLink = GetMacroItem and GetMacroItem(index)
+        tex = ItemIcon(itemLink and tonumber(itemLink:match("item:(%d+)")))
+        if tex then set[tex] = true end
+    end
+    for _, name in ipairs(BodyNames(body)) do
+        local entry = MF.Helpers.FindSpellbookSpell and MF.Helpers:FindSpellbookSpell(name)
+        if entry and entry.icon then set[entry.icon] = true end
+        local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(name)
+        if info and info.iconID then set[info.iconID] = true end
+        local tex = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(name)
+        if tex then set[tex] = true end
+        local itemID = C_Item and C_Item.GetItemInfoInstant and C_Item.GetItemInfoInstant(name)
+        tex = ItemIcon(itemID)
+        if tex then set[tex] = true end
+    end
+    return set
+end
+
+-- index may be nil (a macro not written yet): only the body is looked at
 function MF.Helpers:StoredMacroIcon(index, icon, body)
-    if not body or not (body:match("^%s*#show") or body:match("\n%s*#show")) then return icon end
-    local resolved = ResolvedMacroTexture(index)
-    if resolved and resolved == icon then return self.DYNAMIC_ICON end
+    if not icon or icon == self.DYNAMIC_ICON or not self:HasShowTooltip(body) then return icon end
+    if ShownTextures(index, body)[icon] then return self.DYNAMIC_ICON end
     return icon
 end
 

@@ -54,7 +54,10 @@ end
 
 local function Record(entry, m, reason)
     local last = LastVersion(entry)
-    if last and last.body == m.body and last.icon == m.icon and last.name == m.name then
+    -- A macro with #showtooltip shows the icon of what it casts, which moves
+    -- with the game state: that is not an edit
+    local sameIcon = last and (last.icon == m.icon or MF.Helpers:HasShowTooltip(m.body))
+    if last and last.body == m.body and sameIcon and last.name == m.name then
         return
     end
     table.insert(entry.versions, {

@@ -164,10 +164,14 @@ function MF.Profiles:WriteMacros(scope, savedMacros)
     local edited = 0
     for _, wanted in ipairs(matched) do
         local m = table.remove(current[wanted.name], 1)
-        local icon = wanted.icon or 134400
+        local icon = MF.Helpers:StoredMacroIcon(nil, wanted.icon or 134400, wanted.body)
         local body = wanted.body or ""
-        if m.body ~= body or m.icon ~= icon then
-            EditMacro(m.index, wanted.name, icon, body)
+        -- nil icon = EditMacro keeps the stored one: a saved icon that is what
+        -- the macro stores or shows is not written back (it would freeze a
+        -- dynamic "?" icon on the icon it showed when the set was saved)
+        local writeIcon = (icon ~= m.icon and icon ~= m.displayIcon) and icon or nil
+        if m.body ~= body or writeIcon then
+            EditMacro(m.index, wanted.name, writeIcon, body)
             edited = edited + 1
         end
     end
@@ -178,7 +182,7 @@ function MF.Profiles:WriteMacros(scope, savedMacros)
     local created, skipped = 0, 0
     for _, wanted in ipairs(toCreate) do
         if used < limit then
-            CreateMacro(wanted.name, wanted.icon or 134400, wanted.body or "", perCharacter)
+            CreateMacro(wanted.name, MF.Helpers:StoredMacroIcon(nil, wanted.icon or 134400, wanted.body), wanted.body or "", perCharacter)
             used = used + 1
             created = created + 1
         else
@@ -577,8 +581,9 @@ function MF.Profiles:CreateNewMacro(name, icon, body, perCharacter)
         end
     end
 
-    local newIcon = icon or 134400
     local newBody = body or ""
+    -- The icon a dynamic macro shows is never stored: "?" instead
+    local newIcon = MF.Helpers:StoredMacroIcon(nil, icon or 134400, newBody)
     local macroId = CreateMacro(name, newIcon, newBody, perCharacter)
 
     if macroId then
@@ -613,7 +618,7 @@ function MF.Profiles:MoveMacro(macro, toScope)
     local H = MF:GetModule("History")
     if H and H.MoveEntry then H:MoveEntry(macro, toScope) end
 
-    local newIndex = CreateMacro(macro.name, macro.icon or 134400, macro.body or "", toChar)
+    local newIndex = CreateMacro(macro.name, MF.Helpers:StoredMacroIcon(nil, macro.icon or 134400, macro.body), macro.body or "", toChar)
     if not newIndex then return nil end
     DeleteMacro(macro.index)
     MF:Log("INFO", "move", "%s: %s -> %s", macro.name, macro.scope, toScope)
